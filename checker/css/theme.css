@@ -260,3 +260,15 @@ dialog.sheet::backdrop{background:var(--scrim)}
 .subslot.r-blue,.dlg-tabs button.r-blue,.pick.r-blue{background:var(--blue-bg);border-color:var(--blue-line)}
 .pick[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--card)}
 .pick.used{background:var(--line-soft);border-color:var(--line-soft);color:var(--muted)}
+
+/* ログイン画面。ログインするまで（html.locked の間）はアプリを隠す。 */
+.locked .tabs,.locked main,.locked .bar{display:none}
+.login{display:none}
+.locked .login{display:grid;gap:10px;max-width:360px;margin:18vh auto 0;padding:0 16px}
+.login h1{margin:0 0 10px;font-size:1.6rem;font-weight:900}
+.login label{font-size:.8rem;font-weight:700;color:var(--muted)}
+.login input{font:inherit;font-size:1.4rem;letter-spacing:.5em;text-align:center;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.login button{font:inherit;font-weight:900;font-size:1rem;min-height:48px;border:none;border-radius:14px;background:var(--ink);color:var(--card);cursor:pointer}
+.login button:disabled{opacity:.5}
+.loginmsg{margin:0;min-height:1.5em;font-size:.85rem;font-weight:700;color:var(--tail)}
+.logout{font:inherit;font-size:.75rem;font-weight:700;color:var(--muted);background:none;border:none;text-decoration:underline;padding:8px 4px;cursor:pointer}
