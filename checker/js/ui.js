@@ -16,6 +16,10 @@ const $ = (id) => document.getElementById(id);
 const chipHtml = (v, label, pressed, dis, cls) =>
   `<button class="chip ${cls || ''}" data-v="${v}" aria-pressed="${pressed}" ${dis ? 'disabled' : ''}>${label}</button>`;
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+// ポケモンの画像。img/mon/ はゲーム内のメニュー画像を切り詰めたもの。
+const monSrc = (key) => `img/mon/${key}.webp`;
+// 「キュウコン(アローラのすがた)」を名前と姿に分ける。
+const splitName = (name) => name.match(/^([^(]+)(?:\((.+)\))?$/).slice(1);
 const ALL_FLAGS = Object.keys(LEVEL).map(Number).flatMap((N) => [true, false].flatMap((camp) => [false, true].map((g80) => ({ N, camp, g80 }))));
 const def = () => TYPES[state.type];
 // 対象レベルの切り替えの名前。最後の枠が開くレベルまで（3枠なら「Lv.50まで」）。
@@ -112,7 +116,21 @@ export function initUI(engines) {
     next.click();
     next.focus();
   });
-  $('mon').onchange = (e) => { setMon(e.target.value); syncUrl(); refresh(engines); };
+  $('monBtn').onclick = () => {
+    renderMonDlg();
+    $('monDlg').showModal();
+    $('monGrid').querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: 'center' });
+  };
+  $('monClose').onclick = () => $('monDlg').close();
+  $('monDlg').addEventListener('click', (e) => { if (e.target === $('monDlg')) $('monDlg').close(); });
+  $('monGrid').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    setMon(b.dataset.v);
+    syncUrl();
+    $('monDlg').close();
+    refresh(engines);
+  });
 
   $('camp').checked = state.camp;
   $('g80').checked = state.g80;
@@ -143,8 +161,6 @@ export function initUI(engines) {
   refresh(engines);
 }
 
-let shownType = null;
-
 function renderHeader() {
   const mm = monData(), d = def();
   document.documentElement.dataset.type = state.type;
@@ -154,16 +170,11 @@ function renderHeader() {
     b.setAttribute('aria-selected', String(on));
     b.tabIndex = on ? 0 : -1;
   });
-  // ポケモンの一覧は今のタイプのものだけにする。
-  if (shownType !== state.type) {
-    shownType = state.type;
-    $('mon').innerHTML = Object.entries(d.MONS).map(([k, m]) => `<option value="${k}">${esc(m.name)}</option>`).join('');
-  }
-  $('mon').value = state.mon;
-
-  // 「キュウコン(アローラのすがた)」のような姿の名前は2行目に小さく出す。
-  const [, base, form] = mm.name.match(/^([^(]+)(?:\((.+)\))?$/);
+  // 姿の名前は2行目に小さく出す。
+  const [base, form] = splitName(mm.name);
   $('monName').innerHTML = esc(base) + (form ? `<span class="form">${esc(form)}</span>` : '');
+  $('monImg').src = monSrc(state.mon);
+  $('monBtn').innerHTML = `<img src="${monSrc(state.mon)}" alt="" width="40" height="40"><b>${esc(base)}${form ? `<small class="form">${esc(form)}</small>` : ''}</b><small>タップして選ぶ</small>`;
   $('typeName').textContent = `${d.label} 厳選チェッカー`;
   const fact = (label, value) => `<div><small>${label}</small><b>${value}</b></div>`;
   $('facts').innerHTML = fact('おてつだい', `${Math.floor(mm.time / 60)}:${String(mm.time % 60).padStart(2, '0')}`)
@@ -279,6 +290,15 @@ function initDialogs(engines) {
     $('natDlg').close();
     refresh(engines);
   });
+}
+
+// ポケモンの一覧は今のタイプのものだけにする。
+function renderMonDlg() {
+  $('monGrid').innerHTML = Object.entries(def().MONS).map(([k, m]) => {
+    const [base, form] = splitName(m.name);
+    return `<button data-v="${k}" aria-pressed="${k === state.mon}"><img src="${monSrc(k)}" alt="" width="56" height="56" loading="lazy">`
+      + `<span>${esc(base)}</span>${form ? `<small>${esc(form)}</small>` : ''}</button>`;
+  }).join('');
 }
 
 function openSub(i) {
