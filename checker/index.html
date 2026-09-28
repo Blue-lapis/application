@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" class="locked">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -11,6 +11,14 @@
 <link rel="stylesheet" href="css/theme.css">
 </head>
 <body>
+<form class="login" id="login" autocomplete="on">
+  <h1>厳選チェッカー</h1>
+  <label for="loginPw">パスワード</label>
+  <input type="password" id="loginPw" name="password" autocomplete="current-password" required>
+  <button type="submit">ログイン</button>
+  <p class="loginmsg" id="loginMsg" role="status"></p>
+</form>
+
 <nav class="tabs" aria-label="タイプ">
   <div class="tabs-in" role="tablist" id="tabs"></div>
 </nav>
@@ -67,6 +75,7 @@
       <ul class="log" id="log"></ul>
     </section>
     <p class="credit">ゲーム画像の著作権は ©Pokémon. ©Nintendo/Creatures Inc./GAME FREAK inc. ©SELECT BUTTON inc. に帰属します。</p>
+    <button class="logout" id="logout" type="button" hidden>ログアウト</button>
   </div>
 </main>
 

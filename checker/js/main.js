@@ -1,4 +1,10 @@
 import { createEngines } from './types.js';
 import { initUI } from './ui.js';
+import { requireLogin, logout, PASS_HASH } from './auth.js';
 
-initUI(createEngines());
+requireLogin().then(() => {
+  const out = document.getElementById('logout');
+  out.hidden = !PASS_HASH;
+  out.onclick = logout;
+  initUI(createEngines());
+});
