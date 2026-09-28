@@ -1,7 +1,7 @@
 // 簡易ログイン。入力した暗証番号（数字4桁）を PBKDF2 でハッシュにして PASS_HASH と照合する。
 // 番号そのものはどこにも置かない。ただし判定はブラウザ内なので、ソースを読める人には突破できる（リンクを知っているだけの人を締め出す用途）。
 // PASS_HASH は「pbkdf2$くり返し回数$ソルト$ハッシュ」（Base64）。空ならログインなしで開く。
-export const PASS_HASH = '';
+export const PASS_HASH = 'pbkdf2$600000$DioWOlYDbOlRsjyqxcl/IQ==$Lv6pjODmyB1uNO/YxKOxXSzgRRIWE/mPQU/QdgWgWtw=';
 
 const KEY = 'ckauth';
 const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
