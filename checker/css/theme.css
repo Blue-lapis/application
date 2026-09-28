@@ -155,6 +155,12 @@ dl.rows dt.grp:first-child{padding-top:2px}
 .log b{color:var(--psy-ink);font-size:1.1rem;font-weight:700}
 .log li > div:nth-child(2){text-align:right}
 .del{min-height:44px;padding:4px 8px}
+.log li[data-t]{cursor:pointer;margin:0 -10px;padding:10px;border-radius:12px;-webkit-tap-highlight-color:transparent}
+.log li[data-t]:hover{background:var(--line-soft)}
+.log li[data-t]:focus-visible{outline:2px solid var(--psy);outline-offset:-2px}
+.log li.cur{background:var(--psy-soft)}
+.log li.cur + li,.log li + li.cur{border-top-color:transparent}
+.log .now{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:999px;background:var(--psy);color:#fff;font-size:.65rem;vertical-align:1px}
 
 /* 下の帯。画面の端から浮かせた夜空色の帯。 */
 .bar{left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));border-radius:20px;padding:12px 12px 12px 18px;box-shadow:var(--shadow)}

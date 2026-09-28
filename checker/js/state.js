@@ -4,7 +4,7 @@
 // 共通の設定は ck 接頭辞で持ち、まだなければ統合前の設定を引き継ぐ。
 import { TYPES, DEFAULT_TYPE, typeOf } from './types.js';
 import { natByName } from './picker.js';
-import { UNLOCK, LEVEL } from '../../js/constants.js';
+import { UNLOCK, LEVEL, byId } from '../../js/constants.js';
 
 const KEYS = { camp: 'ckcamp', g80: 'ckg80', mode: 'ckmode', mon: 'ckmon', mons: 'ckmons', target: 'igtarget' };
 const LOG_KEYS = { ingredient: 'iglog', berry: 'bflog', skill: 'sklog' };
@@ -153,3 +153,25 @@ export function appendLog(entry) { save(LOG_KEYS[state.type], [...loadRawLog(sta
 export function removeLogEntry(t) {
   save(LOG_KEYS[state.type], loadRawLog(state.type).filter((x) => String(x && x.t) !== String(t)));
 }
+
+// 記録の個体を入力欄に戻す。サブスキルは記録の枠の数だけ入れ、後ろの枠は空にする。
+// 性格の名前がない古い記録は、上昇・下降の補正（分類）だけを戻す。
+export function restoreEntry(x) {
+  state.subs = UNLOCK.map((_, i) => (byId[x.subs[i]] ? x.subs[i] : null));
+  if (natByName(x.nat)) {
+    setNature(x.nat);
+  } else {
+    state.nat = null;
+    state.up = x.up;
+    state.down = x.down;
+  }
+  if (state.type === 'ingredient') {
+    const slots = TYPES.ingredient.MONS[state.mon].slots;
+    state.arr = slots.map((opts, i) => (Number.isInteger(x.arr[i]) && x.arr[i] >= 0 && x.arr[i] < opts.length ? x.arr[i] : emptyArr(state.mon)[i]));
+  }
+}
+
+// 今の入力が記録の個体と同じか。
+export const isCurrent = (x) => currentSubs().join() === x.subs.join()
+  && (natByName(x.nat) ? x.nat === state.nat : !state.nat && state.up === x.up && state.down === x.down)
+  && (state.type !== 'ingredient' || state.arr.join() === x.arr.join());

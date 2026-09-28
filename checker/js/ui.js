@@ -8,7 +8,7 @@ import { slotsOf } from './ingredient/calc.js';
 import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLabel } from './picker.js';
 import {
   state, monData, loadSettings, setCamp, setG80, setMode, setMon, setType, setTarget, setNature, resetSelection,
-  currentSubs, isComplete, env, loadLog, appendLog, removeLogEntry,
+  currentSubs, isComplete, env, loadLog, appendLog, removeLogEntry, restoreEntry, isCurrent,
 } from './state.js';
 
 const $ = (id) => document.getElementById(id);
@@ -221,6 +221,12 @@ function renderSlots() {
 // 性格のボタン。名前と、上昇・下降の補正を出す。計算に効かない補正は薄くする。
 function renderNat() {
   const n = natByName(state.nat);
+  // 性格の名前がない古い記録を戻したときは、補正だけを出す。
+  if (!n && state.up && state.down) {
+    const { NATL } = def();
+    $('natBtn').innerHTML = `<b>—</b><small>▲${NATL[state.up]} ▼${NATL[state.down]}</small>`;
+    return;
+  }
   if (!n) {
     $('natBtn').innerHTML = '<b class="dim">未選択</b><small>タップして選ぶ</small>';
     return;
@@ -475,10 +481,20 @@ function renderLog(engines) {
     ? L.map((x) => {
       const detail = `${state.type === 'ingredient' ? `${arrName(mm, x.arr)}　` : ''}${x.subs.map(subShort).join('／')}　${x.nat ? `${esc(x.nat)} ` : ''}▲${NATL[x.up]} ▼${NATL[x.down]}`;
       // Entries saved before the memo prompt was removed keep their memo as the heading.
-      return `<li><div>${x.memo ? `${esc(x.memo)}<div class="m">${detail}</div>` : detail}</div><div><b>${x.r.toFixed(2)}倍</b><div class="m">${rd ? (x.r > 0 ? `上位${fmtPct(engine.atLeast(x.r, e))}<br>${fmtPos(rankOf(engine, x.r, e))}` : '—') : pendingText()}</div></div><button class="del" data-t="${x.t}">削除</button></li>`;
+      const cur = isCurrent(x);
+      return `<li class="${cur ? 'cur' : ''}" data-t="${x.t}" tabindex="0" title="タップで入力に戻す" aria-current="${cur}"><div>${cur ? '<span class="now">表示中</span>' : ''}${x.memo ? `${esc(x.memo)}<div class="m">${detail}</div>` : detail}</div><div><b>${x.r.toFixed(2)}倍</b><div class="m">${rd ? (x.r > 0 ? `上位${fmtPct(engine.atLeast(x.r, e))}<br>${fmtPos(rankOf(engine, x.r, e))}` : '—') : pendingText()}</div></div><button class="del" data-t="${x.t}">削除</button></li>`;
     }).join('')
     : `<li class="empty">${modeLabel(state.N)}の記録はまだありません</li>`;
 
+  // 行をタップすると、その個体を入力に戻して今の入力と見比べられるようにする。削除ボタンは除く。
+  const byT = Object.fromEntries(L.map((x) => [String(x.t), x]));
+  $('log').querySelectorAll('li[data-t]').forEach((li) => {
+    const restore = () => { restoreEntry(byT[li.dataset.t]); refresh(engines); };
+    li.onclick = (ev) => { if (!ev.target.closest('.del')) restore(); };
+    li.onkeydown = (ev) => {
+      if (ev.target === li && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); restore(); }
+    };
+  });
   $('log').querySelectorAll('.del').forEach((b) => {
     b.onclick = () => { removeLogEntry(b.dataset.t); renderLog(engines); };
   });
