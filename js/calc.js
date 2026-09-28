@@ -157,7 +157,14 @@ export function runDays(p, Ha, Hs, rollsOf, ceil) {
 
 // サブスキルN枠の効果合計の分布。1枠ごとに色を RARITY_P で抽選し、
 // その色の中で未所持のものから均等に選ぶ（重複なし）。
+// 結果は枠の数だけで決まり、5枠では数え上げに時間がかかるので、枠の数ごとに使い回す。呼び出し側は中身を変えない。
+const subsetCache = new Map();
 export function subsetDist(n) {
+  if (!subsetCache.has(n)) subsetCache.set(n, buildSubsetDist(n));
+  return subsetCache.get(n);
+}
+
+function buildSubsetDist(n) {
   const byRarity = {};
   SUBS.forEach((s, i) => { (byRarity[s.rarity] = byRarity[s.rarity] || []).push(i); });
   const colors = Object.keys(RARITY_P);

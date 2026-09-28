@@ -1,6 +1,8 @@
 // ゲーム定数とサブスキル・性格の定義。数値の意味と出典は README.md を参照。
 export const SLEEP = 8.5;
-export const UNLOCK = [10, 25, 50, 70];
+// サブスキルの枠が開くレベル。枠の数 N ごとに、計算は LEVEL[N] で行う（次の枠が開く直前か、その枠が開いたレベル）。
+export const UNLOCK = [10, 25, 50, 70, 80];
+export const LEVEL = { 3: 60, 4: 70, 5: 80 };
 
 // げんきはおてつだい中・睡眠中を問わず10分ごとに1減る。起床時は睡眠回復で100（げんき回復ボーナス持ちは105）。
 export const ENERGY_TICK = 600;

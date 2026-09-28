@@ -4,6 +4,7 @@
 // 共通の設定は ck 接頭辞で持ち、まだなければ統合前の設定を引き継ぐ。
 import { TYPES, DEFAULT_TYPE, typeOf } from './types.js';
 import { natByName } from './picker.js';
+import { UNLOCK, LEVEL } from '../../js/constants.js';
 
 const KEYS = { camp: 'ckcamp', g80: 'ckg80', mode: 'ckmode', mon: 'ckmon', mons: 'ckmons', target: 'igtarget' };
 const LOG_KEYS = { ingredient: 'iglog', berry: 'bflog', skill: 'sklog' };
@@ -30,7 +31,7 @@ export const state = {
   type: DEFAULT_TYPE,
   target: null,
   arr: [],
-  subs: [null, null, null, null],
+  subs: UNLOCK.map(() => null),
   // 性格は名前で選び、上昇・下降の補正はそのタイプの分類（natCat）に直して up・down に持つ。
   nat: null,
   up: null,
@@ -77,7 +78,8 @@ export function loadSettings() {
   moveMewtwoLog();
   state.camp = loadSetting('camp', true) === true;
   state.g80 = loadSetting('g80', false) === true;
-  state.N = loadSetting('mode', 3) === 4 ? 4 : 3;
+  const n = loadSetting('mode', 3);
+  state.N = Object.hasOwn(LEVEL, n) ? n : 3;
   // URL の ?mon= を優先し、なければ前回選んだポケモンにする。
   let q = null;
   try { q = new URLSearchParams(location.search).get('mon'); } catch { /* no location */ }
@@ -129,7 +131,7 @@ export function setNature(name) {
 
 export function resetSelection() {
   if (state.type === 'ingredient') state.arr = emptyArr(state.mon);
-  state.subs = [null, null, null, null];
+  state.subs = UNLOCK.map(() => null);
   setNature(null);
 }
 

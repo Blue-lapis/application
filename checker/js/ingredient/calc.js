@@ -1,7 +1,7 @@
 // 食材タイプ向けの期待値計算エンジン。DOM に触れない。
 // おてつだいのタイミング（げんき・日またぎ）は共通の schedule（../../../js/calc.js）を使う。
 // 呼び出し側は env = { N, camp, g80, mon, target } を渡す。mon は MONS のキー、target は狙う食材（'A' など）。
-import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, byId } from '../../../js/constants.js';
+import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, byId, LEVEL } from '../../../js/constants.js';
 import { schedule, subsetDist } from '../../../js/calc.js';
 import { MONS, natCat, allArrs } from './constants.js';
 
@@ -45,7 +45,7 @@ function scheduleOf(Te, g80, wake) {
 
 export function prepare(m, env) {
   const mon = MONS[env.mon];
-  const LV = env.N === 4 ? 70 : 60;
+  const LV = LEVEL[env.N];
   const T = Math.floor(mon.time * (1 - (LV - 1) * 0.002) * m.timeMul);
   const Te = env.camp ? T / 1.2 : T;
   const ingP = Math.min(1, mon.ingP * m.ingMul);

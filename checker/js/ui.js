@@ -1,5 +1,5 @@
 // DOM 描画とイベント配線。計算はタイプごとの calc.js のエンジンに委譲する。
-import { byId, UNLOCK } from '../../js/constants.js';
+import { byId, UNLOCK, LEVEL } from '../../js/constants.js';
 import { fmtPct, trunc, mmss } from '../../js/format.js';
 import { eff } from '../../js/calc.js';
 import { TYPES } from './types.js';
@@ -15,8 +15,10 @@ const $ = (id) => document.getElementById(id);
 const chipHtml = (v, label, pressed, dis, cls) =>
   `<button class="chip ${cls || ''}" data-v="${v}" aria-pressed="${pressed}" ${dis ? 'disabled' : ''}>${label}</button>`;
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const ALL_FLAGS = [3, 4].flatMap((N) => [true, false].flatMap((camp) => [false, true].map((g80) => ({ N, camp, g80 }))));
+const ALL_FLAGS = Object.keys(LEVEL).map(Number).flatMap((N) => [true, false].flatMap((camp) => [false, true].map((g80) => ({ N, camp, g80 }))));
 const def = () => TYPES[state.type];
+// 対象レベルの切り替えの名前。最後の枠が開くレベルまで（3枠なら「Lv.50まで」）。
+const modeLabel = (N) => `Lv.${UNLOCK[N - 1]}まで`;
 // ダイアログの注記で使う、そのタイプの順位の基準。
 const METRIC = { berry: 'きのみエナジー', ingredient: '食材の個数', skill: 'スキルの発動回数' };
 
@@ -237,7 +239,7 @@ function initDialogs(engines) {
   $('subDlg').addEventListener('cancel', (e) => e.preventDefault());
   $('subClose').onclick = () => $('subDlg').close();
   $('natClose').onclick = () => $('natDlg').close();
-  $('subClear').onclick = () => { state.subs = [null, null, null, null]; subAt = 0; refresh(engines); };
+  $('subClear').onclick = () => { state.subs = UNLOCK.map(() => null); subAt = 0; refresh(engines); };
   $('natClear').onclick = () => { setNature(null); $('natDlg').close(); refresh(engines); };
   $('natBtn').onclick = () => { renderNatDlg(); $('natDlg').showModal(); };
 
@@ -312,7 +314,7 @@ function renderNatDlg() {
   $('natNote').textContent = `${METRIC[state.type]}に効くのは ${labels.join(' と ')} の補正だけです。薄い色の性格は「無補正」と同じ結果になります。`;
 }
 
-const condText = (m, e) => `Lv.${state.N === 4 ? 70 : 60}・睡眠8.5時間・${e.g80 ? 'げんき常時81%以上' : `起床時げんき${m.wake}から10分ごとに1減少（回復スキルなし）`}`;
+const condText = (m, e) => `Lv.${LEVEL[state.N]}・睡眠8.5時間・${e.g80 ? 'げんき常時81%以上' : `起床時げんき${m.wake}から10分ごとに1減少（回復スキルなし）`}`;
 const timeRows = (r, m, e) => {
   const Tm = Math.floor(r.Te / 60), Ts = Math.floor(r.Te % 60);
   $('rTime').innerHTML = `${Tm}分${String(Ts).padStart(2, '0')}秒<span>${e.camp ? 'チケット込み・' : ''}げんき補正前</span>`;
@@ -475,7 +477,7 @@ function renderLog(engines) {
       // Entries saved before the memo prompt was removed keep their memo as the heading.
       return `<li><div>${x.memo ? `${esc(x.memo)}<div class="m">${detail}</div>` : detail}</div><div><b>${x.r.toFixed(2)}倍</b><div class="m">${rd ? (x.r > 0 ? `上位${fmtPct(engine.atLeast(x.r, e))}<br>${fmtPos(rankOf(engine, x.r, e))}` : '—') : pendingText()}</div></div><button class="del" data-t="${x.t}">削除</button></li>`;
     }).join('')
-    : `<li class="empty">${state.N === 4 ? 'Lv.70まで' : 'Lv.50まで'}の記録はまだありません</li>`;
+    : `<li class="empty">${modeLabel(state.N)}の記録はまだありません</li>`;
 
   $('log').querySelectorAll('.del').forEach((b) => {
     b.onclick = () => { removeLogEntry(b.dataset.t); renderLog(engines); };
