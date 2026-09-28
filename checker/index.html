@@ -25,7 +25,7 @@
     <section class="mon">
       <div class="natname"><span>ポケモン</span><button class="monbtn" id="monBtn" aria-haspopup="dialog"></button></div>
       <div class="facts" id="facts"></div>
-      <p class="cond" id="monInfo"></p>
+      <div class="cond" id="monInfo"></div>
     </section>
 
     <section id="arrSec">
@@ -92,7 +92,9 @@
 <dialog class="sheet" id="monDlg" aria-labelledby="monTitle">
   <div class="dlg-in">
     <h2 id="monTitle" tabindex="-1" autofocus>ポケモンを選んでください</h2>
+    <input type="search" class="monq" id="monQ" placeholder="名前で探す（例: ふしばな）" aria-label="ポケモンの名前で探す" autocomplete="off" enterkeyhint="done">
     <div class="mongrid" id="monGrid"></div>
+    <p class="note" id="monNone" hidden>見つかりませんでした</p>
     <div class="dlg-foot"><span></span><button class="primary" id="monClose">閉じる</button></div>
   </div>
 </dialog>
