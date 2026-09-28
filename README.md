@@ -9,6 +9,7 @@ https://ryo-code-313.github.io/application/checker/
 ## 構成
 
 - `checker/` — アプリ本体（画面・状態管理・タイプごとの計算エンジンとポケモンのデータ）
+- `checker/img/ing/` — 食材アイコン（ゲームの画像を参考に描いたオリジナルの SVG）。食材名との対応は `checker/js/ingicons.js`
 - `js/constants.js` — サブスキル・性格・げんきなどのゲームデータ（3タイプ共通）
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、睡眠中のスキル抽選回数、天井カウンタ、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数

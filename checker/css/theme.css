@@ -92,6 +92,11 @@ section>.natname:first-child{margin-top:0}
 .chip.tgt{border-color:var(--psy)}
 .chip[aria-pressed="true"]{background:var(--psy);border-color:var(--psy);color:#fff}
 .chip:disabled[aria-pressed="true"]{opacity:1;cursor:default}
+/* 食材アイコン。チップと食材名の前に置く。 */
+.chip:has(.ing){display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 2px;font-size:.78rem;letter-spacing:-.02em}
+img.ing{width:22px;height:22px;flex:none}
+.ingname{white-space:nowrap}
+.ingname img.ing{width:18px;height:18px;vertical-align:-4px;margin-right:2px}
 
 /* サブスキル見出しの横に置く対象レベルの切り替え。 */
 .sec-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
