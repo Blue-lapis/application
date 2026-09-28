@@ -13,8 +13,8 @@
 <body>
 <form class="login" id="login" autocomplete="on">
   <h1>厳選チェッカー</h1>
-  <label for="loginPw">パスワード</label>
-  <input type="password" id="loginPw" name="password" autocomplete="current-password" required>
+  <label for="loginPw">暗証番号（数字4桁）</label>
+  <input type="password" id="loginPw" name="password" autocomplete="current-password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required>
   <button type="submit">ログイン</button>
   <p class="loginmsg" id="loginMsg" role="status"></p>
 </form>

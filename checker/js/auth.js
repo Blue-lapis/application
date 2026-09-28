@@ -1,5 +1,5 @@
-// 簡易ログイン。入力したパスワードを PBKDF2 でハッシュにして PASS_HASH と照合する。
-// パスワードそのものはどこにも置かない。ただし判定はブラウザ内なので、ソースを読める人には突破できる（リンクを知っているだけの人を締め出す用途）。
+// 簡易ログイン。入力した暗証番号（数字4桁）を PBKDF2 でハッシュにして PASS_HASH と照合する。
+// 番号そのものはどこにも置かない。ただし判定はブラウザ内なので、ソースを読める人には突破できる（リンクを知っているだけの人を締め出す用途）。
 // PASS_HASH は「pbkdf2$くり返し回数$ソルト$ハッシュ」（Base64）。空ならログインなしで開く。
 export const PASS_HASH = '';
 
@@ -29,15 +29,19 @@ export function requireLogin() {
   const btn = form.querySelector('button');
   pw.focus();
   return new Promise((resolve) => {
+    // 4桁そろったらそのまま確かめる。
+    pw.addEventListener('input', () => { if (/^\d{4}$/.test(pw.value)) form.requestSubmit(); });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (btn.disabled) return;
       btn.disabled = true;
       msg.textContent = '確認中…';
       const ok = await matches(pw.value).catch(() => false);
       btn.disabled = false;
       if (!ok) {
-        msg.textContent = 'パスワードが違います。';
-        pw.select();
+        msg.textContent = '暗証番号が違います。';
+        pw.value = '';
+        pw.focus();
         return;
       }
       try { localStorage.setItem(KEY, PASS_HASH); } catch { /* 次回また入力する */ }
