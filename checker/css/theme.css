@@ -97,6 +97,7 @@ section>.natname:first-child{margin-top:0}
 img.ing{width:22px;height:22px;flex:none}
 .ingname{white-space:nowrap}
 .ingname img.ing{width:18px;height:18px;vertical-align:-4px;margin-right:2px}
+.credit{margin:4px 4px 0;font-size:.65rem;line-height:1.6;color:var(--muted)}
 
 /* サブスキル見出しの横に置く対象レベルの切り替え。 */
 .sec-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
