@@ -5,6 +5,7 @@ import { eff } from '../../js/calc.js';
 import { TYPES } from './types.js';
 import { arrName, SLOT_LV } from './ingredient/constants.js';
 import { slotsOf } from './ingredient/calc.js';
+import { ingIcon } from './ingicons.js';
 import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLabel } from './picker.js';
 import {
   state, monData, loadSettings, setCamp, setG80, setMode, setMon, setType, setTarget, setNature, resetSelection,
@@ -169,8 +170,9 @@ function renderHeader() {
     + fact('食材確率', `${+(mm.ingP * 100).toFixed(1)}%`) + fact('最大所持数', mm.cap)
     + (state.type === 'berry' ? fact('きのみ', `×${mm.berries}`) : '')
     + (state.type === 'skill' ? fact('スキル確率', `${+(mm.skillP * 100).toFixed(1)}%`) : '');
-  const ings = [...new Set(mm.slots.flat().map(([i]) => mm.ings[i]))].join('／');
-  $('monInfo').textContent = state.type === 'berry' ? `${mm.berry}・食材 ${ings}`
+  const ings = [...new Set(mm.slots.flat().map(([i]) => mm.ings[i]))]
+    .map((n) => `<span class="ingname">${ingIcon(n)}${esc(n)}</span>`).join('／');
+  $('monInfo').innerHTML = state.type === 'berry' ? `${esc(mm.berry)}・食材 ${ings}`
     : state.type === 'skill' ? `スキル発動の天井 ${d.ceilOf(mm)}回・食材 ${ings}` : `食材 ${ings}`;
   $('arrSec').hidden = state.type !== 'ingredient';
   $('reset').textContent = state.type === 'ingredient' ? '食材配列・サブスキル・性格を消す' : 'サブスキル・性格を消す';
@@ -186,13 +188,13 @@ function renderMode() {
 function renderIngs(engines) {
   if (state.type !== 'ingredient') return;
   const mm = monData();
-  $('target').innerHTML = Object.keys(mm.ings).map((k) => chipHtml(k, `${k} ${mm.short[k]}`, state.target === k)).join('');
+  $('target').innerHTML = Object.keys(mm.ings).map((k) => chipHtml(k, `${ingIcon(mm.ings[k])}${k} ${mm.short[k]}`, state.target === k)).join('');
   $('target').querySelectorAll('.chip').forEach((b) => {
     b.onclick = () => { setTarget(b.dataset.v); refresh(engines); };
   });
 
   $('arr').innerHTML = mm.slots.map((opts, i) => `<div class="slot"><span>${SLOT_LV[i]}</span><div class="chips" data-i="${i}">${
-    opts.map(([ing, a], k) => chipHtml(k, `${mm.short[ing]}×${a}`, state.arr[i] === k, opts.length === 1, ing === state.target ? 'tgt' : '')).join('')
+    opts.map(([ing, a], k) => chipHtml(k, `${ingIcon(mm.ings[ing])}${mm.short[ing]}×${a}`, state.arr[i] === k, opts.length === 1, ing === state.target ? 'tgt' : '')).join('')
   }</div></div>`).join('');
   $('arr').querySelectorAll('.chips').forEach((g) => g.querySelectorAll('.chip').forEach((b) => {
     b.onclick = () => {

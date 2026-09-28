@@ -9,6 +9,7 @@ https://ryo-code-313.github.io/application/checker/
 ## 構成
 
 - `checker/` — アプリ本体（画面・状態管理・タイプごとの計算エンジンとポケモンのデータ）
+- `checker/img/ing/` — 食材アイコン（ゲーム内のスクリーンショットから切り抜いた PNG）。食材名との対応は `checker/js/ingicons.js`
 - `js/constants.js` — サブスキル・性格・げんきなどのゲームデータ（3タイプ共通）
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、睡眠中のスキル抽選回数、天井カウンタ、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数
@@ -62,3 +63,7 @@ python3 -m http.server 8000
 ```
 
 ブラウザで `http://localhost:8000/checker/` を開いてください。
+
+## 著作権
+
+ゲーム画像の著作権は ©Pokémon. ©Nintendo/Creatures Inc./GAME FREAK inc. ©SELECT BUTTON inc. に帰属します。このツールは非公式のファンツールで、権利者からの削除依頼があれば従います。
