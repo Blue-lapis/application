@@ -4,7 +4,7 @@
 
 ## 公開ページ
 
-https://ryo-code-313.github.io/application/checker/
+https://lapis-blue.github.io/application/checker/
 
 ## 構成
 
