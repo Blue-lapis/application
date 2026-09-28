@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<path d="M18 24c-5 5-6 12-4 19 2 8 9 12 18 12s16-4 18-12c2-7 1-14-4-19z" fill="#FFA41B" stroke="#4E3424" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-<path d="M20 32c-1 4 0 9 2 12" stroke="#FFD66B" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-<rect x="16" y="13" width="32" height="11" rx="5" fill="#8FD3F0" stroke="#4E3424" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-<rect x="21" y="16" width="22" height="3.5" rx="1.75" fill="#DDF5FC"/>
+<defs><radialGradient id="hn" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#FFE070"/><stop offset=".5" stop-color="#FFA41B"/><stop offset="1" stop-color="#D9700A"/></radialGradient><linearGradient id="hl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C6EEFB"/><stop offset="1" stop-color="#6CC3E6"/></linearGradient></defs>
+<path d="M17 24c-6 5-7 13-5 20 2 8 10 12 20 12s18-4 20-12c2-7 1-15-5-20z" fill="url(#hn)" stroke="#8A460A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M19 33c-1 4 0 9 2 12" fill="none" stroke="#FFF2B8" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" opacity="1"/><ellipse cx="44" cy="44" rx="1.6" ry="3" transform="rotate(20 44 44)" fill="#fff" opacity="0.6"/>
+<rect x="15" y="13" width="34" height="12" rx="5" fill="url(#hl)" stroke="#2F7196" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<ellipse cx="32" cy="15.5" rx="13" ry="2.3" fill="#EAFAFF"/>
 </svg>

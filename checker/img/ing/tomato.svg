@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<path d="M32 17c-14 0-24 8-24 19s10 18 24 18 24-7 24-18-10-19-24-19z" fill="#E8392F" stroke="#4E3424" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-<path d="M14 40c4 4 8-2 12 2s8-3 12 1 8-2 12-2" fill="none" stroke="#FF8A6E" stroke-width="2.4" stroke-linecap="round"/>
-<ellipse cx="19" cy="31" rx="3" ry="5" fill="#FF8A7A" transform="rotate(35 19 31)"/>
-<path d="M32 12l3 8 9-2-6 6 8 4-10 0-4 6-4-6-10 0 8-4-6-6 9 2z" fill="#4FA83A" stroke="#4E3424" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<defs><radialGradient id="t" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#FF8A74"/><stop offset=".5" stop-color="#EA3A2C"/><stop offset="1" stop-color="#A81A18"/></radialGradient><radialGradient id="tc" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#8EDB62"/><stop offset=".5" stop-color="#4FA83A"/><stop offset="1" stop-color="#2E7A22"/></radialGradient></defs>
+<path d="M32 17c-15 0-26 8-26 20s11 18 26 18 26-6 26-18-11-20-26-20z" fill="url(#t)" stroke="#6E1410" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M13 40l5 4 5-4 5 4 4-4 4 4 5-4 5 4 5-4" fill="none" stroke="#FFB09E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
+<ellipse cx="18" cy="30" rx="3" ry="5.5" transform="rotate(40 18 30)" fill="#fff" opacity="0.85"/>
+<path d="M32 11l3.5 7.5 9-2-6 6.5 8 4.5H36l-4 6-4-6H17.5l8-4.5-6-6.5 9 2z" fill="url(#tc)" stroke="#2B5A1C" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M32 11c0-3 1-5 2-6" fill="none" stroke="#2E6A20" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1"/>
 </svg>

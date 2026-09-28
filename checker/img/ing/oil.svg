@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<path d="M27 16h10v4c6 3 9 7 9 13v17c0 4-3 6-7 6H25c-4 0-7-2-7-6V33c0-6 3-10 9-13z" fill="#E4DE4E" stroke="#4E3424" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-<path d="M22 28c-1 2-1 4-1 6" stroke="#FAF6A8" stroke-width="3" fill="none" stroke-linecap="round"/>
-<rect x="21" y="35" width="22" height="14" rx="2" fill="#FFFBEA" stroke="#4E3424" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="32" cy="42" r="3.6" fill="none" stroke="#6AAE45" stroke-width="1.8"/>
-<rect x="26.5" y="7" width="11" height="9" rx="2" fill="#3F7A3A" stroke="#4E3424" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<defs><radialGradient id="ol" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#FBF8B0"/><stop offset=".5" stop-color="#E2DC52"/><stop offset="1" stop-color="#AFA82A"/></radialGradient><linearGradient id="oc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6FB85A"/><stop offset="1" stop-color="#2F6B28"/></linearGradient></defs>
+<path d="M26 17h12v4c6 3 10 7 10 13v16c0 4-3 6-7 6H23c-4 0-7-2-7-6V34c0-6 4-10 10-13z" fill="url(#ol)" stroke="#5E581A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M21 29c-1 2-1 4-1 6" fill="none" stroke="#FFFDE0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1"/>
+<rect x="20" y="35" width="24" height="15" rx="3" fill="#FFFBEA" stroke="#8A8440" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="32" cy="42.5" r="4.2" fill="#EAF5D6" stroke="#5E9A3A" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M30.5 42.5l1.3 1.6 2.4-3" fill="none" stroke="#5E9A3A" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity="1"/>
+<rect x="26" y="6" width="12" height="11" rx="2.5" fill="url(#oc)" stroke="#1E4618" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M29 9v5" fill="none" stroke="#A8DE92" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity="1"/>
 </svg>

@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<path d="M31 11c-10 4-13 18-9 28s14 14 20 8c4-4 2-10-3-10" fill="none" stroke="#4E3424" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M31 11c-10 4-13 18-9 28s14 14 20 8c4-4 2-10-3-10" fill="none" stroke="#F6B6C8" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M42 47c4-4 2-10-3-10" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
-<path d="M25 18c-2 3-3 7-3 11" fill="none" stroke="#FFE0EA" stroke-width="3" stroke-linecap="round"/>
+<defs><linearGradient id="tl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD6E2"/><stop offset="1" stop-color="#EE93B0"/></linearGradient></defs>
+<path d="M31 11c-11 4-14 18-10 28s15 15 21 9c4-4 2-11-3-11" fill="none" stroke="#7A3A50" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M31 11c-11 4-14 18-10 28s15 15 21 9c4-4 2-11-3-11" fill="none" stroke="url(#tl)" stroke-width="12.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M42 48c4-4 2-11-3-11" fill="none" stroke="#FFFFFF" stroke-width="12.5" stroke-linecap="round"/>
+<path d="M42 48c4-4 2-11-3-11" fill="none" stroke="#E6E0E6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+<path d="M25 17c-2 3-4 8-4 12" fill="none" stroke="#FFF0F5" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" opacity="1"/>
 </svg>
