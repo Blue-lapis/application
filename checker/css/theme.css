@@ -95,8 +95,13 @@ section>.natname:first-child{margin-top:0}
 /* 食材アイコン。チップと食材名の前に置く。 */
 .chip:has(.ing){display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 2px;font-size:.78rem;letter-spacing:-.02em}
 img.ing{width:22px;height:22px;flex:none}
-.ingname{white-space:nowrap}
-.ingname img.ing{width:18px;height:18px;vertical-align:-4px;margin-right:2px}
+/* ポケモン情報の食材。見出しの下に、アイコンと名前を縦に積んだ食材を横一列に並べる。 */
+#monInfo p{margin:0 0 8px}
+.ingrow small{display:block;font-size:.68rem;font-weight:700;color:var(--muted);margin-bottom:4px}
+.ingrow ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.ingrow li{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:12px;background:var(--bg);min-width:0}
+.ingrow li img.ing{width:28px;height:28px}
+.ingrow li span{font-size:min(.7rem,2.8vw);font-weight:700;line-height:1.3;white-space:nowrap;letter-spacing:-.02em;color:var(--ink)}
 .credit{margin:4px 4px 0;font-size:.65rem;line-height:1.6;color:var(--muted)}
 
 /* サブスキル見出しの横に置く対象レベルの切り替え。 */
@@ -122,6 +127,24 @@ img.ing{width:22px;height:22px;flex:none}
 .subslot.empty::after{content:"選ぶ";color:var(--muted);padding:0}
 .subslot:disabled,.dlg-tabs button:disabled{opacity:.4;cursor:not-allowed}
 .dlg-tabs small{font-size:.68rem;font-weight:600;color:var(--muted)}
+
+/* ポケモンの画像。ヘッダーの右、選ぶボタン、選ぶダイアログの一覧に出す。 */
+header{align-items:center}
+.monimg{width:96px;height:96px;flex:none;object-fit:contain}
+.monbtn{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;cursor:pointer;width:100%;min-height:56px;display:flex;align-items:center;gap:10px;padding:4px 14px 4px 8px;text-align:left}
+.monbtn img{width:40px;height:40px;object-fit:contain;flex:none}
+.monbtn b{flex:1;min-width:0;font-size:1.05rem;font-weight:900}
+.monbtn b small.form{display:block;font-size:.72rem;font-weight:700;color:var(--muted);margin-top:2px}
+.monbtn>small{font-size:.75rem;font-weight:700;color:var(--muted);white-space:nowrap}
+.monq{width:100%;box-sizing:border-box;font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.mongrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px}
+.mongrid button{font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px 8px;min-width:0}
+.mongrid img{width:56px;height:56px;object-fit:contain}
+.mongrid span{font-size:.75rem;font-weight:700;line-height:1.3;text-align:center}
+.mongrid small{font-size:.62rem;font-weight:600;color:var(--muted);line-height:1.2;text-align:center}
+.mongrid small[class^="t-"]{margin-top:2px;padding:1px 8px;border-radius:999px;font-weight:700;color:#fff}
+.mongrid .t-berry{background:#2C6BAE}.mongrid .t-ingredient{background:#3A7F37}.mongrid .t-skill{background:#7443B8}
+.mongrid button[aria-pressed="true"]{border-color:var(--psy);background:var(--psy-soft)}
 
 /* 性格のボタン。性格名と、上昇・下降の補正をバッジで出す（効かない補正は灰色）。 */
 .natbtn{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;cursor:pointer;width:100%;min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;text-align:left}
@@ -217,7 +240,7 @@ dialog.sheet::backdrop{background:var(--scrim)}
 .fams{margin-top:10px}
 .fam{display:grid;grid-template-columns:minmax(0,1fr) 11.5em;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line-soft)}
 .fam>span{font-size:.82rem;font-weight:700;text-align:left;color:var(--ink);line-height:1.3}
-.fam>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.fam>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
 
 /* 性格のダイアログ：行が上昇、列が下降の5×5の表。 */
 .natgrid{display:grid;grid-template-columns:3.4em repeat(5,minmax(0,1fr));gap:5px;align-items:stretch}

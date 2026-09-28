@@ -19,12 +19,13 @@
   <div class="col-in">
     <header>
       <h1><span id="monName"></span><small id="typeName">厳選チェッカー</small></h1>
+      <img class="monimg" id="monImg" alt="" width="96" height="96">
     </header>
 
     <section class="mon">
-      <label class="natname"><span>ポケモン</span><select id="mon"></select></label>
+      <div class="natname"><span>ポケモン</span><button class="monbtn" id="monBtn" aria-haspopup="dialog"></button></div>
       <div class="facts" id="facts"></div>
-      <p class="cond" id="monInfo"></p>
+      <div class="cond" id="monInfo"></div>
     </section>
 
     <section id="arrSec">
@@ -85,6 +86,16 @@
     <div id="subBody"></div>
     <p class="note" id="subNote"></p>
     <div class="dlg-foot"><button class="txt" id="subClear">全枠クリア</button><button class="primary" id="subClose">閉じる</button></div>
+  </div>
+</dialog>
+
+<dialog class="sheet" id="monDlg" aria-labelledby="monTitle">
+  <div class="dlg-in">
+    <h2 id="monTitle" tabindex="-1" autofocus>ポケモンを選んでください</h2>
+    <input type="search" class="monq" id="monQ" placeholder="名前で探す（例: ふしばな）" aria-label="ポケモンの名前で探す" autocomplete="off" enterkeyhint="done">
+    <div class="mongrid" id="monGrid"></div>
+    <p class="note" id="monNone" hidden>見つかりませんでした</p>
+    <div class="dlg-foot"><span></span><button class="primary" id="monClose">閉じる</button></div>
   </div>
 </dialog>
 
