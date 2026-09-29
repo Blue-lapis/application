@@ -24,11 +24,14 @@ export const EVO_CAP = 5;
 // きのみの個数に影響するサブスキル。スキル確率アップなどは「なし他」にまとめる。
 export const PICK = ['berry', 'spM', 'spS', 'hb', 'invS', 'invM', 'invL', 'erb', 'ingM', 'ingS', 'none'];
 
-export const NATL = { speed: 'おてスピ', ing: '食材', other: 'なし他' };
-export const NAT_CATS = ['speed', 'ing', 'other'];
+export const NATL = { speed: 'おてスピ', ing: '食材', energy: 'げんき回復', other: 'なし他' };
+export const NAT_CATS = ['speed', 'ing', 'energy', 'other'];
+// 性格のげんき回復量の補正（睡眠とげんきオールSの回復量に掛かる。料理の回復には掛からない）。
+export const ENERGY_REC = { up: 1.2, down: 0.88 };
 
-// スキル補正はきのみの個数に影響しないので「なし他」と同じ扱いにする。
+// スキル補正はきのみの個数に影響しないので「なし他」と同じ扱いにする。げんき回復量は睡眠中のおてつだいの速さに効く。
 export const natCat = (s) => {
+  if (s === 'en') return 'energy';
   const c = cat(s);
   return c === 'skill' ? 'other' : c;
 };

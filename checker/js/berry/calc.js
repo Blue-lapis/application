@@ -5,7 +5,7 @@
 // team はおてつだいボーナスのチームへの効果を含めるか。
 import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, byId, LEVEL } from '../../../js/constants.js';
 import { energyCurve, helpsPerTap, subsetDist, AWAKE_SEC, DAY_SEC } from '../../../js/calc.js';
-import { MONS, natCat, amountPatterns, TAP_EVERY, TEAM_OTHERS, HB_SPEED, EVO_CAP } from './constants.js';
+import { MONS, natCat, amountPatterns, TAP_EVERY, TEAM_OTHERS, HB_SPEED, EVO_CAP, ENERGY_REC } from './constants.js';
 
 const natMul = (up, down, key, hi, lo) => (up === key ? hi : 1) * (down === key ? lo : 1);
 
@@ -18,6 +18,7 @@ export function mk(e, up, down) {
     inv: e.inv,
     berry: e.berry,
     wake: e.erb ? WAKE_ENERGY_ERB : WAKE_ENERGY,
+    rec: up === 'energy' ? ENERGY_REC.up : down === 'energy' ? ENERGY_REC.down : 1,
     hb: !!e.hb,
   };
 }
@@ -48,9 +49,10 @@ export function timesMix(env) {
 export const mixed = (env, fn) => timesMix(env).reduce((s, [e, w]) => s + w * fn(e), 0);
 
 // げんきの推移。'g80' は常に81%以上（倍率0.45）として一定の値にする。
-export function curveOf(env, wake) {
+// wake は起床時のげんきの上限（げんき回復ボーナスで105）、rec は性格のげんき回復量の補正。
+export function curveOf(env, wake, rec = 1) {
   if (env.heal === 'g80') return () => WAKE_ENERGY;
-  return energyCurve(wake, env.heal * env.healTimes, env.healAmt);
+  return energyCurve(wake, env.heal * env.healTimes, env.healAmt, rec);
 }
 
 // 1日のおてつだい回数を、所持品の受け取りで区切った区間ごとに [日中, 睡眠中] で返す（期待値なので小数）。
@@ -58,11 +60,11 @@ export function curveOf(env, wake) {
 // 「なし」は区切らない（すべてきのみになるので区間は使わない）。起床中と睡眠中は別々に数える（にとよんツールと同じ）。
 // おてつだいのタイミングはきのみの個数や食材確率に依存しないので、同じ条件の計算を使い回す。
 const schedCache = new Map();
-function scheduleOf(Te, env, wake) {
-  const k = `${Te}|${env.heal}|${env.healAmt}|${env.healTimes}|${env.tap}|${wake}`;
+function scheduleOf(Te, env, wake, rec) {
+  const k = `${Te}|${env.heal}|${env.healAmt}|${env.healTimes}|${env.tap}|${wake}|${rec}`;
   if (!schedCache.has(k)) {
     // げんき1以下は、げんき0と同じ倍率（1.0）で数える（にとよんツールと同じ）。
-    const f = curveOf(env, wake);
+    const f = curveOf(env, wake, rec);
     const energy = (t) => (f(t) <= 1 ? 0 : f(t));
     const every = TAP_EVERY[env.tap] || AWAKE_SEC;
     const awake = helpsPerTap(Te, energy, 0, every, AWAKE_SEC);
@@ -83,7 +85,7 @@ export function prepare(m, env) {
   const cap = env.camp ? Math.ceil(cap0 * 1.2) : cap0;
   const berry = mon.berries + m.berry;
   const energy = berryEnergy(mon.berryBase, LV);
-  const segs = scheduleOf(Te, env, m.wake);
+  const segs = scheduleOf(Te, env, m.wake, m.rec);
   const sum = (i) => segs.reduce((s, x) => s + x[i], 0);
   return { LV, T, Te, ingP, cap, berry, energy, segs, Ha: sum(0), Hs: sum(1), noTap: env.tap === 'none' };
 }
@@ -160,8 +162,8 @@ export function segBerries(cap, ha, hs, ingP, berry, amts) {
 }
 
 // 就寝時と起床直前のげんき（表示用）。発動回数が小数のときは前後の整数回の日の平均（整数に丸める）。
-export function energyAt(env, wake) {
-  const at = (t) => Math.round(mixed(env, (e) => curveOf(e, wake)(t)));
+export function energyAt(env, wake, rec = 1) {
+  const at = (t) => Math.round(mixed(env, (e) => curveOf(e, wake, rec)(t)));
   return { bed: at(AWAKE_SEC), end: at(DAY_SEC - 1) };
 }
 
@@ -169,7 +171,7 @@ export function energyAt(env, wake) {
 const MIXED_KEYS = ['day', 'night', 'ings', 'fullBed', 'full', 'Ha', 'Hs'];
 export function daily(m, env) {
   const parts = timesMix(env).map(([e, w]) => [dailyOne(m, e), w]);
-  const out = { ...parts[0][0], genki: energyAt(env, m.wake) };
+  const out = { ...parts[0][0], genki: energyAt(env, m.wake, m.rec), wakeE: Math.round(mixed(env, (e) => curveOf(e, m.wake, m.rec)(0))) };
   MIXED_KEYS.forEach((k) => { out[k] = parts.reduce((s, [d, w]) => s + w * d[k], 0); });
   return out;
 }
@@ -196,7 +198,7 @@ export function createEngine() {
   const metric = (m, env) => mixed(env, (e) => metricOne(m, e));
   function metricOne(m, env) {
     const r = { ...prepare(m, env), mon: env.mon };
-    const key = `${envKey(env)}|${r.Te}|${r.ingP.toFixed(8)}|${r.cap}|${r.berry}|${m.wake}`;
+    const key = `${envKey(env)}|${r.Te}|${r.ingP.toFixed(8)}|${r.cap}|${r.berry}|${m.wake}|${m.rec}`;
     if (!metricCache.has(key)) {
       const segOf = (ha, hs, amts) => {
         const k = `${env.mon}|${r.cap}|${ha}|${hs}|${r.ingP.toFixed(8)}|${r.berry}|${amts.join(',')}`;

@@ -192,8 +192,15 @@ const loadRawLog = (type) => {
   const v = load(LOG_KEYS[type], []);
   return Array.isArray(v) ? v : [];
 };
+// 性格の名前がある記録は、上昇・下降の補正を今のタイプの分類で決め直す（分類が増えたときも古い記録を正しく計算するため）。
 export const loadLog = () => loadRawLog(state.type).filter((x) => x && x.mon === state.mon && Array.isArray(x.subs)
-  && (state.type !== 'ingredient' || Array.isArray(x.arr)));
+  && (state.type !== 'ingredient' || Array.isArray(x.arr)))
+  .map((x) => {
+    const n = natByName(x.nat);
+    if (!n) return x;
+    const c = TYPES[state.type].natCat;
+    return { ...x, up: c(n[1]), down: c(n[2]) };
+  });
 export function appendLog(entry) { save(LOG_KEYS[state.type], [...loadRawLog(state.type), entry]); }
 export function removeLogEntry(t) {
   save(LOG_KEYS[state.type], loadRawLog(state.type).filter((x) => String(x && x.t) !== String(t)));
