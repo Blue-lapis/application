@@ -59,12 +59,15 @@
 
   <div class="col-out">
     <section>
-      <div class="perf-head"><h2>性能</h2><div class="sws"><label class="switch"><input type="checkbox" id="camp" role="switch"><span><span>いいキャンプ</span><span>チケット</span></span></label><label class="switch" id="g80Sw"><input type="checkbox" id="g80" role="switch"><span><span>げんき常時</span><span>81%以上</span></span></label></div></div>
-      <div class="params" id="params" hidden>
-        <div class="prow"><span>ヒーラー</span><div class="mode" role="group" aria-label="ヒーラー（げんきオールS）" id="healSeg"><button data-v="0">なし</button><button data-v="1">1匹</button><button data-v="2">2匹</button><button data-v="g80">常に81%以上</button></div></div>
-        <div class="prow"><span>日中の受け取り</span><div class="mode" role="group" aria-label="日中の受け取り" id="tapSeg"><button data-v="none">なし（いつ育）</button><button data-v="3h">3時間ごと</button></div></div>
-        <div class="prow"><label class="switch"><input type="checkbox" id="team" role="switch"><span><span>おてつだいボーナスの</span><span>チームへの効果を含める</span></span></label></div>
-        <div class="psum"><p id="paramSum"></p><button class="txt" id="paramBtn" aria-haspopup="dialog">詳細</button></div>
+      <h2>性能</h2>
+      <!-- パラメーターはすべて同じ「ラベル＋切り替え」の行。data-for="berry" はきのみタイプだけ、"other" はそれ以外のタイプだけに出す。 -->
+      <div class="params" id="params">
+        <div class="prow" data-for="berry"><span>ヒーラー</span><div class="mode" role="group" aria-label="ヒーラー（げんきオールS）" id="healSeg"><button data-v="0">なし</button><button data-v="1">1匹</button><button data-v="g80">常に81%以上</button></div></div>
+        <div class="prow" data-for="other"><span>げんき</span><div class="mode" role="group" aria-label="げんき" id="g80Seg"><button data-v="0">10分ごとに減少</button><button data-v="1">常に81%以上</button></div></div>
+        <div class="prow" data-for="berry"><span>日中の受け取り</span><div class="mode" role="group" aria-label="日中の受け取り" id="tapSeg"><button data-v="none">なし（いつ育）</button><button data-v="3h">3時間ごと</button></div></div>
+        <div class="prow"><span>いいキャンプチケット</span><div class="mode" role="group" aria-label="いいキャンプチケット" id="campSeg"><button data-v="0">なし</button><button data-v="1">あり</button></div></div>
+        <div class="prow" data-for="berry"><span>おてボのチーム効果</span><div class="mode" role="group" aria-label="おてつだいボーナスのチームへの効果" id="teamSeg"><button data-v="0">含めない</button><button data-v="1">含める</button></div></div>
+        <div class="psum" data-for="berry"><p id="paramSum"></p><button class="txt" id="paramBtn" aria-haspopup="dialog">詳細</button></div>
       </div>
       <p class="cond" id="cond"></p>
       <div class="hero">
