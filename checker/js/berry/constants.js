@@ -18,6 +18,8 @@ export const TAP_EVERY = { none: 0, '3h': 3 * 3600 };
 // おてつだいボーナスでおてつだい時間が短くなる、ほかのメンバーの数と短縮率。
 export const TEAM_OTHERS = 4;
 export const HB_SPEED = 0.05;
+// 進化1回ごとに増える最大所持数。
+export const EVO_CAP = 5;
 
 // きのみの個数に影響するサブスキル。スキル確率アップなどは「なし他」にまとめる。
 export const PICK = ['berry', 'spM', 'spS', 'hb', 'invS', 'invM', 'invL', 'erb', 'ingM', 'ingS', 'none'];

@@ -5,7 +5,7 @@ import { SUBS, RARITY_P, NAT, ENERGY_BANDS } from '../../js/constants.js';
 import { TYPES } from './types.js';
 
 // 計算方法を変えたら上げる。キーが変わるので古い分布は使われず、そのうち消える。
-const MODEL_VERSION = 2;
+const MODEL_VERSION = 3;
 const DB_NAME = 'checker-dist';
 const STORE = 'dist';
 // 保存する分布の数の上限。超えたら最後に使ったのが古いものから消す。

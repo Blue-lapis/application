@@ -392,7 +392,7 @@ function renderNatDlg() {
 const healText = (e) => (e.heal === 'g80' ? 'げんき常時81%以上'
   : e.heal ? `ヒーラー${e.heal}匹（げんきオールS ${e.healAmt}×${e.healTimes}回/日）` : 'ヒーラーなし');
 const teamText = (e) => `おてボのチーム効果を${e.team ? '含める' : '含めない'}`;
-const tapText = (e) => (e.tap === '3h' ? '起床中は3時間ごとに受け取る' : '日中は受け取らない（いつのまに育成）');
+const tapText = (e) => (e.tap === '3h' ? '起床中は3時間ごとと就寝時に受け取る' : '受け取らない（ずっといつのまに育成）');
 const genkiText = (g) => `就寝時${g.bed}→起床前${g.end}`;
 
 // パラメーターの切り替え。[要素の id, 今の値をボタンの data-v と同じ文字列にする関数, data-v から値を設定する関数]。
@@ -448,7 +448,7 @@ function renderParamDlg() {
   const e = env();
   $('paramNote').textContent = state.type !== 'berry'
     ? '「10分ごとに減少」は、起床時100から10分ごとに1減り、回復スキルは考えません。「常に81%以上」は、おてつだい時間の倍率を常に0.45にします。'
-    : `ヒーラーは起床中に等間隔で発動し、チーム全員のげんきを回復します（上限150）。発動回数が小数のときは、前後の整数回の日が混ざるものとして平均します。睡眠中は回復せず、10分ごとに1減ります。今の値でのげんき（ヒーラー1匹・起床時100）: ${genkiText(energyAt({ ...e, heal: 1 }, 100))}`;
+    : `ヒーラーは起床中に等間隔で発動し、チーム全員のげんきを回復します（上限150）。発動回数が小数のときは、前後の整数回の日が混ざるものとして平均します。料理（10時・14時・20時）でも、そのときのげんきに応じて1〜9回復します。睡眠中は回復せず、10分ごとに1減ります。今の値でのげんき（ヒーラー1匹・起床時100）: ${genkiText(energyAt({ ...e, heal: 1 }, 100))}`;
 }
 
 const condText = (m, e) => `Lv.${LEVEL[state.N]}・睡眠8.5時間・${e.g80 ? 'げんき常時81%以上' : `起床時げんき${m.wake}から10分ごとに1減少（回復スキルなし）`}`;
@@ -540,9 +540,10 @@ function renderBerryStats(engine) {
   $('rAmt').innerHTML = `${r.berry}個<span>${m.berry ? `基礎${mm.berries}個＋きのみの数S` : 'きのみタイプ'}</span>`;
   $('rCount').innerHTML = `${count.toFixed(1)}個<span>日中${r.day.toFixed(1)}個・睡眠中${r.night.toFixed(1)}個</span>`;
   $('rIng').innerHTML = `${(r.ingP * 100).toFixed(1)}%<span>基礎${+(mm.ingP * 100).toFixed(2)}% × ${m.ingMul.toFixed(3)}</span>`;
-  $('rCap').innerHTML = `${r.cap}個<span>${e.camp ? 'チケット込み' : '基礎＋サブスキル'}</span>`;
+  $('rCap').innerHTML = `${r.cap}個<span>基礎${mm.cap}＋進化${mm.evo}回×5＋サブスキル${e.camp ? '・チケット込み' : ''}</span>`;
   const pct = (x) => `${(Math.max(0, x) * 100).toFixed(1)}%`;
-  $('rFull').innerHTML = `${pct(r.fullBed)}<span>${e.tap === '3h' ? '最後の受け取りから・' : ''}起床時まで${pct(r.full)}</span>`;
+  $('rFull').innerHTML = e.tap === 'none' ? '100%<span>受け取らないので常に満タン</span>'
+    : `${pct(r.fullBed)}<span>就寝前の受け取りまで・睡眠中は起床時まで${pct(r.full)}</span>`;
   $('rIngs').innerHTML = `${r.ings.toFixed(1)}個<span>満タンになるまで</span>`;
   $('rGenki').innerHTML = e.heal === 'g80' ? '常に81%以上' : `${genkiText(r.genki)}<span>${e.heal ? `ヒーラー${e.heal}匹` : 'ヒーラーなし'}</span>`;
   $('rSelf').innerHTML = `${Math.round(self).toLocaleString()}<span>日中${Math.round(r.day * r.energy).toLocaleString()}・睡眠中${Math.round(r.night * r.energy).toLocaleString()}</span>`;

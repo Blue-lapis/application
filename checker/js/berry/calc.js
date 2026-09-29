@@ -5,7 +5,7 @@
 // team はおてつだいボーナスのチームへの効果を含めるか。
 import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, byId, LEVEL } from '../../../js/constants.js';
 import { energyCurve, scheduleSegs, subsetDist, AWAKE_SEC, DAY_SEC } from '../../../js/calc.js';
-import { MONS, natCat, amountPatterns, TAP_EVERY, TEAM_OTHERS, HB_SPEED } from './constants.js';
+import { MONS, natCat, amountPatterns, TAP_EVERY, TEAM_OTHERS, HB_SPEED, EVO_CAP } from './constants.js';
 
 const natMul = (up, down, key, hi, lo) => (up === key ? hi : 1) * (down === key ? lo : 1);
 
@@ -53,11 +53,15 @@ export function curveOf(env, wake) {
   return energyCurve(wake, env.heal * env.healTimes, env.healAmt);
 }
 
-// 所持品を受け取る時刻（起床からの秒、起床中だけ）。起床時の受け取りは区間の始まりなので含めない。
+// 所持品を受け取る時刻（起床からの秒）。起床時の受け取りは区間の始まりなので含めない。
+// 「3時間ごと」は起床中に3時間ごとと就寝時に受け取り、睡眠は所持数0から始まる。
 export function cutsOf(env) {
   const every = TAP_EVERY[env.tap] || 0;
   const out = [];
-  if (every) for (let t = every; t < AWAKE_SEC; t += every) out.push(t);
+  if (every) {
+    for (let t = every; t < AWAKE_SEC; t += every) out.push(t);
+    out.push(AWAKE_SEC);
+  }
   return out;
 }
 
@@ -65,7 +69,11 @@ export function cutsOf(env) {
 const schedCache = new Map();
 function scheduleOf(Te, env, wake) {
   const k = `${Te}|${env.heal}|${env.healAmt}|${env.healTimes}|${env.tap}|${wake}`;
-  if (!schedCache.has(k)) schedCache.set(k, scheduleSegs(Te, curveOf(env, wake), cutsOf(env)));
+  if (!schedCache.has(k)) {
+    // げんき1以下は、げんき0と同じ倍率（1.0）で数える（にとよんツールと同じ）。
+    const f = curveOf(env, wake);
+    schedCache.set(k, scheduleSegs(Te, (t) => (f(t) <= 1 ? 0 : f(t)), cutsOf(env)));
+  }
   return schedCache.get(k);
 }
 
@@ -75,13 +83,14 @@ export function prepare(m, env) {
   const T = Math.floor(mon.time * (1 - (LV - 1) * 0.002) * m.timeMul);
   const Te = env.camp ? T / 1.2 : T;
   const ingP = Math.min(1, mon.ingP * m.ingMul);
-  const cap0 = mon.cap + m.inv;
+  // 最終進化形は進化してきた個体とみなし、進化1回ごとに最大所持数が5増える（にとよんツールと同じ）。
+  const cap0 = mon.cap + EVO_CAP * mon.evo + m.inv;
   const cap = env.camp ? Math.ceil(cap0 * 1.2) : cap0;
   const berry = mon.berries + m.berry;
   const energy = berryEnergy(mon.berryBase, LV);
   const segs = scheduleOf(Te, env, m.wake);
   const sum = (i) => segs.map((day) => day.reduce((s, x) => s + x[i], 0));
-  return { LV, T, Te, ingP, cap, berry, energy, segs, Ha: sum(0), Hs: sum(1) };
+  return { LV, T, Te, ingP, cap, berry, energy, segs, Ha: sum(0), Hs: sum(1), noTap: env.tap === 'none' };
 }
 
 // 所持品を受け取ってから次に受け取るまで（日中 ha 回・睡眠中 hs 回のおてつだい）で拾うきのみと食材の期待個数。
@@ -124,19 +133,30 @@ export const berryEnergy = (base, lv) => Math.max(base + lv - 1, Math.round(base
 const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
 
 // 1日を受け取りで区切った区間ごとに所持数0から追い、足し合わせる。
-// 満タンになる確率（fullBed・full）は、睡眠をまたぐ最後の区間の値。
+// 満タンになる確率は、fullBed が就寝時（就寝時に受け取るなら、その直前の区間の終わり）、full が起床時。
+// 受け取りなしは一度も受け取らないので、所持数はずっと満タンで、すべてのおてつだいがきのみになる。
 // 食材配列は入力しないので、配列ごとの値を出現確率で平均する。捨て日のあとの日ごとの値を平均する。
 function runDays(r, segOf) {
   const pats = amountPatterns(MONS[r.mon]);
   const o = { day: 0, night: 0, ings: 0, fullBed: 0, full: 0 };
   r.segs.forEach((day) => {
+    if (r.noTap) {
+      day.forEach(([ha, hs]) => { o.day += r.berry * ha; o.night += r.berry * hs; });
+      o.fullBed += 1;
+      o.full += 1;
+      return;
+    }
+    const last = day.length - 1;
+    // 最後の区間が睡眠中だけなら、就寝時に受け取っている。
+    const bedAt = last > 0 && day[last][0] === 0 ? last - 1 : last;
     for (const { amts, p } of pats) {
       day.forEach(([ha, hs], i) => {
         const v = segOf(ha, hs, amts);
         o.day += p * v.day;
         o.night += p * v.night;
         o.ings += p * v.ings;
-        if (i === day.length - 1) { o.fullBed += p * v.fullBed; o.full += p * v.full; }
+        if (i === bedAt) o.fullBed += p * (i === last ? v.fullBed : v.full);
+        if (i === last) o.full += p * v.full;
       });
     }
   });
