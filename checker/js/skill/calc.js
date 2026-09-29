@@ -2,7 +2,7 @@
 // 共通の計算（../../../js/calc.js のげんきとおてつだいのタイミング・睡眠中の抽選回数・天井カウンタ）を、
 // ポケモンごとの基礎値・天井・食材の個数で使う。呼び出し側は env = { N, camp, g80, mon } を渡す。
 import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, byId, LEVEL } from '../../../js/constants.js';
-import { schedule, nightRolls, runDays, subsetDist } from '../../../js/calc.js';
+import { schedule, nightRolls, runDays, subsetDist, mergeSame, SAME_REL } from '../../../js/calc.js';
 import { MONS, natCat, ceilOf, amountPatterns } from './constants.js';
 
 const natMul = (up, down, key, hi, lo) => (up === key ? hi : 1) * (down === key ? lo : 1);
@@ -132,7 +132,7 @@ export function createEngine() {
         acc.set(k, (acc.get(k) || 0) + p * v);
       }
     }
-    return [...acc].map(([r, p]) => ({ r: +r, p }));
+    return mergeSame([...acc].map(([r, p]) => ({ r: +r, p })));
   }
 
   function dist(env) {
@@ -143,7 +143,7 @@ export function createEngine() {
 
   const ready = (env) => distCache.has(envKey(env));
   const setDist = (env, d) => { distCache.set(envKey(env), d); };
-  const atLeast = (r, env) => dist(env).reduce((a, x) => a + (x.r >= r * (1 - 1e-7) ? x.p : 0), 0);
+  const atLeast = (r, env) => dist(env).reduce((a, x) => a + (x.r >= r * (1 - SAME_REL) ? x.p : 0), 0);
 
   return { metric, baseMetric, score, dist, ready, setDist, atLeast, daily };
 }
