@@ -184,6 +184,8 @@ header{align-items:center}
 .hero .stat.main b{font-size:2.8rem;font-weight:700;line-height:1}
 .hero .stat.main b .u{font-size:.5em}
 .hero .stat:last-child{justify-content:flex-end}
+.hero .stat.team{grid-column:1/-1;justify-content:space-between;border-top:1px solid rgba(255,255,255,.3);padding-top:10px}
+.hero .stat[hidden]{display:none}
 .split{grid-column:1/-1;height:8px;border-radius:999px;background:rgba(255,255,255,.28);overflow:hidden}
 .split i{display:block;height:100%;width:0;background:#fff;border-radius:999px}
 dl.rows{grid-template-columns:minmax(8.5em,1fr) auto;column-gap:0}
@@ -228,31 +230,31 @@ dialog.sheet{border:none;padding:0;background:var(--card);color:var(--ink);borde
 dialog.sheet::backdrop{background:var(--scrim)}
 @media (max-width:599px){
   dialog.sheet{width:100%;margin:auto 0 0;border-radius:24px 24px 0 0;max-height:calc(100dvh - 24px)}
-  .dlg-in{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
-  .dlg-in::before{content:"";display:block;width:40px;height:5px;border-radius:999px;background:var(--line);margin:0 auto 12px}
+  .dlg-foot{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 }
-.dlg-in{padding:14px 16px 16px}
-.dlg-in h2{margin:0 0 14px;font-size:1.1rem}
+/* 1画面に収まるよう余白を詰め、「閉じる」の行はダイアログの下端に固定してスクロールせずに押せるようにする。 */
+.dlg-in{padding:14px 16px 0}
+.dlg-in h2{margin:0 0 10px;font-size:1.05rem}
 .dlg-in h2:focus,dialog.sheet:focus{outline:none}
-.dlg-in h3{font-size:.72rem;font-weight:900;letter-spacing:.08em;color:var(--gold-ink);margin:16px 0 8px}
-.dlg-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px}
-.dlg-foot button{font:inherit;font-weight:900;font-size:.9rem;border-radius:14px;padding:0 24px;min-height:48px;cursor:pointer}
+.dlg-in h3{font-size:.72rem;font-weight:900;letter-spacing:.08em;color:var(--gold-ink);margin:12px 0 6px}
+.dlg-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;padding:8px 0 12px;position:sticky;bottom:0;background:var(--card);z-index:1}
+.dlg-foot button{font:inherit;font-weight:900;font-size:.9rem;border-radius:14px;padding:0 24px;min-height:44px;cursor:pointer}
 .dlg-foot .txt{background:none;border:none;color:var(--muted);text-decoration:underline;padding:0 8px;min-height:44px;font-weight:700}
 .dlg-foot .primary{background:var(--ink);color:var(--card);border:none}
-.note{font-size:.7rem;color:var(--muted);font-weight:500;line-height:1.6;margin:12px 0 0}
+.note{font-size:.7rem;color:var(--muted);font-weight:500;line-height:1.5;margin:8px 0 0}
 
 /* サブスキルのダイアログ：上に枠の切り替え、下に金色サブスキルと系統×サイズの表。 */
 .dlg-tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px}
-.dlg-tabs button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:52px;padding:4px 6px;min-width:0;text-align:center}
+.dlg-tabs button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:44px;padding:3px 6px;min-width:0;text-align:center}
 .dlg-tabs span{font-size:.75rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .dlg-tabs .empty{border:1.5px dashed var(--line)}
 .dlg-tabs button[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:1px}
-.pick{position:relative;font:inherit;font-weight:700;font-size:.82rem;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 4px;min-height:44px;cursor:pointer}
+.pick{position:relative;font:inherit;font-weight:700;font-size:.82rem;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 4px;min-height:40px;cursor:pointer}
 .pick.sz{font-size:.95rem}
 .pick i{position:absolute;top:-7px;right:-5px;font-style:normal;font-size:.62rem;font-weight:700;line-height:1;color:var(--card);background:var(--ink);border-radius:999px;padding:3px 6px}
-.gold{display:grid;grid-template-columns:1fr 1fr;gap:8px 6px}
-.fams{margin-top:10px}
-.fam{display:grid;grid-template-columns:minmax(0,1fr) 11.5em;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line-soft)}
+.gold{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.fams{margin-top:8px}
+.fam{display:grid;grid-template-columns:minmax(0,1fr) 11.5em;gap:8px;align-items:center;padding:4px 0;border-top:1px solid var(--line-soft)}
 .fam>span{font-size:.82rem;font-weight:700;text-align:left;color:var(--ink);line-height:1.3}
 .fam>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
 
@@ -263,7 +265,7 @@ dialog.sheet::backdrop{background:var(--scrim)}
 /* 7番目以降で6つおきの見出しは行（▲上昇）の見出し。 */
 .natgrid .h.on:nth-child(6n+1){color:var(--psy-ink)}
 .natgrid .h.corner{font-weight:700;color:var(--muted)}
-.natgrid button{font:inherit;font-weight:700;font-size:clamp(.6rem,2.7vw,.8rem);line-height:1.25;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 0;min-height:46px;min-width:0;cursor:pointer}
+.natgrid button{font:inherit;font-weight:700;font-size:clamp(.6rem,2.7vw,.8rem);line-height:1.25;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 0;min-height:42px;min-width:0;cursor:pointer}
 .natgrid button.neutral{background:var(--bg);border-style:dashed}
 .natgrid button.off{color:var(--off)}
 .natgrid button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--card)}

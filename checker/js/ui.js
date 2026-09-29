@@ -281,7 +281,7 @@ function renderNat() {
   $('natBtn').innerHTML = `<b>${n[0]}</b><small>${n[1] ? `${side('▲', n[1])} ${side('▼', n[2])}` : '無補正'}</small>`;
 }
 
-// ダイアログ。サブスキルは選ぶと次の空き枠へ進み、「閉じる」を押すまで開いたままにする。性格は選ぶと閉じる。
+// ダイアログ。サブスキルは選ぶと次の空き枠へ進み、すべての枠が埋まったら閉じる。性格は選ぶと閉じる。
 let subAt = 0;
 
 function initDialogs(engines) {
@@ -313,6 +313,8 @@ function initDialogs(engines) {
       state.subs[subAt] = id;
       // 次の枠が空いていれば進む。入れ直しのときはその枠に留まる。
       if (subAt + 1 < state.N && !state.subs[subAt + 1]) subAt += 1;
+      // 選んだ結果すべての枠が埋まったら閉じる。直すときはもう一度開く。
+      if (currentSubs().every(Boolean)) $('subDlg').close();
     }
     refresh(engines);
   });
@@ -460,6 +462,15 @@ const setSplit = (day, night) => {
   $('hSplit').style.width = all > 0 ? `${(day / all) * 100}%` : '0';
 };
 
+// きのみタイプのチームへの効果の行。v が null なら隠し、日中・睡眠中の見出しも元に戻す。
+// 出すときは、日中・睡眠中が自分の分だけだとわかるように見出しに「自分」を付ける。
+function heroTeam(v) {
+  $('hTeamW').hidden = v === null;
+  $('hTeam').textContent = v ?? '';
+  $('hDayL').textContent = v === null ? '日中' : '自分・日中';
+  $('hNightL').textContent = v === null ? '睡眠中' : '自分・睡眠中';
+}
+
 // 未選択のサブスキル・性格は「なし他」・無補正として計算する。
 function renderIngStats(engine) {
   const e = env(), mm = monData();
@@ -509,15 +520,14 @@ function renderBerryStats(engine) {
   const count = r.day + r.night;
   const self = count * r.energy;
   const team = engine.teamGain(m, e);
-  const ts = engine.teamSplit(m, e);
   const total = self + team;
-  // 日中・睡眠中の内訳にもチームへの効果を足す。睡眠中は合計との差にして、四捨五入で合計とずれないようにする。
-  const dayE = r.day * r.energy + ts.day;
-  const dayShown = Math.round(dayE);
+  // 日中・睡眠中は自分のきのみの分。チームへの効果があるときは別の行に出す。
+  const showTeam = e.team && m.hb;
   $('hAll').textContent = Math.round(total).toLocaleString();
-  $('hDay').textContent = dayShown.toLocaleString();
-  $('hNight').textContent = (Math.round(total) - dayShown).toLocaleString();
-  setSplit(dayE, total - dayE);
+  $('hDay').textContent = Math.round(r.day * r.energy).toLocaleString();
+  $('hNight').textContent = Math.round(r.night * r.energy).toLocaleString();
+  setSplit(r.day, r.night);
+  heroTeam(showTeam ? `+${Math.round(team).toLocaleString()}` : null);
 
   timeRows(r, m, e);
   $('rEnergy').innerHTML = `${r.energy}<span>${mm.berry} Lv.${r.LV}</span>`;
@@ -532,7 +542,7 @@ function renderBerryStats(engine) {
   $('rSelf').innerHTML = `${Math.round(self).toLocaleString()}<span>日中${Math.round(r.day * r.energy).toLocaleString()}・睡眠中${Math.round(r.night * r.energy).toLocaleString()}</span>`;
   $('rTeam').innerHTML = !e.team ? '—<span>含めない設定</span>'
     : !m.hb ? '0<span>おてつだいボーナスなし</span>'
-      : `+${Math.round(team).toLocaleString()}<span>日中+${Math.round(ts.day).toLocaleString()}・睡眠中+${Math.round(ts.night).toLocaleString()}（1匹あたり+${Math.round(team / TEAM_OTHERS).toLocaleString()}）</span>`;
+      : `+${Math.round(team).toLocaleString()}<span>1匹あたり+${Math.round(team / TEAM_OTHERS).toLocaleString()}（同じポケモン・無補正）</span>`;
   $('rBase').innerHTML = `${Math.round(base).toLocaleString()}<span>無補正</span>`;
   $('rDRatio').textContent = isComplete() ? `${(total / base).toFixed(2)}倍` : '—';
 }
@@ -645,6 +655,7 @@ function refresh(engines) {
   renderNat();
   if ($('subDlg').open) renderSubDlg();
   if ($('natDlg').open) renderNatDlg();
+  heroTeam(null);
   ({ ingredient: renderIngStats, berry: renderBerryStats, skill: renderSkillStats })[state.type](engines[state.type]);
   renderBar(engines);
   renderLog(engines);

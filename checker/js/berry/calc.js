@@ -181,14 +181,6 @@ export function createEngine() {
   const memberGain = (env) => metric(mk({ ...NO_SUBS, sp: HB_SPEED }, null, null), env) - baseMetric(env);
   // チームへの効果（ほかの TEAM_OTHERS 匹の増加分の合計）。おてつだいボーナスを持たないか、含めない設定なら0。
   const teamGain = (m, env) => (env.team && m.hb ? TEAM_OTHERS * memberGain(env) : 0);
-  // チームへの効果の日中・睡眠中の内訳（合計は teamGain と同じ）。
-  const teamSplit = (m, env) => {
-    if (!env.team || !m.hb) return { day: 0, night: 0 };
-    const part = (mm) => { const d = daily(mm, env); return [d.day * d.energy, d.night * d.energy]; };
-    const [bd, bn] = part(mk(NO_SUBS, null, null));
-    const [md, mn] = part(mk({ ...NO_SUBS, sp: HB_SPEED }, null, null));
-    return { day: TEAM_OTHERS * (md - bd), night: TEAM_OTHERS * (mn - bn) };
-  };
   // 順位の基準の値 = 自分のきのみのエナジー + チームへの効果。
   const value = (m, env) => metric(m, env) + teamGain(m, env);
   const score = (subs, up, down, env) => value(mults(subs, up, down), env) / baseMetric(env);
@@ -231,5 +223,5 @@ export function createEngine() {
   const setDist = (env, d) => { distCache.set(envKey(env), d); };
   const atLeast = (r, env) => dist(env).reduce((a, x) => a + (x.r >= r * (1 - 1e-7) ? x.p : 0), 0);
 
-  return { metric, baseMetric, teamGain, teamSplit, value, score, dist, ready, setDist, atLeast, daily };
+  return { metric, baseMetric, teamGain, value, score, dist, ready, setDist, atLeast, daily };
 }
