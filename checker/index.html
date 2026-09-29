@@ -60,20 +60,19 @@
   <div class="col-out">
     <section>
       <h2>性能</h2>
-      <!-- よく変えるパラメーターだけをここで切り替え、ほかは「詳細」のダイアログで変える。data-for はその要素を出すタイプ（空白区切り）。 -->
+      <!-- よく変えるパラメーターだけをここで切り替え、ほかは「詳細」のダイアログで変える。data-for="berry" はきのみタイプだけ、"other" はそれ以外のタイプだけに出す。 -->
       <div class="params" id="params">
         <div class="prow" data-for="berry"><span>日中の受け取り</span><div class="mode" role="group" aria-label="日中の受け取り" id="tapSeg"><button data-v="none">なし（いつ育）</button><button data-v="3h">3時間ごと</button></div></div>
-        <div class="prow" data-for="ingredient"><span>日中の受け取り</span><div class="mode" role="group" aria-label="日中の受け取り" id="ingTapSeg"><button data-v="always">常にタップ</button><button data-v="3h">3時間ごと</button></div></div>
         <div class="prow"><span>いいキャンプチケット</span><div class="mode" role="group" aria-label="いいキャンプチケット" id="campSeg"><button data-v="0">なし</button><button data-v="1">あり</button></div></div>
         <div class="psum"><p id="paramSum"></p><button class="txt" id="paramBtn" aria-haspopup="dialog">詳細</button></div>
       </div>
       <p class="cond" id="cond"></p>
       <div class="hero">
-        <div class="stat main"><small id="hLabel">—</small><b id="hAll">—</b><small class="sub" id="hSub" hidden></small></div>
+        <div class="stat main"><small id="hLabel">—</small><b id="hAll">—</b></div>
         <div class="split" aria-hidden="true"><i id="hSplit"></i></div>
         <div class="stat"><small id="hDayL">日中</small><b id="hDay">—</b></div>
         <div class="stat"><small id="hNightL">睡眠中</small><b id="hNight">—</b></div>
-        <div class="stat team" id="hTeamW" hidden><small id="hTeamL">おてボによるほかの4匹の増加</small><b id="hTeam"></b></div>
+        <div class="stat team" id="hTeamW" hidden><small>おてボによるほかの4匹の増加</small><b id="hTeam"></b></div>
       </div>
       <dl class="rows" id="rows"></dl>
       <p class="note" id="rankNote"></p>
@@ -130,11 +129,11 @@
   <div class="dlg-in">
     <h2 id="paramTitle" tabindex="-1" autofocus>パラメーターの詳細</h2>
     <div class="params">
-      <div class="prow" data-for="berry ingredient"><span>ヒーラー</span><div class="mode" role="group" aria-label="ヒーラー（げんきオールS）" id="healSeg"><button data-v="0">なし</button><button data-v="1">1匹</button><button data-v="g80">常に81%以上</button></div></div>
-      <div class="prow" data-for="skill"><span>げんき</span><div class="mode" role="group" aria-label="げんき" id="g80Seg"><button data-v="0">10分ごとに減少</button><button data-v="1">常に81%以上</button></div></div>
-      <div class="prow" data-for="berry ingredient"><span>おてボのチーム効果</span><div class="mode" role="group" aria-label="おてつだいボーナスのチームへの効果" id="teamSeg"><button data-v="0">含めない</button><button data-v="1">含める</button></div></div>
+      <div class="prow" data-for="berry"><span>ヒーラー</span><div class="mode" role="group" aria-label="ヒーラー（げんきオールS）" id="healSeg"><button data-v="0">なし</button><button data-v="1">1匹</button><button data-v="g80">常に81%以上</button></div></div>
+      <div class="prow" data-for="other"><span>げんき</span><div class="mode" role="group" aria-label="げんき" id="g80Seg"><button data-v="0">10分ごとに減少</button><button data-v="1">常に81%以上</button></div></div>
+      <div class="prow" data-for="berry"><span>おてボのチーム効果</span><div class="mode" role="group" aria-label="おてつだいボーナスのチームへの効果" id="teamSeg"><button data-v="0">含めない</button><button data-v="1">含める</button></div></div>
     </div>
-    <div data-for="berry ingredient">
+    <div data-for="berry">
       <h3>ヒーラー（げんきオールS）</h3>
       <div class="nums">
         <label class="num"><span>1回の回復量</span><input type="number" id="healAmt" min="1" max="150" step="1" inputmode="numeric"></label>
@@ -142,7 +141,7 @@
       </div>
     </div>
     <p class="note" id="paramNote"></p>
-    <div class="dlg-foot"><button class="txt" id="paramReset" data-for="berry ingredient">初期値に戻す</button><button class="primary" id="paramClose">閉じる</button></div>
+    <div class="dlg-foot"><button class="txt" id="paramReset" data-for="berry">初期値に戻す</button><button class="primary" id="paramClose">閉じる</button></div>
   </div>
 </dialog>
 

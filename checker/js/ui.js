@@ -1,9 +1,9 @@
 // DOM 描画とイベント配線。計算はタイプごとの calc.js のエンジンに委譲する。
-import { byId, UNLOCK, LEVEL, ING_ENERGY } from '../../js/constants.js';
+import { byId, UNLOCK, LEVEL } from '../../js/constants.js';
 import { fmtPct, trunc, mmss } from '../../js/format.js';
 import { eff, SAME_REL } from '../../js/calc.js';
 import { TYPES } from './types.js';
-import { arrName, SLOT_LV, TEAM_MEMBER } from './ingredient/constants.js';
+import { arrName, SLOT_LV } from './ingredient/constants.js';
 import { slotsOf } from './ingredient/calc.js';
 import { HEAL_AMT, HEAL_TIMES, TEAM_OTHERS } from './berry/constants.js';
 import { energyAt } from './berry/calc.js';
@@ -11,7 +11,7 @@ import { ingIcon } from './ingicons.js';
 import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLabel } from './picker.js';
 import {
   state, monData, loadSettings, setCamp, setG80, setMode, setMon, setType, setTarget, setNature, resetSelection,
-  setHeal, setTap, setIngTap, setTeam, setParam,
+  setHeal, setTap, setTeam, setParam,
   currentSubs, isComplete, env, loadLog, appendLog, removeLogEntry, restoreEntry, isCurrent,
 } from './state.js';
 
@@ -41,24 +41,22 @@ function matchRank(q, name, key) {
 }
 // 「キュウコン(アローラのすがた)」を名前と姿に分ける。
 const splitName = (name) => name.match(/^([^(]+)(?:\((.+)\))?$/).slice(1);
-// スキルタイプは、対象レベル・チケット・げんきの組み合わせを先に計算しておく。
 const ALL_FLAGS = Object.keys(LEVEL).map(Number).flatMap((N) => [true, false].flatMap((camp) => [false, true].map((g80) => ({ N, camp, g80 }))));
-// きのみタイプ・食材タイプは、ほかのパラメーターは今の値のまま、対象レベルとチケットだけを先に計算しておく。
+// きのみタイプは、ほかのパラメーターは今の値のまま、対象レベルとチケットだけを先に計算しておく。
 const BERRY_FLAGS = Object.keys(LEVEL).map(Number).flatMap((N) => [true, false].map((camp) => ({ N, camp })));
 const def = () => TYPES[state.type];
 // 対象レベルの切り替えの名前。最後の枠が開くレベルまで（3枠なら「Lv.50まで」）。
 const modeLabel = (N) => `Lv.${UNLOCK[N - 1]}まで`;
 // ダイアログの注記で使う、そのタイプの順位の基準。
-const METRIC = { berry: 'きのみエナジー', ingredient: '食材のエナジー', skill: 'スキルの発動回数' };
+const METRIC = { berry: 'きのみエナジー', ingredient: '食材の個数', skill: 'スキルの発動回数' };
 
 // 性能の行。'grp' は見出し行。
 const ROWS = {
   ingredient: [
-    ['grp', 'おてつだい'], ['rTime', 'おてつだい時間'], ['rCut', '時間の短縮'], ['rHelps', '1日のおてつだい回数'], ['rGenki', 'げんき'],
+    ['grp', 'おてつだい'], ['rTime', 'おてつだい時間'], ['rCut', '時間の短縮'], ['rHelps', '1日のおてつだい回数'],
     ['grp', '食材'], ['rIng', '食材確率'], ['rAmt', '1回あたりの狙い食材'], ['rIngHelps', '1日の食材おてつだい回数'],
-    ['rIngList', '1日の食材（個数・エナジー）'], ['rCap', '最大所持数'], ['rFull', '睡眠中に満タンになる確率'],
-    ['grp', 'エナジーの内訳'], ['rSelf', '自分の食材エナジー'], ['rTeam', 'おてボによるライチュウ4匹の増加'],
-    ['grp', '無補正個体との比較'], ['rBase', '無補正個体の1日エナジー'], ['rDRatio', '1日のエナジーの比（評価の基準）'], ['rGe', '同等以上の個体になる確率'], ['rOdds', '平均何匹に1匹'], ['rPos', '性能値の順位（参考）'],
+    ['rAllDay', '1日の全食材の個数'], ['rCap', '最大所持数'], ['rFull', '睡眠中に満タンになる確率'],
+    ['grp', '無補正個体との比較'], ['rBase', '無補正個体の1日個数'], ['rDRatio', '1日の個数の比（評価の基準）'], ['rGe', '同等以上の個体になる確率'], ['rOdds', '平均何匹に1匹'], ['rPos', '性能値の順位（参考）'],
   ],
   berry: [
     ['grp', 'おてつだい'], ['rTime', 'おてつだい時間'], ['rCut', '時間の短縮'], ['rHelps', '1日のおてつだい回数'], ['rGenki', 'げんき'],
@@ -393,10 +391,7 @@ function renderNatDlg() {
 const healText = (e) => (e.heal === 'g80' ? 'げんき常時81%以上'
   : e.heal ? `ヒーラー${e.heal}匹（げんきオールS ${e.healAmt}×${e.healTimes}回/日）` : 'ヒーラーなし');
 const teamText = (e) => `おてボのチーム効果を${e.team ? '含める' : '含めない'}`;
-const tapText = (e) => (e.tap === '3h' ? '起床中は3時間ごとと就寝時に受け取る'
-  : e.tap === 'always' ? '日中は常時タップ（所持数はあふれない）' : '受け取らない（ずっといつのまに育成）');
-// きのみタイプ・食材タイプはヒーラー・チーム効果の設定を共通で持つ。
-const usesHeal = () => state.type !== 'skill';
+const tapText = (e) => (e.tap === '3h' ? '起床中は3時間ごとと就寝時に受け取る' : '受け取らない（ずっといつのまに育成）');
 const genkiText = (g) => `就寝時${g.bed}→起床前${g.end}`;
 
 // パラメーターの切り替え。[要素の id, 今の値をボタンの data-v と同じ文字列にする関数, data-v から値を設定する関数]。
@@ -404,7 +399,6 @@ const SEGS = [
   ['healSeg', () => String(state.heal), (v) => setHeal(v === 'g80' ? v : +v)],
   ['g80Seg', () => (state.g80 ? '1' : '0'), (v) => setG80(v === '1')],
   ['tapSeg', () => state.tap, setTap],
-  ['ingTapSeg', () => state.ingTap, setIngTap],
   ['campSeg', () => (state.camp ? '1' : '0'), (v) => setCamp(v === '1')],
   ['teamSeg', () => (state.team ? '1' : '0'), (v) => setTeam(v === '1')],
 ];
@@ -432,13 +426,13 @@ function initParams(engines) {
 }
 
 function renderParams() {
-  const heal = usesHeal();
+  const berry = state.type === 'berry';
   // 性能の欄と詳細のダイアログの両方で、タイプに合う行だけを出す。
-  document.querySelectorAll('[data-for]').forEach((row) => { row.hidden = !row.dataset.for.split(' ').includes(state.type); });
+  document.querySelectorAll('[data-for]').forEach((row) => { row.hidden = (row.dataset.for === 'berry') !== berry; });
   SEGS.forEach(([id, cur]) => $(id).querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(cur() === b.dataset.v))));
   // 詳細のダイアログにある設定の要約。
   const e = env();
-  $('paramSum').textContent = !heal ? (e.g80 ? 'げんき常時81%以上' : 'げんきは10分ごとに1減少（回復スキルなし）')
+  $('paramSum').textContent = !berry ? (e.g80 ? 'げんき常時81%以上' : 'げんきは10分ごとに1減少（回復スキルなし）')
     : [
       e.heal === 'g80' ? healText(e) : `${healText(e)}・げんき${genkiText(energyAt(e, 100))}`,
       teamText(e),
@@ -451,12 +445,9 @@ function renderParamDlg() {
     if (document.activeElement !== $(k)) $(k).value = state[k];
   });
   const e = env();
-  const teamNote = state.type === 'ingredient'
-    ? `。おてボのチーム効果は、ほかの4匹をライチュウ（Lv.${TEAM_MEMBER.lv}・いじっぱり・きのみS / おてスピM）として、おてつだいボーナスで増えるきのみエナジーを足します。ライチュウの受け取りは食材タイプの設定に合わせます。ヒーラーの設定はきのみタイプと共通です。`
-    : '';
-  $('paramNote').textContent = !usesHeal()
+  $('paramNote').textContent = state.type !== 'berry'
     ? '「10分ごとに減少」は、起床時100から10分ごとに1減り、回復スキルは考えません。「常に81%以上」は、おてつだい時間の倍率を常に0.45にします。'
-    : `ヒーラーは起床中に等間隔で発動し、チーム全員のげんきを回復します（上限150）。発動回数が小数のときは、前後の整数回の日が混ざるものとして平均します。料理（10時・14時・20時）でも、そのときのげんきに応じて1〜9回復します。睡眠中は回復せず、10分ごとに1減ります。今の値でのげんき（ヒーラー1匹・起床時100）: ${genkiText(energyAt({ ...e, heal: 1 }, 100))}${teamNote}`;
+    : `ヒーラーは起床中に等間隔で発動し、チーム全員のげんきを回復します（上限150）。発動回数が小数のときは、前後の整数回の日が混ざるものとして平均します。料理（10時・14時・20時）でも、そのときのげんきに応じて1〜9回復します。睡眠中は回復せず、10分ごとに1減ります。今の値でのげんき（ヒーラー1匹・起床時100）: ${genkiText(energyAt({ ...e, heal: 1 }, 100))}`;
 }
 
 const condText = (m, e) => `Lv.${LEVEL[state.N]}・睡眠8.5時間・${e.g80 ? 'げんき常時81%以上' : `起床時げんき${m.wake}から10分ごとに1減少（回復スキルなし）`}`;
@@ -468,6 +459,8 @@ const timeRows = (r, m, e) => {
   $('rHelps').innerHTML = `${(r.Ha + r.Hs).toFixed(1)}回<span>日中${r.Ha.toFixed(1)}回・睡眠中${r.Hs.toFixed(1)}回</span>`;
 };
 
+const ARR_STATS = ['hAll', 'hDay', 'hNight', 'rAmt', 'rAllDay', 'rFull'];
+
 // 結果カードの横棒。日中と睡眠中の割合を幅で見せる（値がないときは空）。
 const setSplit = (day, night) => {
   const all = day + night;
@@ -476,8 +469,7 @@ const setSplit = (day, night) => {
 
 // きのみタイプのチームへの効果の行。v が null なら隠し、日中・睡眠中の見出しも元に戻す。
 // 出すときは、日中・睡眠中が自分の分だけだとわかるように見出しに「自分」を付ける。
-function heroTeam(v, label = `おてボによるほかの${TEAM_OTHERS}匹の増加`) {
-  $('hTeamL').textContent = label;
+function heroTeam(v) {
   $('hTeamW').hidden = v === null;
   $('hTeam').textContent = v ?? '';
   $('hDayL').textContent = v === null ? '日中' : '自分・日中';
@@ -485,63 +477,40 @@ function heroTeam(v, label = `おてボによるほかの${TEAM_OTHERS}匹の増
 }
 
 // 未選択のサブスキル・性格は「なし他」・無補正として計算する。
-// 大きく出すのは狙い食材の個数。順位の基準は全食材のエナジー＋おてボのチーム効果で、同じ枠に小さく出す。
 function renderIngStats(engine) {
   const e = env(), mm = monData();
   const m = def().mults(currentSubs(), state.up, state.down);
-  const tName = mm.ings[state.target];
+  $('cond').textContent = `${condText(m, e)}・日中は常時タップで計算`;
+  $('hLabel').textContent = `1日の${mm.short[state.target]}`;
 
   const ref = engine.reference(e);
-  $('rBase').innerHTML = `${Math.round(ref.v).toLocaleString()}<span>${arrName(mm, ref.arr)}・無補正</span>`;
+  $('rBase').innerHTML = `${ref.v.toFixed(1)}個<span>${arrName(mm, ref.arr)}・無補正</span>`;
 
   // 食材配列が決まるまでは、無補正基準の配列で時間・確率などを表示する。
   const arrOk = !state.arr.includes(null);
   const r = engine.daily(m, arrOk ? state.arr : ref.arr, e);
-  const recText = m.rec > 1 ? '・げんき回復量↑1.2倍' : m.rec < 1 ? '・げんき回復量↓0.88倍' : '';
-  $('cond').textContent = `Lv.${LEVEL[state.N]}・睡眠8.5時間・${healText(e)}${e.heal === 'g80' ? '' : `・起床時げんき${r.wakeE}${recText}`}・${tapText(e)}・食材1個のエナジーで換算（レシピボーナスなし）`;
-  $('hLabel').textContent = `1日の${mm.short[state.target]}`;
   timeRows(r, m, e);
-  $('rGenki').innerHTML = e.heal === 'g80' ? '常に81%以上' : `${genkiText(r.genki)}<span>起床時${r.wakeE}・${e.heal ? `ヒーラー${e.heal}匹` : 'ヒーラーなし'}</span>`;
   $('rIng').innerHTML = `${(r.ingP * 100).toFixed(1)}%<span>基礎${+(mm.ingP * 100).toFixed(2)}% × ${m.ingMul.toFixed(3)}</span>`;
   $('rIngHelps').innerHTML = `${((r.Ha + r.Hs) * r.ingP).toFixed(1)}回<span>所持数あふれを除く</span>`;
-  $('rCap').innerHTML = `${r.cap}個<span>基礎${mm.cap}＋進化${mm.evo}回×5＋サブスキル${e.camp ? '・チケット込み' : ''}・きのみ${m.berry}個</span>`;
+  $('rCap').innerHTML = `${r.cap}個<span>${e.camp ? 'チケット込み・' : ''}きのみ${m.berry}個</span>`;
 
   if (!arrOk) {
-    ['hAll', 'hDay', 'hNight', 'rAmt', 'rIngList', 'rFull', 'rSelf', 'rTeam'].forEach((id) => { $(id).textContent = '—'; });
+    ARR_STATS.forEach((id) => { $(id).textContent = '—'; });
     setSplit(0, 0);
     $('rDRatio').textContent = '—';
     return;
   }
   const slots = slotsOf(mm, state.arr);
+  const total = r.day + r.night;
   const tAmt = slots.reduce((s, [ing, a]) => s + (ing === state.target ? a : 0), 0) / slots.length;
   const allAmt = slots.reduce((s, [, a]) => s + a, 0) / slots.length;
-  const tDay = r.day[tName] || 0, tNight = r.night[tName] || 0, tAll = tDay + tNight;
-  const self = r.dayEnergy + r.nightEnergy;
-  const team = engine.team(m, e);
-  const total = self + team;
-  const showTeam = e.team && m.hb;
-  const fmtE = (v) => Math.round(v).toLocaleString();
-
-  $('hAll').innerHTML = withUnit(tAll.toFixed(1), '個');
-  $('hSub').hidden = false;
-  $('hSub').textContent = `${mm.short[state.target]}のエナジー ${fmtE(tAll * ING_ENERGY[tName])}（1個${ING_ENERGY[tName]}）・評価の基準 ${fmtE(total)}エナジー`;
-  $('hDay').textContent = tDay.toFixed(1);
-  $('hNight').textContent = tNight.toFixed(1);
-  setSplit(tDay, tNight);
-  heroTeam(showTeam ? `+${fmtE(team)}` : null, `おてボ：ライチュウ${TEAM_OTHERS}匹のきのみエナジー`);
-
+  $('hAll').innerHTML = withUnit(total.toFixed(1), '個');
+  $('hDay').textContent = r.day.toFixed(1);
+  $('hNight').textContent = r.night.toFixed(1);
+  setSplit(r.day, r.night);
   $('rAmt').innerHTML = `${tAmt.toFixed(2)}個<span>全食材${allAmt.toFixed(2)}個</span>`;
-  const names = [...new Set(slots.map(([k]) => mm.ings[k]))];
-  $('rIngList').innerHTML = names.map((n) => {
-    const c = (r.day[n] || 0) + (r.night[n] || 0);
-    const k = Object.keys(mm.ings).find((x) => mm.ings[x] === n);
-    return `${ingIcon(n)}${mm.short[k]} ${c.toFixed(1)}個 <span>${fmtE(c * ING_ENERGY[n])}</span>`;
-  }).join('<br>');
+  $('rAllDay').innerHTML = `${(r.dayAll + r.nightAll).toFixed(1)}個<span>日中${r.dayAll.toFixed(1)}個・睡眠中${r.nightAll.toFixed(1)}個</span>`;
   $('rFull').innerHTML = `${(r.full * 100).toFixed(1)}%<span>あふれた食材 平均${r.lost.toFixed(1)}個</span>`;
-  $('rSelf').innerHTML = `${fmtE(self)}<span>日中${fmtE(r.dayEnergy)}・睡眠中${fmtE(r.nightEnergy)}</span>`;
-  $('rTeam').innerHTML = !e.team ? '—<span>含めない設定</span>'
-    : !m.hb ? '0<span>おてつだいボーナスなし</span>'
-      : `+${fmtE(team)}<span>1匹あたり+${fmtE(team / TEAM_OTHERS)}（ライチュウ Lv.${TEAM_MEMBER.lv}）</span>`;
   $('rDRatio').textContent = isComplete() ? `${(total / ref.v).toFixed(2)}倍` : '—';
 }
 
@@ -618,7 +587,7 @@ function requestDist(engines) {
   if (inFlight) return;
   const type = state.type, engine = engines[type];
   const cur = env();
-  const flags = type === 'skill' ? ALL_FLAGS : BERRY_FLAGS;
+  const flags = type === 'berry' ? BERRY_FLAGS : ALL_FLAGS;
   const next = [cur, ...flags.map((f) => ({ ...cur, ...f }))].find((e) => !engine.ready(e));
   if (!next) return;
   inFlight = next;
@@ -715,7 +684,6 @@ function refresh(engines) {
   if ($('subDlg').open) renderSubDlg();
   if ($('natDlg').open) renderNatDlg();
   heroTeam(null);
-  $('hSub').hidden = true;
   ({ ingredient: renderIngStats, berry: renderBerryStats, skill: renderSkillStats })[state.type](engines[state.type]);
   renderBar(engines);
   renderLog(engines);
