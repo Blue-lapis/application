@@ -412,11 +412,11 @@ function initParams(engines) {
     setFav(false);
     refresh(engines);
   };
-  // フィールドボーナスの −／＋ は5%ずつ（ゲーム内のボーナスは5%刻み）。範囲の端で止める。
+  // フィールドボーナスは手入力なら整数で1%単位、−／＋ は今の値から5%ずつ。範囲の端で止める。
   const [bMin, bMax] = PARAM_LIMITS.fieldBonus;
   [['bonusDown', -5], ['bonusUp', 5]].forEach(([id, d]) => {
     $(id).onclick = () => {
-      setParam('fieldBonus', Math.min(bMax, Math.max(bMin, (Math.round(state.fieldBonus / 5) + d / 5) * 5)));
+      setParam('fieldBonus', Math.min(bMax, Math.max(bMin, state.fieldBonus + d)));
       refresh(engines);
     };
   });
