@@ -12,6 +12,8 @@ const DB_NAME = 'checker-dist';
 const STORE = 'dist';
 // 保存する分布の数の上限。超えたら最後に使ったのが古いものから消す。
 const MAX_ENTRIES = 300;
+// 最後に使った時刻を更新する間隔（ミリ秒）。
+const TOUCH_EVERY = 24 * 3600 * 1000;
 
 // 文字列の簡単なハッシュ（FNV-1a）。ポケモンの基礎値や共通データが変わったら、キーも変わるようにする。
 function hash(s) {
@@ -61,7 +63,8 @@ export async function loadDist(key) {
     const rec = await done(db.transaction(STORE).objectStore(STORE).get(key));
     if (!rec) return null;
     // 最後に使った時刻を更新して、よく使う分布が消されないようにする。
-    db.transaction(STORE, 'readwrite').objectStore(STORE).put({ ...rec, t: Date.now() });
+    // 更新は分布ごと書き直すことになる（最大で数百KB）ので、1日に1回までにする。
+    if (Date.now() - rec.t > TOUCH_EVERY) db.transaction(STORE, 'readwrite').objectStore(STORE).put({ ...rec, t: Date.now() });
     return Array.from(rec.r, (r, i) => ({ r, p: rec.p[i] }));
   } catch {
     return null;

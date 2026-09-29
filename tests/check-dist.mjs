@@ -2,6 +2,7 @@
 // - 分布の確率の合計が1になる。
 // - 無補正比の高い順に並べると、同等以上の確率（atLeast）は増えていき、最後は1になる。
 // - 順位（自分より高い値の数 + 1）と同等以上の確率が、同じ性能を同じに扱う（同じ値なら同じ順位・同じ確率）。
+// - エンジンの順位（rankOf）と同等以上の確率（atLeast）が、分布の全行を見て数えた値と一致する。
 // - 個体の無補正比（score）が分布のどれかの値と一致する（同じ計算で作られている）。
 import { createEngines } from '../checker/js/types.js';
 import { SAME_REL } from '../js/calc.js';
@@ -31,6 +32,10 @@ for (const [type, env, subs, up, down] of CASES) {
     prev = ge;
     const pos = 1 + dist.filter((y) => y.r > x.r * (1 + SAME_REL)).length;
     check(pos === i + 1, `${type} ${env.mon}: ${i + 1}番目の順位が ${pos}`);
+    // エンジンの二分探索の順位・同等以上の確率が、全行を見た値と一致する。
+    check(en.rankOf(x.r, env).pos === pos, `${type} ${env.mon}: ${i + 1}番目の rankOf が ${en.rankOf(x.r, env).pos}`);
+    const linear = dist.reduce((a, y) => a + (y.r >= x.r * (1 - SAME_REL) ? y.p : 0), 0);
+    check(ge === linear, `${type} ${env.mon}: ${i + 1}番目の atLeast ${ge} != ${linear}`);
   });
   check(Math.abs(prev - 1) < 1e-9, `${type} ${env.mon}: 最下位の同等以上の確率 ${prev}`);
   const arr = type === 'ingredient' ? [0, 0, 0] : undefined;

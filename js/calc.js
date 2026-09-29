@@ -1,7 +1,7 @@
 // 3タイプの計算エンジン（checker/js/*/calc.js）が共有する計算。DOM に一切触れない。
 // げんきとおてつだいのタイミング、スキル抽選回数、サブスキルの抽選分布。
 import {
-  SLEEP, ENERGY_TICK, WAKE_ENERGY, ENERGY_BANDS, QUEUE_AFTER_FULL, RARITY_P, SUBS, HEAL_CAP, COOK_AT, cookRecovery,
+  SLEEP, ENERGY_TICK, WAKE_ENERGY, ENERGY_BANDS, QUEUE_AFTER_FULL, RARITY_P, SUBS, byId, HEAL_CAP, COOK_AT, cookRecovery,
 } from './constants.js';
 
 export const DAY_SEC = 86400;
@@ -20,10 +20,10 @@ export const helpTime = (time, LV, timeMul) => time * trunc4(((501 - LV) / 500) 
 // 食材確率・スキル確率。基礎値 × 性格 × (1 + サブスキル合計) を小数第4位まで切り捨てる（上限1）。
 export const rateOf = (base, mul) => Math.min(1, trunc4(base * mul));
 
-const NO_SUBS = { sk: 0, sp: 0, inv: 0, ing: 0, berry: 0, erb: false, hb: false };
+export const NO_SUBS = { sk: 0, sp: 0, inv: 0, ing: 0, berry: 0, erb: false, hb: false };
 
 // hb はおてつだいボーナスを持つか（チーム全体への効果を数えるのに使う）。
-function addSub(e, s) {
+export function addSub(e, s) {
   return {
     sk: e.sk + (s.skill || 0),
     sp: e.sp + (s.speed || 0),
@@ -34,6 +34,9 @@ function addSub(e, s) {
     hb: e.hb || s.id === 'hb',
   };
 }
+
+// サブスキルの ID の並びから効果の合計を求める。ID のないもの（未選択・なし他）は飛ばす。
+export const sumSubs = (ids) => ids.reduce((e, id) => (byId[id] ? addSub(e, byId[id]) : e), NO_SUBS);
 
 export const band = (e) => ENERGY_BANDS.find(([min]) => e >= min)[1];
 
@@ -126,46 +129,112 @@ export function helpsPerTap(Te, energy, start, tap, duration) {
   return out;
 }
 
+// 所持数0からおてつだいを1回ずつ重ねたときの所持数の分布（3タイプ共通）。
+// 食材確率 ingP で食材おてつだい（amts から均等に1つ選んだ個数）、それ以外はきのみ（berry 個）を拾う。
+// 遷移はおてつだいの回数に依らないので、同じ所持数・確率・個数の組は、回数（おてつだいの速さで変わる）が違っても使い回し、
+// 必要な回数まで伸ばしながら次の累積値を記録する（添字 j は j 回おてつだいした後）。
+// - open[j]: 満タンでない確率
+// - got[i][j]: スロット i で拾った食材の期待個数（所持数を超える分は捨てる）。ings[j] はその全スロットの合計
+// - berries[j]: 拾ったきのみの期待個数（満タンになった後のおてつだいはすべてきのみ）
+// 1回の分布計算で数百〜千組ほど作る。画面側で使い続けても増えすぎないよう、上限を超えたらすべて捨てる。
+const curves = new Map();
+const MAX_CURVES = 5000;
+export const clearCurves = () => { curves.clear(); };
+export function fillCurve(cap, ingP, berry, amts) {
+  const key = `${cap}|${ingP}|${berry}|${amts}`;
+  let c = curves.get(key);
+  if (!c) {
+    if (curves.size >= MAX_CURVES) curves.clear();
+    c = newCurve(cap, ingP, berry, amts);
+    curves.set(key, c);
+  }
+  return c;
+}
+
+function newCurve(cap, ingP, berry, amts) {
+  let d = new Float64Array(cap), nx = new Float64Array(cap);
+  d[0] = 1;
+  const pa = ingP / amts.length;
+  const cur = amts.map(() => 0);
+  const c = { open: [1], ings: [0], berries: [0], got: amts.map(() => [0]), memos: {} };
+  // 回数から求めた値（区間の結果）を、種類 kind・回数 n ごとに使い回す。
+  c.cached = (kind, n, fn) => {
+    const memo = c.memos[kind] || (c.memos[kind] = new Map());
+    let v = memo.get(n);
+    if (v === undefined) { v = fn(); memo.set(n, v); }
+    return v;
+  };
+  let open = 1, ings = 0, berries = 0;
+  c.upTo = (k) => {
+    for (let j = c.open.length; j <= k; j++) {
+      berries += berry * (1 - ingP * open);
+      // 満タンになった後は分布が変わらないので、更新を省く。
+      if (open > 0) {
+        nx.fill(0);
+        for (let s = 0; s < cap; s++) {
+          const x = d[s];
+          if (!x) continue;
+          if (s + berry < cap) nx[s + berry] += x * (1 - ingP);
+          for (let i = 0; i < amts.length; i++) {
+            const a = amts[i];
+            const g = x * pa * Math.min(a, cap - s);
+            cur[i] += g;
+            ings += g;
+            if (s + a < cap) nx[s + a] += x * pa;
+          }
+        }
+        [d, nx] = [nx, d];
+        open = d.reduce((t, x) => t + x, 0);
+      }
+      c.open.push(open);
+      c.ings.push(ings);
+      c.berries.push(berries);
+      c.got.forEach((xs, i) => xs.push(cur[i]));
+    }
+    return c;
+  };
+  return c;
+}
+
 // 所持数0からのおてつだいHs回のうち、スキル抽選が行われる回数の分布。
 // 所持数が満タンになった後も、おてつだいキューに残る QUEUE_AFTER_FULL 回は抽選される（ポケモンスリープ攻略・検証 Wiki）。
 // にとよんツールは満タンになったおてつだいまでしか抽選しないので、ここだけ値が違う。
 // ing は食材おてつだい1回で拾う個数の候補（食材配列の3スロット）。
 export function nightRolls(cap, Hs, ingP, berry, ing) {
+  return curveNightRolls(fillCurve(cap, ingP, berry, ing), Hs);
+}
+
+function curveNightRolls(c, Hs) {
+  const { open } = c.upTo(Hs);
   const P = new Float64Array(Hs + 1);
-  let d = new Float64Array(cap), n = new Float64Array(cap);
-  d[0] = 1;
-  let open = 1;
+  // j 回目のおてつだいで満タンになったら、その後キューに残る分まで抽選する。
   for (let j = 1; j <= Hs; j++) {
-    n.fill(0);
-    for (let c = 0; c < cap; c++) {
-      const x = d[c];
-      if (!x) continue;
-      if (c + berry < cap) n[c + berry] += x * (1 - ingP);
-      for (const q of ing) if (c + q < cap) n[c + q] += x * ingP / ing.length;
-    }
-    [d, n] = [n, d];
-    let s = 0;
-    for (let c = 0; c < cap; c++) s += d[c];
-    P[Math.min(Hs, j + QUEUE_AFTER_FULL)] += open - s;
-    open = s;
-    // 未満タンの確率が0なら、以後の遷移で分布は変わらない。
-    if (open === 0) break;
+    const g = open[j - 1] - open[j];
+    if (g) P[Math.min(Hs, j + QUEUE_AFTER_FULL)] += g;
   }
-  P[Hs] += open;
-  return { P, full: 1 - open };
+  P[Hs] += open[Hs];
+  return { P, full: 1 - open[Hs] };
 }
 
 // おてつだいが小数回（lo + f 回）の区間の、スキル抽選が行われる回数の分布。
 // 前後の整数回（lo 回と lo + 1 回）の nightRolls を f の割合で混ぜる（f の確率で1回多い日とみなす）。
+// 結果は使い回すので、呼び出し側は中身を変えない。
 export function segRolls(cap, n, ingP, berry, ing) {
-  const lo = Math.floor(n), f = n - lo;
-  const a = nightRolls(cap, lo, ingP, berry, ing);
-  if (f < 1e-12) return { P: a.P, full: a.full, n: lo };
-  const b = nightRolls(cap, lo + 1, ingP, berry, ing);
-  const P = new Float64Array(lo + 2);
-  for (let i = 0; i <= lo; i++) P[i] = (1 - f) * a.P[i];
-  for (let i = 0; i <= lo + 1; i++) P[i] += f * b.P[i];
-  return { P, full: a.full + (b.full - a.full) * f, n: lo + 1 };
+  return curveRolls(fillCurve(cap, ingP, berry, ing), n);
+}
+
+// segRolls の、所持数の遷移（fillCurve）を渡す版。
+export function curveRolls(c, n) {
+  return c.cached('rolls', n, () => {
+    const lo = Math.floor(n), f = n - lo;
+    const a = curveNightRolls(c, lo);
+    if (f < 1e-12) return { P: a.P, full: a.full, n: lo };
+    const b = curveNightRolls(c, lo + 1);
+    const P = new Float64Array(lo + 2);
+    for (let i = 0; i <= lo; i++) P[i] = (1 - f) * a.P[i];
+    for (let i = 0; i <= lo + 1; i++) P[i] += f * b.P[i];
+    return { P, full: a.full + (b.full - a.full) * f, n: lo + 1 };
+  });
 }
 
 // ストックのある区間（3時間ごとの受け取りの区間と睡眠中）の期待発動回数。
@@ -174,45 +243,53 @@ export function segRolls(cap, n, ingP, berry, ing) {
 export function stockSkills(p, P) {
   const q = 1 - p;
   let s = 0;
-  for (let k = 1; k < P.length; k++) {
-    if (!P[k]) continue;
-    const once = k * p * q ** (k - 1);
-    s += P[k] * (2 - 2 * q ** k - once);
+  // qk1 は q の k − 1 乗。k を1つ進めるたびに q を掛ける。
+  for (let k = 1, qk1 = 1; k < P.length; k++) {
+    const qk = qk1 * q;
+    if (P[k]) s += P[k] * (2 - 2 * qk - k * p * qk1);
+    qk1 = qk;
   }
   return s;
 }
 
 // サブスキルN枠の効果合計の分布。1枠ごとに色を RARITY_P で抽選し、
 // その色の中で未所持のものから均等に選ぶ（重複なし）。
-// 結果は枠の数だけで決まり、5枠では数え上げに時間がかかるので、枠の数ごとに使い回す。呼び出し側は中身を変えない。
+// 結果は枠の数だけで決まるので、枠の数ごとに使い回す。呼び出し側は中身を変えない。
 const subsetCache = new Map();
 export function subsetDist(n) {
   if (!subsetCache.has(n)) subsetCache.set(n, buildSubsetDist(n));
   return subsetCache.get(n);
 }
 
+// 効果は選んだサブスキルの組（選んだ順番によらない）で決まるので、順番を数え上げず、組ごとの確率を1枠ずつ伸ばして求める（5枠で6,188組）。
 function buildSubsetDist(n) {
-  const byRarity = {};
-  SUBS.forEach((s, i) => { (byRarity[s.rarity] = byRarity[s.rarity] || []).push(i); });
   const colors = Object.keys(RARITY_P);
-  const out = new Map();
-  const rec = (depth, mask, p, e) => {
-    if (depth === n) {
-      const k = `${e.sk.toFixed(4)}|${Math.min(0.35, e.sp).toFixed(4)}|${e.inv}|${e.ing.toFixed(4)}|${e.berry}|${e.erb}|${e.hb}`;
-      const o = out.get(k);
-      if (o) o.p += p; else out.set(k, { e, p });
-      return;
+  const byRarity = colors.map((c) => SUBS.flatMap((s, i) => (s.rarity === c ? [i] : [])));
+  let layer = new Map([[0, 1]]);
+  for (let depth = 0; depth < n; depth++) {
+    const next = new Map();
+    for (const [mask, p] of layer) {
+      const avail = byRarity.map((list) => list.filter((i) => !(mask & (1 << i))));
+      const pc = colors.reduce((a, c, ci) => a + (avail[ci].length ? RARITY_P[c] : 0), 0);
+      colors.forEach((c, ci) => {
+        const list = avail[ci];
+        if (!list.length) return;
+        const q = p * (RARITY_P[c] / pc) / list.length;
+        for (const i of list) {
+          const m = mask | (1 << i);
+          next.set(m, (next.get(m) || 0) + q);
+        }
+      });
     }
-    const avail = colors.map((c) => byRarity[c].filter((i) => !(mask & (1 << i))));
-    const pc = colors.reduce((a, c, ci) => a + (avail[ci].length ? RARITY_P[c] : 0), 0);
-    colors.forEach((c, ci) => {
-      const list = avail[ci];
-      if (!list.length) return;
-      const q = p * (RARITY_P[c] / pc) / list.length;
-      for (const i of list) rec(depth + 1, mask | (1 << i), q, addSub(e, SUBS[i]));
-    });
-  };
-  rec(0, 0, 1, NO_SUBS);
+    layer = next;
+  }
+  const out = new Map();
+  for (const [mask, p] of layer) {
+    const e = SUBS.reduce((a, s, i) => (mask & (1 << i) ? addSub(a, s) : a), NO_SUBS);
+    const k = `${e.sk.toFixed(4)}|${Math.min(0.35, e.sp).toFixed(4)}|${e.inv}|${e.ing.toFixed(4)}|${e.berry}|${e.erb}|${e.hb}`;
+    const o = out.get(k);
+    if (o) o.p += p; else out.set(k, { e, p });
+  }
   return [...out.values()];
 }
 

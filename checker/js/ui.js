@@ -1,12 +1,12 @@
 // DOM 描画とイベント配線。計算はタイプごとの calc.js のエンジンに委譲する。
 import { byId, UNLOCK, LEVEL } from '../../js/constants.js';
 import { fmtPct, trunc, mmss } from '../../js/format.js';
-import { eff, SAME_REL } from '../../js/calc.js';
+import { eff } from '../../js/calc.js';
 import { TYPES } from './types.js';
 import { arrName, SLOT_LV } from './ingredient/constants.js';
 import { slotsOf } from './ingredient/calc.js';
 import { HEAL_AMT, HEAL_TIMES, TEAM_OTHERS } from './berry/constants.js';
-import { energyAt } from './berry/calc.js';
+import { energyAt } from './engine.js';
 import { ingIcon } from './ingicons.js';
 import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLabel } from './picker.js';
 import {
@@ -41,8 +41,6 @@ function matchRank(q, name, key) {
 }
 // 「キュウコン(アローラのすがた)」を名前と姿に分ける。
 const splitName = (name) => name.match(/^([^(]+)(?:\((.+)\))?$/).slice(1);
-// ほかのパラメーターは今の値のまま、対象レベルとチケットの組み合わせを先に計算しておく。
-const FLAGS = Object.keys(LEVEL).map(Number).flatMap((N) => [true, false].map((camp) => ({ N, camp })));
 const def = () => TYPES[state.type];
 // 対象レベルの切り替えの名前。最後の枠が開くレベルまで（3枠なら「Lv.50まで」）。
 const modeLabel = (N) => `Lv.${UNLOCK[N - 1]}まで`;
@@ -80,12 +78,6 @@ const scoreOf = (engine, x, e) => (state.type === 'ingredient'
   ? engine.score(x.subs, x.up, x.down, x.arr, e)
   : engine.score(x.subs, x.up, x.down, e));
 
-// 全パターン中の順位。分布は無補正比の値ごとに1行なので、自分より高い値の数 + 1 が順位になる。
-// 無補正比が同じ個体は同じ順位。分布ができてから呼ぶ。
-function rankOf(engine, r, e) {
-  const d = engine.dist(e);
-  return { pos: 1 + d.filter((x) => x.r > r * (1 + SAME_REL)).length, total: d.length };
-}
 // 数値に小さめの単位を付ける（帯とヒーローの大きな数字用）。
 const withUnit = (v, u) => `${v}<span class="u">${u}</span>`;
 // 「何匹に1匹」。帯に収まるよう10万以上は万・億単位にする。
@@ -97,6 +89,7 @@ const fmtOdds = (n) => {
 };
 
 let worker = null;
+// Worker で計算している分布 { type, env }。
 let inFlight = null;
 // 保存してなかったので計算している分布（タイプと条件の組）。読み込み中は「…」、計算中は「計算中」と出す。
 const computing = new Set();
@@ -105,22 +98,7 @@ const pendingText = () => (computing.has(jobKey(state.type, env())) ? '計算中
 
 export function initUI(engines) {
   loadSettings();
-  // Keeps the version tag on the worker URL so it loads the same module set as this page.
-  worker = new Worker(new URL(`./worker.js${new URL(import.meta.url).search}`, import.meta.url), { type: 'module' });
-  worker.onmessage = ({ data }) => {
-    if (data.computing) {
-      computing.add(jobKey(data.type, data.env));
-      renderBar(engines);
-      renderLog(engines);
-      return;
-    }
-    computing.delete(jobKey(data.type, data.env));
-    engines[data.type].setDist(data.env, data.dist);
-    inFlight = null;
-    renderBar(engines);
-    renderLog(engines);
-    requestDist(engines);
-  };
+  startWorker(engines);
 
   // 選んだポケモンを URL にも残して、ブックマークや共有で開けるようにする。
   const syncUrl = () => {
@@ -193,7 +171,12 @@ export function initUI(engines) {
   refresh(engines);
 }
 
+// 見出し・ポケモンの情報・性能の行の枠は、タイプとポケモンが変わったときだけ作り直す。
+let shownHeader = null;
 function renderHeader() {
+  const key = `${state.type}|${state.mon}`;
+  if (key === shownHeader) return;
+  shownHeader = key;
   const mm = monData(), d = def();
   document.documentElement.dataset.type = state.type;
   document.title = `${mm.name} ${d.label} 厳選チェッカー`;
@@ -613,14 +596,41 @@ function renderSkillStats(engine) {
   $('rDRatio').textContent = isComplete() ? `${((self + team) / base).toFixed(2)}倍` : '—';
 }
 
-// One job at a time so a switch to a new condition waits behind at most one background job.
+// 分布の計算は Worker で1つずつ行う。終わったら次の分布を頼む。
+function startWorker(engines) {
+  // Keeps the version tag on the worker URL so it loads the same module set as this page.
+  worker = new Worker(new URL(`./worker.js${new URL(import.meta.url).search}`, import.meta.url), { type: 'module' });
+  worker.onmessage = ({ data }) => {
+    if (data.computing) {
+      computing.add(jobKey(data.type, data.env));
+      renderBar(engines);
+      renderLog(engines);
+      return;
+    }
+    computing.delete(jobKey(data.type, data.env));
+    engines[data.type].setDist(data.env, data.dist);
+    inFlight = null;
+    renderBar(engines);
+    renderLog(engines);
+    requestDist(engines);
+  };
+}
+
+// 今の条件の分布を頼み、あればチケットのあり・なしを切り替えた条件を先に計算しておく（その場で切り替えられるため）。
+// 今の条件の分布がないのに別の条件を計算しているとき（ポケモンや条件を変えた直後）は、その計算をやめて今の条件から始める。
 function requestDist(engines) {
-  if (inFlight) return;
   const type = state.type, engine = engines[type];
   const cur = env();
-  const next = [cur, ...FLAGS.map((f) => ({ ...cur, ...f }))].find((e) => !engine.ready(e));
+  if (inFlight) {
+    if (engine.ready(cur) || jobKey(inFlight.type, inFlight.env) === jobKey(type, cur)) return;
+    worker.terminate();
+    computing.delete(jobKey(inFlight.type, inFlight.env));
+    inFlight = null;
+    startWorker(engines);
+  }
+  const next = [cur, { ...cur, camp: !cur.camp }].find((e) => !engine.ready(e));
   if (!next) return;
-  inFlight = next;
+  inFlight = { type, env: next };
   worker.postMessage({ type, env: next });
 }
 
@@ -654,7 +664,7 @@ function renderBar(engines) {
   const ge = engine.atLeast(r, e);
   $('bRank').innerHTML = r > 0 ? withUnit(fmtPct(ge).slice(0, -1), '%') : '—';
   $('bOdds').innerHTML = r > 0 ? fmtOdds(1 / ge) : '—';
-  const rk = rankOf(engine, r, e);
+  const rk = engine.rankOf(r, e);
   setRows(
     r > 0 ? `${fmtPct(ge)}<span>この個体の無補正比以上になる推定確率</span>` : '—',
     r > 0 ? `約${Math.round(1 / ge).toLocaleString()}匹<span>同じポケモン・抽選条件での平均</span>` : '—',
@@ -676,7 +686,8 @@ function renderLog(engines) {
       const detail = `${state.type === 'ingredient' ? `${arrName(mm, x.arr)}　` : ''}${x.subs.map(subShort).join('／')}　${x.nat ? `${esc(x.nat)} ` : ''}▲${NATL[x.up]} ▼${NATL[x.down]}`;
       // Entries saved before the memo prompt was removed keep their memo as the heading.
       const cur = isCurrent(x);
-      return `<li class="${cur ? 'cur' : ''}" data-t="${x.t}" tabindex="0" title="タップで入力に戻す" aria-current="${cur}"><div>${cur ? '<span class="now">表示中</span>' : ''}${x.memo ? `${esc(x.memo)}<div class="m">${detail}</div>` : detail}</div><div><b>${x.r.toFixed(2)}倍</b><div class="m">${rd ? (x.r > 0 ? `同等以上${fmtPct(engine.atLeast(x.r, e))}<br>約${Math.round(1 / engine.atLeast(x.r, e)).toLocaleString()}匹に1匹` : '—') : pendingText()}</div></div><button class="del" data-t="${x.t}">削除</button></li>`;
+      const ge = rd && x.r > 0 ? engine.atLeast(x.r, e) : 0;
+      return `<li class="${cur ? 'cur' : ''}" data-t="${x.t}" tabindex="0" title="タップで入力に戻す" aria-current="${cur}"><div>${cur ? '<span class="now">表示中</span>' : ''}${x.memo ? `${esc(x.memo)}<div class="m">${detail}</div>` : detail}</div><div><b>${x.r.toFixed(2)}倍</b><div class="m">${rd ? (x.r > 0 ? `同等以上${fmtPct(ge)}<br>約${Math.round(1 / ge).toLocaleString()}匹に1匹` : '—') : pendingText()}</div></div><button class="del" data-t="${x.t}">削除</button></li>`;
     }).join('')
     : `<li class="empty">${modeLabel(state.N)}の記録はまだありません</li>`;
 
