@@ -1,5 +1,5 @@
 // 食材タイプ版だけで使う定義。サブスキル・性格・げんきなどの共通データは ../../js/constants.js を使う。
-import { cat } from '../../../js/constants.js';
+import { cat, slotWeights } from '../../../js/constants.js';
 
 // ポケモンごとの基礎値は mons.js にまとめる。
 export { MONS } from './mons.js';
@@ -22,10 +22,10 @@ export const natCat = (s) => {
 // 食材配列 arr はスロットごとの候補の番号（例: [0, 0, 0] = AAA）。
 export const arrName = (mon, arr) => arr.map((k, i) => mon.slots[i][k][0]).join('');
 
-// すべての食材配列と、その出現確率（各スロットの候補は等確率）。
+// すべての食材配列と、その出現確率（各スロットの候補の確率は slotWeights）。
 export function allArrs(mon) {
   return mon.slots.reduce(
-    (acc, opts) => acc.flatMap(({ arr, p }) => opts.map((_, k) => ({ arr: [...arr, k], p: p / opts.length }))),
+    (acc, opts) => acc.flatMap(({ arr, p }) => opts.map((_, k) => ({ arr: [...arr, k], p: p * slotWeights(opts.length)[k] }))),
     [{ arr: [], p: 1 }],
   );
 }

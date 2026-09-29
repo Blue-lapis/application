@@ -148,7 +148,7 @@ export function createEngine() {
   const baseMetric = (env) => reference(env).v;
   const score = (subs, up, down, arr, env) => metric(mults(subs, up, down), arr, env) / baseMetric(env);
 
-  // 上位%の分布は、サブスキル・性格・食材配列（各スロット等確率）をすべて数え上げる。
+  // 上位%の分布は、サブスキル・性格・食材配列（捕獲時の配列の確率 slotWeights）をすべて数え上げる。
   function buildDist(env) {
     const natCount = {};
     NAT.forEach(([, u, d]) => {

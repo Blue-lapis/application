@@ -28,6 +28,12 @@ export const DAYS = 8;
 // 1枠ごとにまず色を抽選し、その色の中で未所持のサブスキルから均等に1つ選ぶ。
 export const RARITY_P = { gold: 0.14, blue: 0.33, white: 0.53 };
 
+// 捕獲時に食材配列の各スロットの候補（A・B・C の順）が選ばれる確率。RaenonX の調査（1,153件）による。
+// 候補が2つのスロット（Lv.30、古いポケモンの Lv.60）は A が 1/3・B が 2/3、3つのスロット（Lv.60）は等確率。
+// スロットどうしは独立（AAA 11.1%、ABA・ABB・ABC 各22.2% など）。
+// https://hackmd.io/@raenonx-pokemon-sleep/rJj6yeIlWe
+export const slotWeights = (n) => (n === 2 ? [1 / 3, 2 / 3] : Array.from({ length: n }, () => 1 / n));
+
 export const SUBS = [
   { id: 'skM', name: 'スキルM', rarity: 'blue', skill: 0.36 },
   { id: 'skS', name: 'スキルS', rarity: 'white', skill: 0.18 },

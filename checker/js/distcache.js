@@ -1,11 +1,11 @@
 // 上位%の分布を IndexedDB に保存して、開き直したときや別のポケモンから戻ったときに計算を省く。
 // 分布は食材タイプの4枠で1万行を超えるので、容量の小さい localStorage ではなく IndexedDB に数値の配列で持つ。
 // 保存できない環境（プライベートブラウズなど）では何もせず、毎回計算する。
-import { SUBS, RARITY_P, NAT, ENERGY_BANDS } from '../../js/constants.js';
+import { SUBS, RARITY_P, NAT, ENERGY_BANDS, slotWeights } from '../../js/constants.js';
 import { TYPES } from './types.js';
 
 // 計算方法を変えたら上げる。キーが変わるので古い分布は使われず、そのうち消える。
-const MODEL_VERSION = 4;
+const MODEL_VERSION = 5;
 // 公開時にモジュールの URL に付く版（?v=コミット）。上げ忘れても、公開のたびに分布を計算し直す。
 const BUILD = new URL(import.meta.url).searchParams.get('v') || '';
 const DB_NAME = 'checker-dist';
@@ -19,7 +19,7 @@ function hash(s) {
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
   return h.toString(36);
 }
-const COMMON = hash(JSON.stringify([SUBS, RARITY_P, NAT, ENERGY_BANDS]));
+const COMMON = hash(JSON.stringify([SUBS, RARITY_P, NAT, ENERGY_BANDS, String(slotWeights)]));
 
 // 条件（env）はすべての項目をキーに入れる。パラメーターを増やしても書き足さなくてよい。
 const envText = (env) => JSON.stringify(Object.keys(env).sort().map((k) => [k, env[k]]));
