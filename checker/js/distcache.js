@@ -1,8 +1,7 @@
 // 上位%の分布を IndexedDB に保存して、開き直したときや別のポケモンから戻ったときに計算を省く。
 // 分布は食材タイプの4枠で1万行を超えるので、容量の小さい localStorage ではなく IndexedDB に数値の配列で持つ。
 // 保存できない環境（プライベートブラウズなど）では何もせず、毎回計算する。
-import { SUBS, RARITY_P, NAT, ENERGY_BANDS, ING_ENERGY, slotWeights } from '../../js/constants.js';
-import { TEAM_MEMBER } from './ingredient/constants.js';
+import { SUBS, RARITY_P, NAT, ENERGY_BANDS, slotWeights } from '../../js/constants.js';
 import { TYPES } from './types.js';
 
 // 計算方法を変えたら上げる。キーが変わるので古い分布は使われず、そのうち消える。
@@ -20,8 +19,7 @@ function hash(s) {
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
   return h.toString(36);
 }
-// 食材タイプのチーム効果で使うライチュウの設定と基礎値も含める。
-const COMMON = hash(JSON.stringify([SUBS, RARITY_P, NAT, ENERGY_BANDS, String(slotWeights), ING_ENERGY, TEAM_MEMBER, TYPES.berry.MONS[TEAM_MEMBER.mon]]));
+const COMMON = hash(JSON.stringify([SUBS, RARITY_P, NAT, ENERGY_BANDS, String(slotWeights)]));
 
 // 条件（env）はすべての項目をキーに入れる。パラメーターを増やしても書き足さなくてよい。
 const envText = (env) => JSON.stringify(Object.keys(env).sort().map((k) => [k, env[k]]));

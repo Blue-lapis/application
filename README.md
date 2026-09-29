@@ -11,7 +11,7 @@ https://lapis-blue.github.io/application/checker/
 - `checker/` — アプリ本体（画面・状態管理・タイプごとの計算エンジンとポケモンのデータ）
 - `checker/img/mon/` — ポケモンの画像（ゲーム内のメニュー画像を切り詰めた WebP）。ファイル名は `mons.js` のキー
 - `checker/img/ing/` — 食材アイコン（ゲーム内のスクリーンショットから切り抜いた PNG）。食材名との対応は `checker/js/ingicons.js`
-- `js/constants.js` — サブスキル・性格・げんき・食材のエナジーなどのゲームデータ（3タイプ共通）
+- `js/constants.js` — サブスキル・性格・げんきなどのゲームデータ（3タイプ共通）
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、睡眠中のスキル抽選回数、天井カウンタ、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数
 - `css/style.css` — 土台のスタイル（見た目は `checker/css/theme.css` で上書き）

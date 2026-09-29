@@ -1,14 +1,13 @@
 // 食材タイプ向けの期待値計算エンジン。DOM に触れない。
 // げんきの推移とおてつだい回数はきのみタイプと同じ規則（共通の energyCurve・helpsPerTap と、きのみタイプの curveOf・timesMix）を使う。
-// 呼び出し側は env = { N, camp, mon, heal, tap, team, healAmt, healTimes } を渡す。mon は MONS のキー。
+// 呼び出し側は env = { N, camp, mon, target, heal, tap, team, healAmt, healTimes } を渡す。mon は MONS のキー、target は狙う食材（'A' など）。
 // heal・healAmt・healTimes はきのみタイプと共通の設定、tap は日中の受け取り（'always' / '3h'）、
-// team はおてつだいボーナスのチームへの効果（ライチュウ4匹。./team.js）を含めるか。
-import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, byId, LEVEL, ING_ENERGY } from '../../../js/constants.js';
+// team はおてつだいボーナスのチームへの効果（同じポケモン4匹の狙い食材の増加）を含めるか。
+import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, byId, LEVEL } from '../../../js/constants.js';
 import { helpsPerTap, subsetDist, AWAKE_SEC, DAY_SEC, mergeSame, SAME_REL } from '../../../js/calc.js';
 import { curveOf, timesMix, mixed, energyAt } from '../berry/calc.js';
-import { EVO_CAP, ENERGY_REC } from '../berry/constants.js';
+import { EVO_CAP, ENERGY_REC, TEAM_OTHERS, HB_SPEED } from '../berry/constants.js';
 import { MONS, natCat, allArrs, TAP_EVERY } from './constants.js';
-import { teamGain } from './team.js';
 
 const natMul = (up, down, key, hi, lo) => (up === key ? hi : 1) * (down === key ? lo : 1);
 
@@ -139,7 +138,6 @@ const byIngredient = (mon, slots, xs) => slots.reduce((o, [k], i) => {
   o[name] = (o[name] || 0) + xs[i];
   return o;
 }, {});
-const energyOf = (ings) => Object.entries(ings).reduce((s, [name, n]) => s + n * ING_ENERGY[name], 0);
 
 // 表示用の1日の値。発動回数が小数のときは、前後の整数回の日の割合で平均する。
 // day・night は食材ごとの個数 { 食材名: 個数 }。
@@ -158,19 +156,19 @@ export function daily(m, arr, env) {
   return {
     ...parts[0][0],
     Ha: avgOf((d) => d.Ha), Hs: avgOf((d) => d.Hs), full: avgOf((d) => d.full), lost: avgOf((d) => d.lost),
-    day, night, dayEnergy: energyOf(day), nightEnergy: energyOf(night),
+    day, night,
     genki: energyAt(env, m.wake, m.rec), wakeE: Math.round(mixed(env, (e) => curveOf(e, m.wake, m.rec)(0))),
   };
 }
 
-export const envKey = (env) => [env.N, env.camp, env.mon, env.heal, env.tap, env.team, env.healAmt, env.healTimes].join('|');
+export const envKey = (env) => [env.N, env.camp, env.mon, env.target, env.heal, env.tap, env.team, env.healAmt, env.healTimes].join('|');
 
 export function createEngine() {
   const metricCache = new Map();
   const segCache = new Map();
   const distCache = new Map();
 
-  // 自分の食材のエナジー（食材ごとの個数 × 食材1個のエナジー）。発動回数が小数のときは前後の整数回の日の割合で平均する。
+  // 自分の狙い食材の1日の個数。発動回数が小数のときは前後の整数回の日の割合で平均する。
   const metric = (m, arr, env) => mixed(env, (e) => metricOne(m, arr, e));
   function metricOne(m, arr, env) {
     const r = prepare(m, env);
@@ -184,17 +182,13 @@ export function createEngine() {
         return segCache.get(k);
       };
       const d = runDay(r, env, m.berry, slots.map(([, a]) => a), segOf);
-      metricCache.set(key, energyOf(byIngredient(mon, slots, d.day.map((x, i) => x + d.night[i]))));
+      const all = byIngredient(mon, slots, d.day.map((x, i) => x + d.night[i]));
+      metricCache.set(key, all[mon.ings[env.target]] || 0);
     }
     return metricCache.get(key);
   }
 
-  // チームへの効果（ライチュウ4匹のきのみエナジーの増加分）。おてつだいボーナスを持たないか、含めない設定なら0。
-  const team = (m, env) => (env.team && m.hb ? teamGain(env) : 0);
-  // 順位の基準の値 = 自分の食材のエナジー + チームへの効果。
-  const value = (m, arr, env) => metric(m, arr, env) + team(m, env);
-
-  // 比較の基準は、無補正個体（サブスキルなし・無補正性格）のうち食材のエナジーが最も大きい食材配列。
+  // 比較の基準は、無補正個体（サブスキルなし・無補正性格）のうち狙い食材が最も多く取れる食材配列（狙いが A なら AAA）。
   function reference(env) {
     const m = mk(NO_SUBS, null, null);
     return allArrs(MONS[env.mon])
@@ -202,6 +196,22 @@ export function createEngine() {
       .reduce((a, b) => (b.v > a.v ? b : a));
   }
   const baseMetric = (env) => reference(env).v;
+
+  // ほかのメンバー TEAM_OTHERS 匹（同じポケモン・基準の食材配列・サブスキルなし・無補正性格）が、
+  // おてつだいボーナスでおてつだいスピードが HB_SPEED 上がって増やす狙い食材の個数の合計。
+  const gainCache = new Map();
+  function teamGain(env) {
+    const k = envKey(env);
+    if (!gainCache.has(k)) {
+      const arr = reference(env).arr;
+      gainCache.set(k, TEAM_OTHERS * (metric(mk({ ...NO_SUBS, sp: HB_SPEED }, null, null), arr, env) - baseMetric(env)));
+    }
+    return gainCache.get(k);
+  }
+  // チームへの効果。おてつだいボーナスを持たないか、含めない設定なら0。
+  const team = (m, env) => (env.team && m.hb ? teamGain(env) : 0);
+  // 順位の基準の値 = 自分の狙い食材の個数 + チームへの効果。
+  const value = (m, arr, env) => metric(m, arr, env) + team(m, env);
   const score = (subs, up, down, arr, env) => value(mults(subs, up, down), arr, env) / baseMetric(env);
 
   // 上位%の分布は、サブスキル・性格・食材配列（捕獲時の配列の確率 slotWeights）をすべて数え上げる。

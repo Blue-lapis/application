@@ -186,8 +186,7 @@ export const isComplete = () => currentSubs().every(Boolean) && state.up && stat
 export const env = () => {
   const { N, camp, mon, heal, tap, ingTap, team, healAmt, healTimes } = state;
   if (state.type === 'berry') return { N, camp, mon, heal, tap, team, healAmt, healTimes };
-  // 狙い食材は表示だけに使い、順位・分布には効かないので条件に入れない。
-  if (state.type === 'ingredient') return { N, camp, mon, heal, tap: ingTap, team, healAmt, healTimes };
+  if (state.type === 'ingredient') return { N, camp, mon, target: state.target, heal, tap: ingTap, team, healAmt, healTimes };
   return { N, camp, g80: state.g80, mon };
 };
 
