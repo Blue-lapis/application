@@ -17,12 +17,6 @@ const COOK_RECOVERY = [[80, 1], [70, 2], [60, 3], [50, 4], [40, 5], [30, 6], [20
 export const cookRecovery = (e) => (COOK_RECOVERY.find(([over]) => e > over) || [0, 9])[1];
 // げんきによるおてつだい時間の倍率（Ver.1.8.1以降）。[下限げんき, 倍率] を上から判定する。
 export const ENERGY_BANDS = [[81, 0.45], [61, 0.52], [41, 0.58], [1, 0.66], [0, 1]];
-// 所持数が満タンになった後も、おてつだいキューに積まれている残り4回分はスキル抽選が行われる。
-export const QUEUE_AFTER_FULL = 4;
-// 天井カウンタの分布は日をまたいで引き継ぐ。毎日同じ推移になるので、日の終わりの分布の変化
-// （絶対値の合計）が CHAIN_TOL 未満になるまで、最大 CHAIN_MAX_DAYS 日進める。
-export const CHAIN_MAX_DAYS = 200;
-export const CHAIN_TOL = 1e-12;
 
 // 1枠ごとにまず色を抽選し、その色の中で未所持のサブスキルから均等に1つ選ぶ。
 export const RARITY_P = { gold: 0.14, blue: 0.33, white: 0.53 };

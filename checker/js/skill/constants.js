@@ -18,8 +18,9 @@ export { TAPS, TAP_EVERY } from '../ingredient/constants.js';
 // げんき回復量は睡眠中のおてつだいの速さに効く。
 export const natCat = (s) => (s === 'en' ? 'energy' : cat(s));
 
-// 連続不発の天井。スキルとくいは基準おてつだい時間で約40時間分（Floor[144000 / 基準おてつだい時間]）。
-export const ceilOf = (mon) => Math.floor(144000 / mon.time);
+// 発動が確定するおてつだいの回数。スキルとくいは Ceil[142000 / 基準おてつだい時間] 回続けて不発なら、次のおてつだいで発動する
+// （にとよんツールと同じ。基準おてつだい時間で約40時間分）。
+export const ceilOf = (mon) => Math.ceil(142000 / mon.time) + 1;
 
 // すべての食材配列について、各スロットで拾う個数と出現確率（各スロットの候補の確率は slotWeights）。
 // スキル発動回数の計算では食材の種類は関係ないので、個数の並びが同じ配列はまとめる。

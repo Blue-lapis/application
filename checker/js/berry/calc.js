@@ -4,7 +4,7 @@
 // heal はヒーラーの数（0/1/2）か 'g80'（げんき常に81%以上）、tap は日中の受け取り（'none' / '3h'）、
 // team はおてつだいボーナスのチームへの効果を含めるか。
 import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, byId, LEVEL } from '../../../js/constants.js';
-import { energyCurve, helpsPerTap, subsetDist, AWAKE_SEC, DAY_SEC, mergeSame, SAME_REL } from '../../../js/calc.js';
+import { energyCurve, helpsPerTap, helpTime, rateOf, subsetDist, AWAKE_SEC, DAY_SEC, mergeSame, SAME_REL } from '../../../js/calc.js';
 import { MONS, natCat, amountPatterns, TAP_EVERY, TEAM_OTHERS, HB_SPEED, EVO_CAP, ENERGY_REC } from './constants.js';
 
 const natMul = (up, down, key, hi, lo) => (up === key ? hi : 1) * (down === key ? lo : 1);
@@ -77,9 +77,9 @@ function scheduleOf(Te, env, wake, rec) {
 export function prepare(m, env) {
   const mon = MONS[env.mon];
   const LV = LEVEL[env.N];
-  const T = Math.floor(mon.time * (1 - (LV - 1) * 0.002) * m.timeMul);
+  const T = helpTime(mon.time, LV, m.timeMul);
   const Te = env.camp ? T / 1.2 : T;
-  const ingP = Math.min(1, mon.ingP * m.ingMul);
+  const ingP = rateOf(mon.ingP, m.ingMul);
   // 最終進化形は進化してきた個体とみなし、進化1回ごとに最大所持数が5増える（にとよんツールと同じ）。
   const cap0 = mon.cap + EVO_CAP * mon.evo + m.inv;
   const cap = env.camp ? Math.ceil(cap0 * 1.2) : cap0;

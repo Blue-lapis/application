@@ -4,7 +4,7 @@
 // heal・healAmt・healTimes はきのみタイプと共通の設定、tap は日中の受け取り（'always' / '3h'）、
 // team はおてつだいボーナスのチームへの効果（同じポケモン4匹の狙い食材の増加）を含めるか。
 import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, byId, LEVEL } from '../../../js/constants.js';
-import { helpsPerTap, subsetDist, AWAKE_SEC, DAY_SEC, mergeSame, SAME_REL } from '../../../js/calc.js';
+import { helpsPerTap, helpTime, rateOf, subsetDist, AWAKE_SEC, DAY_SEC, mergeSame, SAME_REL } from '../../../js/calc.js';
 import { curveOf, timesMix, mixed, energyAt } from '../berry/calc.js';
 import { EVO_CAP, ENERGY_REC, TEAM_OTHERS, HB_SPEED } from '../berry/constants.js';
 import { MONS, natCat, allArrs, TAP_EVERY } from './constants.js';
@@ -62,9 +62,9 @@ function scheduleOf(Te, env, wake, rec) {
 export function prepare(m, env) {
   const mon = MONS[env.mon];
   const LV = LEVEL[env.N];
-  const T = Math.floor(mon.time * (1 - (LV - 1) * 0.002) * m.timeMul);
+  const T = helpTime(mon.time, LV, m.timeMul);
   const Te = env.camp ? T / 1.2 : T;
-  const ingP = Math.min(1, mon.ingP * m.ingMul);
+  const ingP = rateOf(mon.ingP, m.ingMul);
   // 最終進化形は進化してきた個体とみなし、進化1回ごとに最大所持数が5増える（きのみタイプと同じ）。
   const cap0 = mon.cap + EVO_CAP * mon.evo + m.inv;
   const cap = env.camp ? Math.ceil(cap0 * 1.2) : cap0;
