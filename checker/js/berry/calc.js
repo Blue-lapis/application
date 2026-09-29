@@ -1,10 +1,10 @@
 // きのみタイプ向けの期待値計算エンジン。DOM に触れない。
-// おてつだいのタイミングは共通の energyCurve・scheduleSegs（../../../js/calc.js）を使う。
+// げんきの推移とおてつだい回数は共通の energyCurve・helpsPerTap（../../../js/calc.js）を使う。
 // 呼び出し側は env = { N, camp, mon, heal, tap, team, healAmt, healTimes } を渡す。mon は MONS のキー。
 // heal はヒーラーの数（0/1/2）か 'g80'（げんき常に81%以上）、tap は日中の受け取り（'none' / '3h'）、
 // team はおてつだいボーナスのチームへの効果を含めるか。
 import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, byId, LEVEL } from '../../../js/constants.js';
-import { energyCurve, scheduleSegs, subsetDist, AWAKE_SEC, DAY_SEC } from '../../../js/calc.js';
+import { energyCurve, helpsPerTap, subsetDist, AWAKE_SEC, DAY_SEC } from '../../../js/calc.js';
 import { MONS, natCat, amountPatterns, TAP_EVERY, TEAM_OTHERS, HB_SPEED, EVO_CAP } from './constants.js';
 
 const natMul = (up, down, key, hi, lo) => (up === key ? hi : 1) * (down === key ? lo : 1);
@@ -53,18 +53,9 @@ export function curveOf(env, wake) {
   return energyCurve(wake, env.heal * env.healTimes, env.healAmt);
 }
 
-// 所持品を受け取る時刻（起床からの秒）。起床時の受け取りは区間の始まりなので含めない。
+// 1日のおてつだい回数を、所持品の受け取りで区切った区間ごとに [日中, 睡眠中] で返す（期待値なので小数）。
 // 「3時間ごと」は起床中に3時間ごとと就寝時に受け取り、睡眠は所持数0から始まる。
-export function cutsOf(env) {
-  const every = TAP_EVERY[env.tap] || 0;
-  const out = [];
-  if (every) {
-    for (let t = every; t < AWAKE_SEC; t += every) out.push(t);
-    out.push(AWAKE_SEC);
-  }
-  return out;
-}
-
+// 「なし」は区切らない（すべてきのみになるので区間は使わない）。起床中と睡眠中は別々に数える（にとよんツールと同じ）。
 // おてつだいのタイミングはきのみの個数や食材確率に依存しないので、同じ条件の計算を使い回す。
 const schedCache = new Map();
 function scheduleOf(Te, env, wake) {
@@ -72,7 +63,11 @@ function scheduleOf(Te, env, wake) {
   if (!schedCache.has(k)) {
     // げんき1以下は、げんき0と同じ倍率（1.0）で数える（にとよんツールと同じ）。
     const f = curveOf(env, wake);
-    schedCache.set(k, scheduleSegs(Te, (t) => (f(t) <= 1 ? 0 : f(t)), cutsOf(env)));
+    const energy = (t) => (f(t) <= 1 ? 0 : f(t));
+    const every = TAP_EVERY[env.tap] || AWAKE_SEC;
+    const awake = helpsPerTap(Te, energy, 0, every, AWAKE_SEC);
+    const sleep = helpsPerTap(Te, energy, AWAKE_SEC, DAY_SEC - AWAKE_SEC, DAY_SEC - AWAKE_SEC);
+    schedCache.set(k, [...awake.map((n) => [n, 0]), [0, sleep.reduce((a, b) => a + b, 0)]]);
   }
   return schedCache.get(k);
 }
@@ -89,7 +84,7 @@ export function prepare(m, env) {
   const berry = mon.berries + m.berry;
   const energy = berryEnergy(mon.berryBase, LV);
   const segs = scheduleOf(Te, env, m.wake);
-  const sum = (i) => segs.map((day) => day.reduce((s, x) => s + x[i], 0));
+  const sum = (i) => segs.reduce((s, x) => s + x[i], 0);
   return { LV, T, Te, ingP, cap, berry, energy, segs, Ha: sum(0), Hs: sum(1), noTap: env.tap === 'none' };
 }
 
@@ -130,38 +125,38 @@ export function dayBerries(cap, ha, hs, ingP, berry, amts) {
 // レベル Lv のきのみ1個のエナジー。
 export const berryEnergy = (base, lv) => Math.max(base + lv - 1, Math.round(base * 1.025 ** (lv - 1)));
 
-const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
-
 // 1日を受け取りで区切った区間ごとに所持数0から追い、足し合わせる。
 // 満タンになる確率は、fullBed が就寝時（就寝時に受け取るなら、その直前の区間の終わり）、full が起床時。
 // 受け取りなしは一度も受け取らないので、所持数はずっと満タンで、すべてのおてつだいがきのみになる。
-// 食材配列は入力しないので、配列ごとの値を出現確率で平均する。捨て日のあとの日ごとの値を平均する。
+// 食材配列は入力しないので、配列ごとの値を出現確率で平均する。
 function runDays(r, segOf) {
-  const pats = amountPatterns(MONS[r.mon]);
+  if (r.noTap) return { day: r.berry * r.Ha, night: r.berry * r.Hs, ings: 0, fullBed: 1, full: 1 };
   const o = { day: 0, night: 0, ings: 0, fullBed: 0, full: 0 };
-  r.segs.forEach((day) => {
-    if (r.noTap) {
-      day.forEach(([ha, hs]) => { o.day += r.berry * ha; o.night += r.berry * hs; });
-      o.fullBed += 1;
-      o.full += 1;
-      return;
-    }
-    const last = day.length - 1;
-    // 最後の区間が睡眠中だけなら、就寝時に受け取っている。
-    const bedAt = last > 0 && day[last][0] === 0 ? last - 1 : last;
-    for (const { amts, p } of pats) {
-      day.forEach(([ha, hs], i) => {
-        const v = segOf(ha, hs, amts);
-        o.day += p * v.day;
-        o.night += p * v.night;
-        o.ings += p * v.ings;
-        if (i === bedAt) o.fullBed += p * (i === last ? v.fullBed : v.full);
-        if (i === last) o.full += p * v.full;
-      });
-    }
-  });
-  Object.keys(o).forEach((k) => { o[k] /= r.segs.length; });
+  const last = r.segs.length - 1;
+  // 最後の区間が睡眠中だけなら、就寝時に受け取っている。
+  const bedAt = last > 0 && r.segs[last][0] === 0 ? last - 1 : last;
+  for (const { amts, p } of amountPatterns(MONS[r.mon])) {
+    r.segs.forEach(([ha, hs], i) => {
+      const v = segOf(ha, hs, amts);
+      o.day += p * v.day;
+      o.night += p * v.night;
+      o.ings += p * v.ings;
+      if (i === bedAt) o.fullBed += p * (i === last ? v.fullBed : v.full);
+      if (i === last) o.full += p * v.full;
+    });
+  }
   return o;
+}
+
+// おてつだい回数が小数の区間は、前後の整数回の結果を小数部分の割合で混ぜる（にとよんツールと同じ）。
+// 区間は日中だけか睡眠中だけなので、小数部分は回数のあるほうに付く。
+export function segBerries(cap, ha, hs, ingP, berry, amts) {
+  const n = hs > 0 ? hs : ha;
+  const lo = Math.floor(n), f = n - lo;
+  const at = (k) => dayBerries(cap, hs > 0 ? ha : k, hs > 0 ? k : 0, ingP, berry, amts);
+  if (f < 1e-12) return at(lo);
+  const a = at(lo), b = at(lo + 1);
+  return Object.fromEntries(Object.keys(a).map((k) => [k, a[k] + (b[k] - a[k]) * f]));
 }
 
 // 就寝時と起床直前のげんき（表示用）。発動回数が小数のときは前後の整数回の日の平均（整数に丸める）。
@@ -184,10 +179,10 @@ function dailyOne(m, env) {
   const days = new Map();
   const d = runDays(r, (ha, hs, amts) => {
     const key = `${ha}|${hs}|${amts.join(',')}`;
-    if (!days.has(key)) days.set(key, dayBerries(r.cap, ha, hs, r.ingP, r.berry, amts));
+    if (!days.has(key)) days.set(key, segBerries(r.cap, ha, hs, r.ingP, r.berry, amts));
     return days.get(key);
   });
-  return { ...r, ...d, Ha: avg(r.Ha), Hs: avg(r.Hs) };
+  return { ...r, ...d };
 }
 
 export const envKey = (env) => [env.N, env.camp, env.mon, env.heal, env.tap, env.team, env.healAmt, env.healTimes].join('|');
@@ -205,7 +200,7 @@ export function createEngine() {
     if (!metricCache.has(key)) {
       const segOf = (ha, hs, amts) => {
         const k = `${env.mon}|${r.cap}|${ha}|${hs}|${r.ingP.toFixed(8)}|${r.berry}|${amts.join(',')}`;
-        if (!dayCache.has(k)) dayCache.set(k, dayBerries(r.cap, ha, hs, r.ingP, r.berry, amts));
+        if (!dayCache.has(k)) dayCache.set(k, segBerries(r.cap, ha, hs, r.ingP, r.berry, amts));
         return dayCache.get(k);
       };
       const d = runDays(r, segOf);

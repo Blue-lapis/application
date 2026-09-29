@@ -79,28 +79,54 @@ export function energyCurve(wake, heals, amt) {
   };
 }
 
-// schedule と同じタイミングの計算を、げんきの推移 energy(t) と所持品を受け取る時刻 cuts（起床からの秒、起床中）で行う。
-// 受け取りで区切った区間ごとに、日中と睡眠中のおてつだい回数 [day, night] を日ごとに返す。
-// 最後の受け取りから次の起床までが最後の区間になる（cuts が空なら1日が1区間）。
-// おてつだいは終わった時刻の区間に入る。
-export function scheduleSegs(Te, energy, cuts) {
-  const segs = [];
-  let rest = 1;
-  for (let d = 0; d < WARMUP_DAYS + DAYS; d++) {
-    const day = Array.from({ length: cuts.length + 1 }, () => [0, 0]);
-    let t = 0;
+// きのみタイプのおてつだい回数（期待値なので小数で数える。にとよんツールと同じ数え方）。
+// 起床からの秒 start から duration 秒のあいだを、tap 秒ごとの受け取りで区切り、区間ごとの回数を返す。
+// 次のおてつだいにかかる時間は、そのおてつだいを始めた時点のげんき energy(t) で決まる。
+// 区間の境目をまたいだおてつだいは次の区間に入る。最後の区間は、終わりまでに進んだ途中の分を小数で足す。
+export function helpsPerTap(Te, energy, start, tap, duration) {
+  const next = (t) => t + Te * band(energy(t));
+  // from から len 秒で終わるおてつだいの回数と、次のおてつだいの途中の割合。
+  const inInterval = (from, len) => {
+    const stop = from + len;
+    let cur = from, count = 0;
     for (;;) {
-      const dur = Te * band(energy(t));
-      const fin = t + rest * dur;
-      if (fin > DAY_SEC) { rest -= (DAY_SEC - t) / dur; break; }
-      const s = cuts.filter((c) => fin > c).length;
-      day[s][fin <= AWAKE_SEC ? 0 : 1]++;
-      t = fin;
-      rest = 1;
+      const nx = next(cur);
+      if (nx <= stop) { count++; cur = nx; }
+      if (nx >= stop) {
+        const d = nx - cur;
+        return { count, frac: d === 0 ? 0 : (stop - cur) / d, over: nx - stop, at: cur };
+      }
     }
-    if (d >= WARMUP_DAYS) segs.push(day);
+  };
+  const end = start + duration;
+  const out = [];
+  let segStart = start, pending = 0, helpStart = start, tapEnd = start + tap;
+  for (;;) {
+    const last = tapEnd >= end;
+    const segEnd = last ? end : tapEnd;
+    // 前の区間からのおてつだいがまだ終わっていない。
+    if (segStart > segEnd) {
+      if (last) {
+        const d = segStart - helpStart;
+        const f = d > 0 ? (segEnd - helpStart) / d : 0;
+        if (f > 0) out.push(f);
+        break;
+      }
+      tapEnd += tap;
+      continue;
+    }
+    const r = inInterval(segStart, segEnd - segStart);
+    const count = pending + r.count;
+    if (last) {
+      if (count + r.frac > 0) out.push(count + r.frac);
+      break;
+    }
+    helpStart = r.at;
+    if (r.over > 0) { pending = 1; segStart = tapEnd + r.over; } else { pending = 0; segStart = tapEnd; }
+    if (count > 0) out.push(count);
+    tapEnd += tap;
   }
-  return segs;
+  return out;
 }
 
 // 睡眠中のおてつだいHs回のうち、スキル抽選が行われる回数の分布。
