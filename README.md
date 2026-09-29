@@ -10,17 +10,18 @@ https://lapis-blue.github.io/application/checker/
 
 - `checker/` — アプリ本体（画面・状態管理・タイプごとの計算エンジンとポケモンのデータ）
 - `checker/img/mon/` — ポケモンの画像（ゲーム内のメニュー画像を切り詰めた WebP）。ファイル名は `mons.js` のキー
-- `checker/img/ing/` — 食材アイコン（ゲーム内のスクリーンショットから切り抜いた PNG）。食材名との対応は `checker/js/ingicons.js`
+- `checker/img/ing/` — 食材アイコン（ゲーム内のスクリーンショットから切り抜き、56×56 に縮めた WebP）。食材名との対応は `checker/js/ingicons.js`
 - `js/constants.js` — サブスキル・性格・げんきなどのゲームデータ（3タイプ共通）
-- `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、おてつだい時間と確率の丸め、スキル抽選回数とストック、サブスキルの抽選分布）。DOM非依存
+- `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、おてつだい時間と確率の丸め、所持数の遷移、スキル抽選回数とストック、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数
 - `css/style.css` — 土台のスタイル（見た目は `checker/css/theme.css` で上書き）
-- `docs/` — ver1.1〜ver1.5 の要件定義書・設計書（最新: [要件定義](docs/requirements-v1.5.md)・[設計書](docs/design-v1.5.md)）
+- `docs/` — ver1.1〜ver1.6 の要件定義書・設計書（最新: [要件定義](docs/requirements-v1.5.md)・[設計書](docs/design-v1.6.md)）。ver1.6 は計算の高速化と整理で、要件定義はない
 - `tests/check-dist.mjs` — 上位%の分布の整合性テスト（`node tests/check-dist.mjs`）
 - `tests/check-segs.mjs` — 所持数・ストック・天井込みの確率の境界テスト（`node tests/check-segs.mjs`）
 - `tests/compare-values.mjs`・`tests/bench-dist.mjs`・`tests/compare-dist.mjs` — 変更前後の値・分布・計算時間の比較（[実行手順](docs/design-v1.4.md#5-再確認する手順)）
 - `tests/compare-nitoyon.mjs`・`tests/nitoyon/runner.ts` — にとよんツールとの値の比較（[実行手順](docs/design-v1.5.md#5-再確認する手順)）
 - `index.html`・`ingredient/index.html`・`berry/index.html` — `checker/` へ移動するページ
+- `.github/workflows/pages.yml` — `main` への push で `check-segs.mjs`・`check-dist.mjs` を実行し、通ればアプリのファイルだけを GitHub Pages に公開する
 
 ## 共通の計算モデル
 
