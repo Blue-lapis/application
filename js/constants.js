@@ -34,6 +34,15 @@ export const RARITY_P = { gold: 0.14, blue: 0.33, white: 0.53 };
 // https://hackmd.io/@raenonx-pokemon-sleep/rJj6yeIlWe
 export const slotWeights = (n) => (n === 2 ? [1 / 3, 2 / 3] : Array.from({ length: n }, () => 1 / n));
 
+// 食材1個のエナジー（食材タイプの評価で使う。レシピボーナス・料理のレベルは考えない）。
+// にとよんツール（ポケスリ 個体値計算機）のデータ（2026年9月29日取得）による。
+export const ING_ENERGY = {
+  ふといながねぎ: 185, あじわいキノコ: 167, とくせんエッグ: 115, ほっこりポテト: 124, とくせんリンゴ: 90,
+  げきからハーブ: 130, マメミート: 103, モーモーミルク: 98, あまいミツ: 101, ピュアなオイル: 121,
+  あったかジンジャー: 109, あんみんトマト: 110, リラックスカカオ: 151, おいしいシッポ: 342, ワカクサ大豆: 100,
+  ワカクサコーン: 140, めざましコーヒー: 153, ずっしりカボチャ: 250, つやつやアボカド: 162,
+};
+
 export const SUBS = [
   { id: 'skM', name: 'スキルM', rarity: 'blue', skill: 0.36 },
   { id: 'skS', name: 'スキルS', rarity: 'white', skill: 0.18 },
