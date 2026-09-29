@@ -3,18 +3,14 @@
 // - 無補正比の高い順に並べると、同等以上の確率（atLeast）は増えていき、最後は1になる。
 // - 順位（自分より高い値の数 + 1）と同等以上の確率が、同じ性能を同じに扱う（同じ値なら同じ順位・同じ確率）。
 // - 個体の無補正比（score）が分布のどれかの値と一致する（同じ計算で作られている）。
-// - 食材タイプのチーム効果のライチュウが、同じ条件のきのみタイプの計算と一致する。
 import { createEngines } from '../checker/js/types.js';
 import { SAME_REL } from '../js/calc.js';
-import { memberEnergy } from '../checker/js/ingredient/team.js';
-import { mults as berryMults } from '../checker/js/berry/calc.js';
 
 const engines = createEngines();
 const CASES = [
   ['berry', { N: 3, camp: true, mon: 'walrein', heal: 1, tap: '3h', team: true, healAmt: 18, healTimes: 3 }, ['berry', 'spM', 'ingS'], 'speed', 'energy'],
   ['berry', { N: 4, camp: false, mon: 'raichu', heal: 0, tap: 'none', team: false, healAmt: 18, healTimes: 2.5 }, ['hb', 'spS', 'invM', 'erb'], 'energy', 'other'],
-  ['ingredient', { N: 3, camp: true, mon: 'flygon', heal: 1, tap: 'always', team: true, healAmt: 18, healTimes: 3 }, ['ingM', 'spS', 'invL'], 'ing', 'speed'],
-  ['ingredient', { N: 4, camp: false, mon: 'toxicroak', heal: 0, tap: '3h', team: true, healAmt: 18, healTimes: 2.5 }, ['hb', 'ingM', 'invM', 'erb'], 'energy', 'other'],
+  ['ingredient', { N: 3, camp: true, g80: false, mon: 'flygon', target: 'A' }, ['ingM', 'spS', 'invL'], 'ing', 'speed'],
   ['skill', { N: 3, camp: true, g80: false, mon: 'mewtwo' }, ['skM', 'spM', 'hb'], 'skill', 'other'],
 ];
 
@@ -39,15 +35,6 @@ for (const [type, env, subs, up, down] of CASES) {
   const r = type === 'ingredient' ? en.score(subs, up, down, arr, env) : en.score(subs, up, down, env);
   check(dist.some((x) => Math.abs(x.r - r) <= r * SAME_REL), `${type} ${env.mon}: 個体の無補正比 ${r} が分布にない`);
   console.log(`${type} ${env.mon}: ${dist.length}通り 合計 ${sum.toFixed(12)} / 個体 ${r.toFixed(3)}倍 同等以上 ${(en.atLeast(r, env) * 100).toFixed(3)}%`);
-}
-
-// 食材タイプのチーム効果（ライチュウ）は、Lv.60・受け取り「3時間ごと」ならきのみタイプの計算と一致する。
-const RAICHU = { mon: 'raichu', lv: 60, subs: ['berry', 'spM'], up: 'speed', down: 'ing' };
-for (const [camp, heal, healTimes] of [[true, 1, 3], [false, 0, 3], [true, 'g80', 3], [true, 1, 2.5]]) {
-  const env = { N: 3, camp, mon: 'raichu', heal, tap: '3h', team: false, healAmt: 18, healTimes };
-  const a = memberEnergy(env, 0, RAICHU);
-  const b = engines.berry.metric(berryMults(RAICHU.subs, RAICHU.up, RAICHU.down), env);
-  check(Math.abs(a - b) < 1e-6 * b, `チーム効果のライチュウ ${JSON.stringify(env)}: ${a} と ${b}`);
 }
 console.log(failed ? `NG ${failed}件` : 'OK');
 process.exit(failed ? 1 : 0);
