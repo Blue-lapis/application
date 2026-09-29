@@ -12,6 +12,8 @@ export const WAKE_ENERGY_ERB = 105;
 export const HEAL_CAP = 150;
 // 料理によるげんきの回復（きのみタイプ）。起床から何分後に料理するか（8時起床で10時・14時・20時）と、
 // 料理の直前のげんきに応じた回復量（80超で1、以下10ごとに1増え、10以下で9）。
+// 所持数が満タンになった後も、おてつだいキューに残っている最大4回分はスキル抽選が行われる（ポケモンスリープ攻略・検証 Wiki「おてつだい」）。
+export const QUEUE_AFTER_FULL = 4;
 export const COOK_AT = [120, 360, 720];
 const COOK_RECOVERY = [[80, 1], [70, 2], [60, 3], [50, 4], [40, 5], [30, 6], [20, 7], [10, 8]];
 export const cookRecovery = (e) => (COOK_RECOVERY.find(([over]) => e > over) || [0, 9])[1];
