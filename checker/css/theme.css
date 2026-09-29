@@ -180,6 +180,11 @@ header{align-items:center}
 .num{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:.85rem;font-weight:700}
 .num input{font:inherit;font-family:var(--font-num);font-size:1rem;width:5.5em;box-sizing:border-box;text-align:right;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .num input:invalid{border-color:var(--tail)}
+/* フィールドボーナスの −／＋。 */
+.step{display:flex;align-items:center;gap:6px}
+.step button{font:inherit;font-size:1.1rem;font-weight:700;width:40px;height:40px;padding:0;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.step button:disabled{opacity:.4;cursor:default}
+.prow>span.fav{white-space:normal;flex:1 1 12em;line-height:1.5}
 .hero{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin-bottom:12px;padding:16px;border-radius:16px;background:var(--psy);color:#fff}
 .hero .stat{background:none;border-radius:0;padding:0;text-align:left;display:flex;align-items:baseline;gap:6px}
 .hero .stat small{color:#fff;opacity:.9;font-size:.75rem;font-weight:700}

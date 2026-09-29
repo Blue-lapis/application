@@ -5,17 +5,18 @@
 import { TYPES, DEFAULT_TYPE, typeOf } from './types.js';
 import { natByName } from './picker.js';
 import { UNLOCK, LEVEL, LEVELS, SLOTS_AT, ingOpen, byId } from '../../js/constants.js';
-import { HEALS, TAPS, HEAL_AMT, HEAL_TIMES, PARAM_LIMITS } from './berry/constants.js';
+import { HEALS, TAPS, HEAL_AMT, HEAL_TIMES, PARAM_LIMITS, FIELD_BONUS } from './berry/constants.js';
 import { TAPS as ING_TAPS } from './ingredient/constants.js';
 
 const KEYS = {
   camp: 'ckcamp', g80: 'ckg80', mode: 'ckmode', lv: 'cklv', mon: 'ckmon', mons: 'ckmons', target: 'igtarget',
   heal: 'ckheal', tap: 'cktap', team: 'ckteam', healAmt: 'ckhealamt', healTimes: 'ckhealtimes', ingTap: 'ckingtap',
+  fieldBonus: 'ckfieldbonus', fav: 'ckfav',
 };
 const LOG_KEYS = { ingredient: 'iglog', berry: 'bflog', skill: 'sklog' };
 const OLD = {
   camp: ['igcamp', 'bfcamp'], g80: ['igg80', 'bfg80'], mode: ['igmode', 'bfmode'], lv: [], mon: ['igmon', 'bfmon'],
-  heal: [], tap: [], team: [], healAmt: [], healTimes: [], ingTap: [],
+  heal: [], tap: [], team: [], healAmt: [], healTimes: [], ingTap: [], fieldBonus: [], fav: [],
 };
 
 const load = (key, def) => {
@@ -55,6 +56,10 @@ export const state = {
   team: true,
   healAmt: HEAL_AMT,
   healTimes: HEAL_TIMES,
+  // きのみタイプのエナジーの補正。フィールドボーナス（整数%）と、選んだポケモンのきのみを好きなきのみとして扱うか。
+  // 無補正比に影響しないので env には入れない（分布の保存のキーも変わらない）。
+  fieldBonus: FIELD_BONUS,
+  fav: false,
 };
 
 export const monData = () => TYPES[state.type].MONS[state.mon];
@@ -104,6 +109,8 @@ export function loadSettings() {
   state.team = loadSetting('team', true) !== false;
   state.healAmt = paramOr('healAmt', loadSetting('healAmt', HEAL_AMT), HEAL_AMT);
   state.healTimes = paramOr('healTimes', loadSetting('healTimes', HEAL_TIMES), HEAL_TIMES);
+  state.fieldBonus = paramOr('fieldBonus', loadSetting('fieldBonus', FIELD_BONUS), FIELD_BONUS);
+  state.fav = loadSetting('fav', false) === true;
   // レベルの設定がまだなければ、以前の対象レベルの切り替え（枠の数）から引き継ぐ（Lv.50まで→60・Lv.70まで→70・Lv.80まで→80）。
   const n = loadSetting('mode', 3);
   const lv = loadSetting('lv', LEVEL[n] ?? 60);
@@ -135,9 +142,10 @@ export function setHeal(v) { if (HEALS.includes(v)) { state.heal = v; save(KEYS.
 export function setTap(v) { if (TAPS.includes(v)) { state.tap = v; save(KEYS.tap, v); } }
 export function setIngTap(v) { if (ING_TAPS.includes(v)) { state.ingTap = v; save(KEYS.ingTap, v); } }
 export function setTeam(v) { state.team = v; save(KEYS.team, v); }
+export function setFav(v) { state.fav = v; save(KEYS.fav, v); }
 
-// 詳細画面の数値。回復量は整数、発動回数は小数第2位まで。範囲外や桁の多い値は受け付けない（false を返す）。
-const PARAM_DIGITS = { healAmt: 0, healTimes: 2 };
+// 詳細画面の数値。回復量とフィールドボーナスは整数、発動回数は小数第2位まで。範囲外や桁の多い値は受け付けない（false を返す）。
+const PARAM_DIGITS = { healAmt: 0, healTimes: 2, fieldBonus: 0 };
 const paramOk = (k, v) => {
   if (typeof v !== 'number' || !Number.isFinite(v) || v < PARAM_LIMITS[k][0] || v > PARAM_LIMITS[k][1]) return false;
   const s = 10 ** PARAM_DIGITS[k];

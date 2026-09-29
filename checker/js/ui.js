@@ -5,13 +5,14 @@ import { eff } from '../../js/calc.js';
 import { TYPES } from './types.js';
 import { arrName, SLOT_LV } from './ingredient/constants.js';
 import { slotsOf } from './ingredient/calc.js';
-import { HEAL_AMT, HEAL_TIMES, TEAM_OTHERS } from './berry/constants.js';
+import { HEAL_AMT, HEAL_TIMES, TEAM_OTHERS, FIELD_BONUS, PARAM_LIMITS } from './berry/constants.js';
+import { boostedEnergy } from './berry/calc.js';
 import { energyAt } from './engine.js';
 import { ingIcon } from './ingicons.js';
 import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLabel } from './picker.js';
 import {
   state, monData, loadSettings, setCamp, setLevel, setMon, setType, setTarget, setNature, resetSelection,
-  setHeal, setTap, setIngTap, setTeam, setParam,
+  setHeal, setTap, setIngTap, setTeam, setFav, setParam,
   currentSubs, currentArr, filledSubs, slotCount, isComplete, env, loadLog, appendLog, removeLogEntry, restoreEntry, isCurrent,
 } from './state.js';
 
@@ -372,6 +373,11 @@ const teamText = (e) => `おてボのチーム効果を${e.team ? '含める' : 
 const tapText = (e) => (e.tap === '3h' ? '起床中は3時間ごとと就寝時に受け取る'
   : e.tap === 'always' ? '日中は常時タップ（所持数はあふれない）' : '受け取らない（ずっといつのまに育成）');
 const genkiText = (g) => `就寝時${g.bed}→起床前${g.end}`;
+// きのみのエナジーの補正（きのみタイプだけ）。既定のとき（ボーナス0%・好きでない）は null。
+const boostText = () => {
+  const t = [state.fieldBonus ? `フィールドボーナス+${state.fieldBonus}%` : '', state.fav ? '好きなきのみ' : ''].filter(Boolean);
+  return t.length ? t.join('・') : null;
+};
 
 // パラメーターの切り替え。[要素の id, 今の値をボタンの data-v と同じ文字列にする関数, data-v から値を設定する関数]。
 const SEGS = [
@@ -381,6 +387,7 @@ const SEGS = [
   ['ingTapSeg', () => state.ingTap, setIngTap],
   ['campSeg', () => (state.camp ? '1' : '0'), (v) => setCamp(v === '1')],
   ['teamSeg', () => (state.team ? '1' : '0'), (v) => setTeam(v === '1')],
+  ['favSeg', () => (state.fav ? '1' : '0'), (v) => setFav(v === '1')],
 ];
 
 function initParams(engines) {
@@ -392,7 +399,7 @@ function initParams(engines) {
   $('paramClose').onclick = () => $('paramDlg').close();
   $('paramDlg').addEventListener('click', (e) => { if (e.target === $('paramDlg')) $('paramDlg').close(); });
   // 範囲外の値は受け付けず、入力欄を今の値に戻す。
-  ['healAmt', 'healTimes'].forEach((k) => {
+  ['healAmt', 'healTimes', 'fieldBonus'].forEach((k) => {
     $(k).addEventListener('change', () => {
       if (!setParam(k, Number($(k).value))) $(k).value = state[k];
       refresh(engines);
@@ -401,8 +408,19 @@ function initParams(engines) {
   $('paramReset').onclick = () => {
     setParam('healAmt', HEAL_AMT);
     setParam('healTimes', HEAL_TIMES);
+    setParam('fieldBonus', FIELD_BONUS);
+    setFav(false);
     refresh(engines);
   };
+  // フィールドボーナスは手入力なら整数で1%単位。−／＋ は5の倍数に揃えながら5%ずつ動かす（33 なら＋で35、−で30）。範囲の端で止める。
+  const [bMin, bMax] = PARAM_LIMITS.fieldBonus;
+  [['bonusDown', -5], ['bonusUp', 5]].forEach(([id, d]) => {
+    $(id).onclick = () => {
+      const v = d > 0 ? Math.floor(state.fieldBonus / 5) * 5 + 5 : Math.ceil(state.fieldBonus / 5) * 5 - 5;
+      setParam('fieldBonus', Math.min(bMax, Math.max(bMin, v)));
+      refresh(engines);
+    };
+  });
 }
 
 function renderParams() {
@@ -414,15 +432,23 @@ function renderParams() {
   $('paramSum').textContent = [
     e.heal === 'g80' ? healText(e) : `${healText(e)}・げんき${genkiText(energyAt(e, 100))}`,
     teamText(e),
-  ].join('・');
+    state.type === 'berry' ? boostText() : null,
+  ].filter(Boolean).join('・');
   if ($('paramDlg').open) renderParamDlg();
 }
 
 function renderParamDlg() {
-  ['healAmt', 'healTimes'].forEach((k) => {
+  ['healAmt', 'healTimes', 'fieldBonus'].forEach((k) => {
     if (document.activeElement !== $(k)) $(k).value = state[k];
   });
   const e = env();
+  if (state.type === 'berry') {
+    const mm = monData();
+    $('favLbl').textContent = `${mm.name}のきのみ（${mm.berry}）を好きなきのみとして扱う`;
+    const [bMin, bMax] = PARAM_LIMITS.fieldBonus;
+    $('bonusDown').disabled = state.fieldBonus <= bMin;
+    $('bonusUp').disabled = state.fieldBonus >= bMax;
+  }
   const teamNote = state.type === 'ingredient'
     ? `。おてボのチーム効果は、ほかの${TEAM_OTHERS}匹を同じポケモン（狙い食材が最も多い食材配列・サブスキルなし・無補正性格）として、おてつだいボーナスで増える狙い食材の個数を足します。ヒーラーの設定は3タイプで共通です。`
     : state.type === 'skill'
@@ -523,20 +549,25 @@ function renderBerryStats(engine) {
   $('cond').textContent = `${condText(m, e, r)}・食材配列は捕獲時の出現率で平均`;
   $('hLabel').textContent = e.team ? '1日のエナジー（チームへの効果込み）' : '1日のきのみエナジー';
 
+  // フィールドボーナス・好きなきのみは、きのみ1個のエナジーを変えるだけなので、表示の段で同じ比率 k を掛ける。
+  // 自分・チームへの効果・無補正の個体に同じ比率が掛かるので、無補正比は変わらない。
+  const energy = boostedEnergy(r.energy, state.fieldBonus, state.fav);
+  const k = energy / r.energy;
   const count = r.day + r.night;
-  const self = count * r.energy;
-  const team = engine.teamGain(m, e);
+  const self = count * energy;
+  const team = engine.teamGain(m, e) * k;
   const total = self + team;
+  const baseE = base * k;
   // 日中・睡眠中は自分のきのみの分。チームへの効果があるときは別の行に出す。
   const showTeam = e.team && m.hb;
   $('hAll').textContent = Math.round(total).toLocaleString();
-  $('hDay').textContent = Math.round(r.day * r.energy).toLocaleString();
-  $('hNight').textContent = Math.round(r.night * r.energy).toLocaleString();
+  $('hDay').textContent = Math.round(r.day * energy).toLocaleString();
+  $('hNight').textContent = Math.round(r.night * energy).toLocaleString();
   setSplit(r.day, r.night);
   heroTeam(showTeam ? `+${Math.round(team).toLocaleString()}` : null);
 
   timeRows(r, m, e);
-  $('rEnergy').innerHTML = `${r.energy}<span>${mm.berry} Lv.${r.LV}</span>`;
+  $('rEnergy').innerHTML = `${energy}<span>${mm.berry} Lv.${r.LV}${k !== 1 ? `・${r.energy}に${boostText()}を掛けて切り上げ` : ''}</span>`;
   $('rAmt').innerHTML = `${r.berry}個<span>${m.berry ? `基礎${mm.berries}個＋きのみの数S` : 'きのみタイプ'}</span>`;
   $('rCount').innerHTML = `${count.toFixed(1)}個<span>日中${r.day.toFixed(1)}個・睡眠中${r.night.toFixed(1)}個</span>`;
   $('rIng').innerHTML = `${(r.ingP * 100).toFixed(1)}%<span>基礎${+(mm.ingP * 100).toFixed(2)}% × ${m.ingMul.toFixed(3)}</span>`;
@@ -546,12 +577,12 @@ function renderBerryStats(engine) {
     : `${pct(r.fullBed)}<span>就寝前の受け取りまで・睡眠中は起床時まで${pct(r.full)}</span>`;
   $('rIngs').innerHTML = `${r.ings.toFixed(1)}個<span>満タンになるまで</span>`;
   $('rGenki').innerHTML = genkiRow(r, e);
-  $('rSelf').innerHTML = `${Math.round(self).toLocaleString()}<span>日中${Math.round(r.day * r.energy).toLocaleString()}・睡眠中${Math.round(r.night * r.energy).toLocaleString()}</span>`;
+  $('rSelf').innerHTML = `${Math.round(self).toLocaleString()}<span>日中${Math.round(r.day * energy).toLocaleString()}・睡眠中${Math.round(r.night * energy).toLocaleString()}</span>`;
   $('rTeam').innerHTML = !e.team ? '—<span>含めない設定</span>'
     : !m.hb ? '0<span>おてつだいボーナスなし</span>'
       : `+${Math.round(team).toLocaleString()}<span>1匹あたり+${Math.round(team / TEAM_OTHERS).toLocaleString()}（同じポケモン・無補正）</span>`;
-  $('rBase').innerHTML = `${Math.round(base).toLocaleString()}<span>無補正</span>`;
-  $('rDRatio').textContent = isComplete() ? `${(total / base).toFixed(2)}倍` : '—';
+  $('rBase').innerHTML = `${Math.round(baseE).toLocaleString()}<span>無補正${k !== 1 ? '（同じエナジーの補正）' : ''}</span>`;
+  $('rDRatio').textContent = isComplete() ? `${(total / baseE).toFixed(2)}倍` : '—';
 }
 
 // 順位の基準は、自分の発動回数＋おてボでほかの4匹（同じポケモン）が増やす発動回数。

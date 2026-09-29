@@ -5,7 +5,7 @@
 // team はおてつだいボーナスのチームへの効果を含めるか。
 import { fillCurve, NO_SUBS, AWAKE_SEC, DAY_SEC } from '../../../js/calc.js';
 import { mk, mults as multsOf, mixed, timesMix, curveOf, energyAt, scheduleOf, pairSegs, basics, amountPatterns, buildDist, distStore } from '../engine.js';
-import { MONS, natCat, TEAM_OTHERS, HB_SPEED } from './constants.js';
+import { MONS, natCat, TEAM_OTHERS, HB_SPEED, FAV_MUL } from './constants.js';
 
 // きのみタイプの berry はきのみの数Sで増える個数。1回あたりの個数はポケモンの基礎値に足して prepare で決める。
 export const mults = (subs, up, down) => multsOf(subs, up, down, 0);
@@ -46,6 +46,12 @@ export function dayBerries(c, ha, hs) {
 
 // レベル Lv のきのみ1個のエナジー。
 export const berryEnergy = (base, lv) => Math.max(base + lv - 1, Math.round(base * 1.025 ** (lv - 1)));
+
+// フィールドボーナス（bonus %）と好きなきのみ（fav）を掛けたきのみ1個のエナジー。
+// どちらも1個ごとに切り上げる（にとよんツールと同じ）。浮動小数の誤差で切り上がらないよう、ボーナスは整数で割る。
+// 倍率は自分・ほかのメンバー・無補正の個体（どれも同じポケモン・同じレベル）に同じだけ掛かるので、
+// 無補正比・分布・順位は変わらない。そのため計算エンジン（metric・分布）には入れず、表示にだけ使う。
+export const boostedEnergy = (energy, bonus, fav) => Math.ceil(Math.ceil(energy * (100 + bonus) / 100) * (fav ? FAV_MUL : 1));
 
 // 1日を受け取りで区切った区間ごとに所持数0から追い、足し合わせる。
 // 満タンになる確率は、fullBed が就寝時（就寝時に受け取るなら、その直前の区間の終わり）、full が起床時。

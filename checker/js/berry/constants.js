@@ -12,7 +12,10 @@ export const TAPS = ['none', '3h'];
 // げんきオールS の1回の回復量と、ヒーラー1匹あたりの1日の発動回数の既定値。
 export const HEAL_AMT = 18;
 export const HEAL_TIMES = 3;
-export const PARAM_LIMITS = { healAmt: [1, 150], healTimes: [0, 20] };
+export const PARAM_LIMITS = { healAmt: [1, 150], healTimes: [0, 20], fieldBonus: [0, 85] };
+// フィールドボーナス（%）の既定値と、好きなきのみのエナジーの倍率。どちらもきのみのエナジーにだけ掛かる。
+export const FIELD_BONUS = 0;
+export const FAV_MUL = 2;
 // 日中の受け取り「3時間ごと」は、起床から3時間ごとに所持品を受け取る（起床中だけ）。
 export const TAP_EVERY = { none: 0, '3h': 3 * 3600 };
 // おてつだいボーナスでおてつだい時間が短くなる、ほかのメンバーの数と短縮率。
