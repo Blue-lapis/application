@@ -87,6 +87,9 @@ section>.natname:first-child{margin-top:0}
 /* 食材配列・狙い食材のチップ。 */
 .slot{grid-template-columns:52px 1fr;padding:8px 0}
 .slot+.slot{border-top:1px solid var(--line-soft)}
+/* 今のレベルでまだ開いていない食材の枠（Lv.50 の Lv.60 の枠）。入れておくことはできる。 */
+.slot>span small{display:block;font-size:.62rem;font-weight:700;margin-top:2px}
+.slot.off .chips{opacity:.45}
 .slot>span{font-weight:700;color:var(--muted)}
 .chip{border:1.5px solid var(--line);border-radius:12px;min-height:44px;background:var(--card)}
 .chip.tgt{border-color:var(--psy)}
@@ -104,13 +107,10 @@ img.ing{width:22px;height:22px;flex:none}
 .ingrow li span{font-size:min(.7rem,2.8vw);font-weight:700;line-height:1.3;white-space:nowrap;letter-spacing:-.02em;color:var(--ink)}
 .credit{margin:4px 4px 0;font-size:.65rem;line-height:1.6;color:var(--muted)}
 
-/* サブスキル見出しの横に置く対象レベルの切り替え。 */
+/* サブスキルの見出し。横に入力した枠の数（3/5枠）。 */
 .sec-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
-.sec-head h2{margin:0}
-.sec-head .mode{grid-auto-columns:max-content;margin:0;background:var(--bg);border-radius:10px;padding:3px;gap:2px}
-.sec-head h2{white-space:nowrap}
-.sec-head .mode button{font-size:.75rem;font-weight:700;padding:8px 8px;border-radius:8px;min-height:36px;white-space:nowrap}
-.sec-head .mode button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+.sec-head h2{margin:0;white-space:nowrap}
+.subcount{font-family:var(--font-num);font-size:.78rem;font-weight:700;color:var(--muted)}
 
 /* サブスキルの枠。1枠1行で「Lv・名前・色」。タップするとダイアログで選ぶ。 */
 .subslots{display:flex;flex-direction:column;gap:8px;margin-top:8px}
@@ -169,6 +169,10 @@ header{align-items:center}
 .params .mode{grid-auto-columns:max-content;margin:0;background:var(--card);border-radius:10px;padding:3px;gap:2px}
 .params .mode button{font-size:.75rem;font-weight:700;padding:8px 8px;border-radius:8px;min-height:36px;white-space:nowrap}
 .params .mode button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+/* レベルの丸ボタン。数字だけを出す。 */
+.lvseg{display:flex;gap:6px}
+.lvseg button{font:inherit;font-family:var(--font-num);font-size:.95rem;font-weight:700;width:42px;height:42px;padding:0;border-radius:50%;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.lvseg button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--card)}
 .psum{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--line);padding-top:6px}
 .psum p{margin:0;font-size:.7rem;font-weight:500;line-height:1.5;color:var(--muted)}
 .psum .txt{font:inherit;font-size:.8rem;font-weight:700;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:0 14px;min-height:36px;cursor:pointer;flex:none}
@@ -212,6 +216,7 @@ dl.rows dt.grp:first-child{padding-top:2px}
 .bar-in{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr) minmax(0,1fr) auto;gap:10px}
 .bar small{font-size:.66rem}
 .bar b{font-size:clamp(1.1rem,5.4vw,1.5rem);font-weight:700;letter-spacing:-.01em}
+.bar-cap{grid-column:1/-1;margin:0 0 -2px;font-size:.66rem;font-weight:700;color:var(--bar-muted);line-height:1.4}
 .bar small.pos{font-size:.64rem;margin-top:1px;white-space:nowrap}
 .bar small.pos:empty{display:none}
 .save{background:var(--save);color:#1D1B2C;border-radius:14px;min-height:48px;padding:0 16px;font-size:.9rem}

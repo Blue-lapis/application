@@ -15,6 +15,10 @@ const CASES = [
   ['ingredient', { N: 4, camp: false, mon: 'toxicroak', target: 'B', heal: 0, tap: '3h', team: true, healAmt: 18, healTimes: 2.5 }, ['hb', 'ingM', 'invM', 'erb'], 'energy', 'other'],
   ['skill', { N: 3, camp: true, mon: 'mewtwo', heal: 1, tap: 'always', team: true, healAmt: 18, healTimes: 3 }, ['skM', 'spM', 'hb'], 'skill', 'other'],
   ['skill', { N: 3, camp: false, mon: 'golduck', heal: 0, tap: '3h', team: true, healAmt: 18, healTimes: 2.5 }, ['hb', 'invM', 'erb'], 'energy', 'speed'],
+  // Lv.50 は食材の枠が2つ（Lv.60 の枠は使わない）。
+  ['berry', { lv: 50, N: 3, camp: true, mon: 'walrein', heal: 1, tap: '3h', team: true, healAmt: 18, healTimes: 3 }, ['berry', 'spM', 'ingS'], 'speed', 'energy'],
+  ['ingredient', { lv: 50, N: 3, camp: true, mon: 'flygon', target: 'A', heal: 1, tap: '3h', team: true, healAmt: 18, healTimes: 3 }, ['ingM', 'spS', 'invL'], 'ing', 'speed'],
+  ['skill', { lv: 50, N: 3, camp: true, mon: 'mewtwo', heal: 1, tap: '3h', team: true, healAmt: 18, healTimes: 2.5 }, ['skM', 'spM', 'hb'], 'skill', 'other'],
 ];
 
 let failed = 0;

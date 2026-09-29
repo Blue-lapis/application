@@ -45,7 +45,7 @@
     <section>
       <div class="sec-head">
         <h2>サブスキル</h2>
-        <div class="mode" role="group" aria-label="対象レベル"><button data-n="3">Lv.50まで</button><button data-n="4">Lv.70まで</button><button data-n="5">Lv.80まで</button></div>
+        <span class="subcount" id="subCount"></span>
       </div>
       <div class="subslots" id="slots"></div>
     </section>
@@ -62,6 +62,7 @@
       <h2>性能</h2>
       <!-- よく変えるパラメーターだけをここで切り替え、ほかは「詳細」のダイアログで変える。data-for はその要素を出すタイプ（空白区切り）。 -->
       <div class="params" id="params">
+        <div class="prow"><span>レベル</span><div class="lvseg" role="group" aria-label="レベル" id="lvSeg"><button data-v="50" aria-label="Lv.50">50</button><button data-v="60" aria-label="Lv.60">60</button><button data-v="70" aria-label="Lv.70">70</button><button data-v="80" aria-label="Lv.80">80</button></div></div>
         <div class="prow" data-for="berry"><span>日中の受け取り</span><div class="mode" role="group" aria-label="日中の受け取り" id="tapSeg"><button data-v="none">なし（いつ育）</button><button data-v="3h">3時間ごと</button></div></div>
         <div class="prow" data-for="ingredient skill"><span>日中の受け取り</span><div class="mode" role="group" aria-label="日中の受け取り" id="ingTapSeg"><button data-v="always">常にタップ</button><button data-v="3h">3時間ごと</button></div></div>
         <div class="prow"><span>いいキャンプチケット</span><div class="mode" role="group" aria-label="いいキャンプチケット" id="campSeg"><button data-v="0">なし</button><button data-v="1">あり</button></div></div>
@@ -90,6 +91,7 @@
 
 <div class="bar" role="status" aria-live="polite">
   <div class="bar-in">
+    <p class="bar-cap" id="bCap"></p>
     <div><small>無補正比</small><b id="bRatio" class="dim">—</b></div>
     <div><small>同等以上の確率</small><b id="bRank" class="dim">—</b></div>
     <div><small>平均何匹に1匹</small><b id="bOdds" class="dim">—</b></div>

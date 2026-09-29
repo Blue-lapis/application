@@ -1,7 +1,7 @@
 // 3タイプの計算エンジン（./*/calc.js）が共有する部品。DOM に触れない。
 // 性格・サブスキルの倍率、げんきの推移とおてつだい回数、基礎値からの時間・確率・所持数、食材配列のパターン、上位%の分布。
 // タイプごとの calc.js は「何を数えるか」だけを持つ。
-import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, LEVEL, slotWeights } from '../../js/constants.js';
+import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, LEVEL, slotWeights, ingOpen } from '../../js/constants.js';
 import {
   energyCurve, helpsPerTap, helpTime, rateOf, subsetDist, sumSubs, mergeSame, SAME_REL, AWAKE_SEC, DAY_SEC, clearCurves,
 } from '../../js/calc.js';
@@ -86,24 +86,31 @@ export function clearCaches() {
 // きのみタイプ・食材タイプの区間の形。区間ごとに [日中の回数, 睡眠中の回数] で、最後が睡眠中。
 export const pairSegs = (awake, sleep) => [...awake.map((n) => [n, 0]), [0, sleep]];
 
-// 基礎値と倍率から、計算に使うレベル・おてつだい時間（チケット込み Te）・食材確率・最大所持数を求める。
+// 計算に使うレベル。条件の lv（50・60・70・80）。lv がない条件は枠の数 N から決める。
+export const levelOf = (env) => env.lv ?? LEVEL[env.N];
+// その条件で開いている食材の枠の数（Lv.50 は Lv.60 の枠がまだ開いていないので2）。
+export const ingSlotsOf = (env) => ingOpen(levelOf(env));
+
+// 基礎値と倍率から、計算に使うレベル・おてつだい時間（チケット込み Te）・食材確率・最大所持数・開いている食材の枠の数を求める。
 export function basics(mon, m, env) {
-  const LV = LEVEL[env.N];
+  const LV = levelOf(env);
   const T = helpTime(mon.time, LV, m.timeMul);
   const Te = env.camp ? T / 1.2 : T;
   const ingP = rateOf(mon.ingP, m.ingMul);
   // 最終進化形は進化してきた個体とみなし、進化1回ごとに最大所持数が5増える（にとよんツールと同じ）。
   const cap0 = mon.cap + EVO_CAP * mon.evo + m.inv;
   const cap = env.camp ? Math.ceil(cap0 * 1.2) : cap0;
-  return { LV, T, Te, ingP, cap };
+  return { LV, T, Te, ingP, cap, ingSlots: ingOpen(LV) };
 }
 
-// すべての食材配列について、各スロットで拾う個数と出現確率（各スロットの候補の確率は slotWeights）。
-// 食材の種類を見ない計算（きのみタイプ・スキルタイプ）のため、個数の並びが同じ配列はまとめる。ポケモンごとに使い回す。
+// すべての食材配列について、開いている k 枠で拾う個数と出現確率（各スロットの候補の確率は slotWeights）。
+// 食材の種類を見ない計算（きのみタイプ・スキルタイプ）のため、個数の並びが同じ配列はまとめる。ポケモンと枠の数ごとに使い回す。
 const patternCache = new WeakMap();
-export function amountPatterns(mon) {
-  if (!patternCache.has(mon)) {
-    const all = mon.slots.reduce(
+export function amountPatterns(mon, k = mon.slots.length) {
+  if (!patternCache.has(mon)) patternCache.set(mon, new Map());
+  const cache = patternCache.get(mon);
+  if (!cache.has(k)) {
+    const all = mon.slots.slice(0, k).reduce(
       (acc, opts) => acc.flatMap(({ amts, p }) => opts.map(([, a], k) => ({ amts: [...amts, a], p: p * slotWeights(opts.length)[k] }))),
       [{ amts: [], p: 1 }],
     );
@@ -113,9 +120,9 @@ export function amountPatterns(mon) {
       const o = out.get(k);
       if (o) o.p += p; else out.set(k, { amts, p });
     }
-    patternCache.set(mon, [...out.values()]);
+    cache.set(k, [...out.values()]);
   }
-  return patternCache.get(mon);
+  return cache.get(k);
 }
 
 // 性格25種を、そのタイプの分類（natCat）で上昇・下降の組にまとめた [上昇, 下降, 確率]。

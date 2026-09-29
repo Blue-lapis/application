@@ -1,10 +1,11 @@
 // 食材タイプ向けの期待値計算エンジン。DOM に触れない。
 // 倍率・げんきの推移・おてつだい回数・分布の数え上げは共通の部品（../engine.js）を使う。
-// 呼び出し側は env = { N, camp, mon, target, heal, tap, team, healAmt, healTimes } を渡す。mon は MONS のキー、target は狙う食材（'A' など）。
+// 呼び出し側は env = { lv, N, camp, mon, target, heal, tap, team, healAmt, healTimes } を渡す。lv はレベル、N はサブスキルの枠の数、
+// mon は MONS のキー、target は狙う食材（'A' など）。
 // heal・healAmt・healTimes はきのみタイプと共通の設定、tap は日中の受け取り（'always' / '3h'）、
 // team はおてつだいボーナスのチームへの効果（同じポケモン4匹の狙い食材の増加）を含めるか。
 import { fillCurve, NO_SUBS } from '../../../js/calc.js';
-import { mk as mkOf, mults as multsOf, mixed, timesMix, curveOf, energyAt, scheduleOf, pairSegs, basics, buildDist, distStore } from '../engine.js';
+import { mk as mkOf, mults as multsOf, mixed, timesMix, curveOf, energyAt, scheduleOf, pairSegs, basics, ingSlotsOf, buildDist, distStore } from '../engine.js';
 import { TEAM_OTHERS, HB_SPEED } from '../berry/constants.js';
 import { MONS, natCat, allArrs } from './constants.js';
 
@@ -12,8 +13,8 @@ import { MONS, natCat, allArrs } from './constants.js';
 const mk = (e, up, down) => mkOf(e, up, down, 1);
 export const mults = (subs, up, down) => multsOf(subs, up, down, 1);
 
-// 食材配列 arr の各スロットの [食材, 個数]。
-export const slotsOf = (mon, arr) => arr.map((k, i) => mon.slots[i][k]);
+// 食材配列 arr の、開いている k 枠の [食材, 個数]（Lv.50 は Lv.60 の枠がまだ開いていないので2枠）。
+export const slotsOf = (mon, arr, k = arr.length) => arr.slice(0, k).map((x, i) => mon.slots[i][x]);
 
 // 1日のおてつだい回数を、所持品の受け取りで区切った区間ごとに [日中, 睡眠中] で返す（期待値なので小数）。
 // 「常にタップ」は日中を1区間とし、所持数を見ない。「3時間ごと」は起床中に3時間ごとと就寝時に受け取る。
@@ -26,7 +27,7 @@ export function prepare(m, env) {
 }
 
 // 所持数0から n 回（小数）おてつだいしたときに拾う、スロットごとの食材の期待個数 got と、満タンになる確率 full。
-// 食材おてつだいは3スロットから均等に1つ選ぶ。それ以外はきのみ。狙い以外の食材も所持数を埋める。
+// 食材おてつだいは開いている枠から均等に1つ選ぶ。それ以外はきのみ。狙い以外の食材も所持数を埋める。
 // 所持数を超える分は捨てられ、満タンになった後のおてつだいでは何も増えない。
 // c は所持数の遷移（共通の fillCurve）。回数が小数なら、前後の整数回の結果を小数部分の割合で混ぜる（きのみタイプと同じ）。
 function segIngredients(c, n) {
@@ -74,7 +75,7 @@ const byIngredient = (mon, slots, xs) => slots.reduce((o, [k], i) => {
 // day・night は食材ごとの個数 { 食材名: 個数 }。
 export function daily(m, arr, env) {
   const mon = MONS[env.mon];
-  const slots = slotsOf(mon, arr);
+  const slots = slotsOf(mon, arr, ingSlotsOf(env));
   const amts = slots.map(([, a]) => a);
   const parts = timesMix(env).map(([e, w]) => {
     const r = prepare(m, e);
@@ -92,7 +93,7 @@ export function daily(m, arr, env) {
   };
 }
 
-export const envKey = (env) => [env.N, env.camp, env.mon, env.target, env.heal, env.tap, env.team, env.healAmt, env.healTimes].join('|');
+export const envKey = (env) => [env.lv, env.N, env.camp, env.mon, env.target, env.heal, env.tap, env.team, env.healAmt, env.healTimes].join('|');
 
 export function createEngine() {
   const metricCache = new Map();
@@ -101,10 +102,10 @@ export function createEngine() {
   const metric = (m, arr, env) => mixed(env, (e) => metricOne(m, arr, e));
   function metricOne(m, arr, env) {
     const r = prepare(m, env);
-    const key = `${envKey(env)}|${arr.join('')}|${r.Te}|${r.ingP.toFixed(8)}|${r.cap}|${m.berry}|${m.wake}|${m.rec}`;
+    const key = `${envKey(env)}|${arr.slice(0, r.ingSlots).join('')}|${r.Te}|${r.ingP.toFixed(8)}|${r.cap}|${m.berry}|${m.wake}|${m.rec}`;
     if (!metricCache.has(key)) {
       const mon = MONS[env.mon];
-      const slots = slotsOf(mon, arr);
+      const slots = slotsOf(mon, arr, r.ingSlots);
       const d = runDay(r, env, m.berry, slots.map(([, a]) => a));
       const all = byIngredient(mon, slots, d.day.map((x, i) => x + d.night[i]));
       metricCache.set(key, all[mon.ings[env.target]] || 0);
@@ -113,9 +114,10 @@ export function createEngine() {
   }
 
   // 比較の基準は、無補正個体（サブスキルなし・無補正性格）のうち狙い食材が最も多く取れる食材配列（狙いが A なら AAA）。
+  // 配列は開いている枠の分だけ（Lv.50 なら AA）。
   function reference(env) {
     const m = mk(NO_SUBS, null, null);
-    return allArrs(MONS[env.mon])
+    return allArrs(MONS[env.mon], ingSlotsOf(env))
       .map(({ arr }) => ({ arr, v: metric(m, arr, env) }))
       .reduce((a, b) => (b.v > a.v ? b : a));
   }
@@ -141,7 +143,7 @@ export function createEngine() {
   // 上位%の分布は、サブスキル・性格・食材配列（捕獲時の配列の確率 slotWeights）をすべて数え上げる。
   // スキル確率アップは食材に影響しないので、それ以外の効果が同じ組み合わせをまとめる。
   const store = distStore(envKey, (env) => {
-    const arrs = allArrs(MONS[env.mon]);
+    const arrs = allArrs(MONS[env.mon], ingSlotsOf(env));
     const b = baseMetric(env);
     return buildDist(env.N, natCat, true, (e, u, d) => {
       const m = mk(e, u, d);
