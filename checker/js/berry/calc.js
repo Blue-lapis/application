@@ -1,6 +1,6 @@
 // きのみタイプ向けの期待値計算エンジン。DOM に触れない。
 // 倍率・げんきの推移・おてつだい回数・分布の数え上げは共通の部品（../engine.js）を使う。
-// 呼び出し側は env = { N, camp, mon, heal, tap, team, healAmt, healTimes } を渡す。mon は MONS のキー。
+// 呼び出し側は env = { lv, N, camp, mon, heal, tap, team, healAmt, healTimes } を渡す（lv はレベル、N はサブスキルの枠の数）。mon は MONS のキー。
 // heal はヒーラーの数（0/1/2）か 'g80'（げんき常に81%以上）、tap は日中の受け取り（'none' / '3h'）、
 // team はおてつだいボーナスのチームへの効果を含めるか。
 import { fillCurve, NO_SUBS, AWAKE_SEC, DAY_SEC } from '../../../js/calc.js';
@@ -57,7 +57,7 @@ function runDays(r) {
   const last = r.segs.length - 1;
   // 最後の区間が睡眠中だけなら、就寝時に受け取っている。
   const bedAt = last > 0 && r.segs[last][0] === 0 ? last - 1 : last;
-  for (const { amts, p } of amountPatterns(MONS[r.mon])) {
+  for (const { amts, p } of amountPatterns(MONS[r.mon], r.ingSlots)) {
     const c = fillCurve(r.cap, r.ingP, r.berry, amts);
     r.segs.forEach(([ha, hs], i) => {
       const v = segBerries(c, ha, hs);
@@ -100,7 +100,7 @@ function dailyOne(m, env) {
   return { ...r, ...d };
 }
 
-export const envKey = (env) => [env.N, env.camp, env.mon, env.heal, env.tap, env.team, env.healAmt, env.healTimes].join('|');
+export const envKey = (env) => [env.lv, env.N, env.camp, env.mon, env.heal, env.tap, env.team, env.healAmt, env.healTimes].join('|');
 
 export function createEngine() {
   const metricCache = new Map();

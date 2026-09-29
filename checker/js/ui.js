@@ -1,5 +1,5 @@
 // DOM 描画とイベント配線。計算はタイプごとの calc.js のエンジンに委譲する。
-import { byId, UNLOCK, LEVEL } from '../../js/constants.js';
+import { byId, UNLOCK, ingOpen } from '../../js/constants.js';
 import { fmtPct, trunc, mmss } from '../../js/format.js';
 import { eff } from '../../js/calc.js';
 import { TYPES } from './types.js';
@@ -10,9 +10,9 @@ import { energyAt } from './engine.js';
 import { ingIcon } from './ingicons.js';
 import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLabel } from './picker.js';
 import {
-  state, monData, loadSettings, setCamp, setMode, setMon, setType, setTarget, setNature, resetSelection,
+  state, monData, loadSettings, setCamp, setLevel, setMon, setType, setTarget, setNature, resetSelection,
   setHeal, setTap, setIngTap, setTeam, setParam,
-  currentSubs, isComplete, env, loadLog, appendLog, removeLogEntry, restoreEntry, isCurrent,
+  currentSubs, currentArr, filledSubs, slotCount, isComplete, env, loadLog, appendLog, removeLogEntry, restoreEntry, isCurrent,
 } from './state.js';
 
 const $ = (id) => document.getElementById(id);
@@ -42,8 +42,6 @@ function matchRank(q, name, key) {
 // 「キュウコン(アローラのすがた)」を名前と姿に分ける。
 const splitName = (name) => name.match(/^([^(]+)(?:\((.+)\))?$/).slice(1);
 const def = () => TYPES[state.type];
-// 対象レベルの切り替えの名前。最後の枠が開くレベルまで（3枠なら「Lv.50まで」）。
-const modeLabel = (N) => `Lv.${UNLOCK[N - 1]}まで`;
 // ダイアログの注記で使う、そのタイプの順位の基準。
 const METRIC = { berry: 'きのみエナジー', ingredient: '食材の個数', skill: 'スキルの発動回数' };
 
@@ -147,15 +145,12 @@ export function initUI(engines) {
 
   initParams(engines);
 
-  document.querySelectorAll('.sec-head .mode button').forEach((b) => {
-    b.onclick = () => { setMode(+b.dataset.n); refresh(engines); };
-  });
-
   initDialogs(engines);
 
   $('save').onclick = () => {
     if (!isComplete()) return;
-    const entry = { t: Date.now(), mon: state.mon, subs: currentSubs(), nat: state.nat, up: state.up, down: state.down };
+    // サブスキルは今のレベルの枠より多く入れてあればその分も残し、ほかのレベルでも一覧に出せるようにする。
+    const entry = { t: Date.now(), mon: state.mon, subs: filledSubs(), nat: state.nat, up: state.up, down: state.down };
     appendLog(state.type === 'ingredient' ? { ...entry, arr: [...state.arr] } : entry);
     renderLog(engines);
     $('save').textContent = '記録済';
@@ -208,10 +203,6 @@ function renderHeader() {
     : `<dt>${label}</dt><dd id="${id}">—</dd>`)).join('');
 }
 
-function renderMode() {
-  document.querySelectorAll('.sec-head .mode button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.n === state.N)));
-}
-
 function renderIngs(engines) {
   if (state.type !== 'ingredient') return;
   const mm = monData();
@@ -220,7 +211,9 @@ function renderIngs(engines) {
     b.onclick = () => { setTarget(b.dataset.v); refresh(engines); };
   });
 
-  $('arr').innerHTML = mm.slots.map((opts, i) => `<div class="slot"><span>${SLOT_LV[i]}</span><div class="chips" data-i="${i}">${
+  // 今のレベルでまだ開いていない枠（Lv.50 の Lv.60 の枠）は薄くする。入れておくと Lv.60 以上で使う。
+  const open = ingOpen(state.lv);
+  $('arr').innerHTML = mm.slots.map((opts, i) => `<div class="slot${i >= open ? ' off' : ''}"><span>${SLOT_LV[i]}${i >= open ? '<small>未解放</small>' : ''}</span><div class="chips" data-i="${i}">${
     opts.map(([ing, a], k) => chipHtml(k, `${ingIcon(mm.ings[ing])}${mm.short[ing]}×${a}`, state.arr[i] === k, opts.length === 1, ing === state.target ? 'tgt' : '')).join('')
   }</div></div>`).join('');
   $('arr').querySelectorAll('.chips').forEach((g) => g.querySelectorAll('.chip').forEach((b) => {
@@ -234,17 +227,18 @@ function renderIngs(engines) {
 
 const rarityCls = (id) => `r-${byId[id].rarity}`;
 
-// サブスキルはレベルの低い枠から順に入れる。手前の枠が空いている枠は選べない。
-const reachable = (i) => currentSubs().slice(0, i).every(Boolean);
-const firstEmpty = () => Math.max(0, currentSubs().findIndex((v) => !v));
+// サブスキルは5枠すべてを、レベルの低い枠から順に入れる。手前の枠が空いている枠は選べない。
+const reachable = (i) => state.subs.slice(0, i).every(Boolean);
+const firstEmpty = () => Math.max(0, state.subs.findIndex((v) => !v));
 
 // サブスキルの枠。タップすると、その枠を選ぶダイアログを開く。
 function renderSlots() {
-  $('slots').innerHTML = UNLOCK.slice(0, state.N).map((lv, i) => {
+  $('slots').innerHTML = UNLOCK.map((lv, i) => {
     const id = state.subs[i];
     return `<button class="subslot ${id ? rarityCls(id) : 'empty'}" data-i="${i}" aria-haspopup="dialog" ${reachable(i) ? '' : 'disabled'}><small>Lv.${lv}</small><span>${id ? SUB_FULL[id] || subShort(id) : '未選択'}</span></button>`;
   }).join('');
   $('slots').querySelectorAll('.subslot').forEach((b) => { b.onclick = () => openSub(+b.dataset.i); });
+  $('subCount').textContent = `${filledSubs().length}/${UNLOCK.length}枠`;
 }
 
 // 性格のボタン。名前と、上昇・下降の補正を出す。計算に効かない補正は薄くする。
@@ -264,7 +258,7 @@ function renderNat() {
   $('natBtn').innerHTML = `<b>${n[0]}</b><small>${n[1] ? `${side('▲', n[1])} ${side('▼', n[2])}` : '無補正'}</small>`;
 }
 
-// ダイアログ。サブスキルは選ぶと次の空き枠へ進み、すべての枠が埋まったら閉じる。性格は選ぶと閉じる。
+// ダイアログ。サブスキルは選ぶと次の空き枠へ進み、5枠すべてが埋まったら閉じる。途中でも閉じるボタンで閉じられる。性格は選ぶと閉じる。
 let subAt = 0;
 
 function initDialogs(engines) {
@@ -288,16 +282,16 @@ function initDialogs(engines) {
     const id = b.dataset.v;
     // どこかの枠で選んでいるものを押すと、その枠から外して、その枠を入れ直す。
     // 途中の枠を外したときは、そこを埋めるまで後ろの枠は選べない。
-    const at = currentSubs().indexOf(id);
+    const at = state.subs.indexOf(id);
     if (at >= 0) {
       state.subs[at] = null;
       subAt = at;
     } else {
       state.subs[subAt] = id;
       // 次の枠が空いていれば進む。入れ直しのときはその枠に留まる。
-      if (subAt + 1 < state.N && !state.subs[subAt + 1]) subAt += 1;
+      if (subAt + 1 < UNLOCK.length && !state.subs[subAt + 1]) subAt += 1;
       // 選んだ結果すべての枠が埋まったら閉じる。直すときはもう一度開く。
-      if (currentSubs().every(Boolean)) $('subDlg').close();
+      if (state.subs.every(Boolean)) $('subDlg').close();
     }
     refresh(engines);
   });
@@ -336,8 +330,8 @@ function openSub(i) {
 }
 
 function renderSubDlg() {
-  if (subAt >= state.N || !reachable(subAt)) subAt = firstEmpty();
-  const lvs = UNLOCK.slice(0, state.N);
+  if (subAt >= UNLOCK.length || !reachable(subAt)) subAt = firstEmpty();
+  const lvs = UNLOCK;
   $('subTitle').textContent = `Lv.${lvs[subAt]} のサブスキルを選んでください`;
   $('subTabs').innerHTML = lvs.map((lv, i) => {
     const id = state.subs[i];
@@ -345,14 +339,14 @@ function renderSubDlg() {
   }).join('');
 
   // ほかの枠で選んでいるサブスキルには、その枠のレベルを付ける。押すとその枠から外れる。
-  const usedAt = Object.fromEntries(currentSubs().map((id, i) => [id, lvs[i]]).filter(([id]) => id));
+  const usedAt = Object.fromEntries(state.subs.map((id, i) => [id, lvs[i]]).filter(([id]) => id));
   const chip = (id, label, cls) => {
     const lv = usedAt[id], mine = state.subs[subAt] === id;
     return `<button class="pick ${rarityCls(id)} ${lv && !mine ? 'used' : ''} ${cls || ''}" data-v="${id}" aria-pressed="${mine}" aria-label="${SUB_FULL[id]}${lv ? `（Lv.${lv}で選択中・押すと外す）` : ''}">${label}${lv ? `<i>${lv}</i>` : ''}</button>`;
   };
   $('subBody').innerHTML = `<h3>金色サブスキル</h3><div class="gold">${GOLD.map((id) => chip(id, SUB_FULL[id])).join('')}</div>`
     + `<div class="fams">${FAMILIES.map(([label, sizes]) => `<div class="fam"><span>${label}</span><div>${sizes.map(([id, sz]) => chip(id, sz, 'sz')).join('')}</div></div>`).join('')}</div>`;
-  $('subNote').textContent = `${METRIC[state.type]}に影響しないサブスキル（睡眠EXPボーナスなど）は、「なし他」として計算します。`;
+  $('subNote').textContent = `途中で閉じても期待値は出ます。同等以上の確率は、性能で選んだレベルの枠（Lv.50・60 は3枠、Lv.70 は4枠、Lv.80 は5枠）がそろうと出ます。${METRIC[state.type]}に影響しないサブスキル（睡眠EXPボーナスなど）は、「なし他」として計算します。`;
 }
 
 // 性格の表。計算上は無補正と同じになる性格（効く補正がないもの）は薄くする。
@@ -381,6 +375,7 @@ const genkiText = (g) => `就寝時${g.bed}→起床前${g.end}`;
 
 // パラメーターの切り替え。[要素の id, 今の値をボタンの data-v と同じ文字列にする関数, data-v から値を設定する関数]。
 const SEGS = [
+  ['lvSeg', () => String(state.lv), (v) => setLevel(+v)],
   ['healSeg', () => String(state.heal), (v) => setHeal(v === 'g80' ? v : +v)],
   ['tapSeg', () => state.tap, setTap],
   ['ingTapSeg', () => state.ingTap, setIngTap],
@@ -439,7 +434,7 @@ function renderParamDlg() {
 // 計算条件の表示。r は daily の結果（起床時のげんき wakeE）。
 const condText = (m, e, r) => {
   const recText = m.rec > 1 ? '・げんき回復量↑1.2倍' : m.rec < 1 ? '・げんき回復量↓0.88倍' : '';
-  return `Lv.${LEVEL[state.N]}・睡眠8.5時間・${healText(e)}${e.heal === 'g80' ? '' : `・起床時げんき${r.wakeE}${recText}`}・${tapText(e)}`;
+  return `Lv.${state.lv}・睡眠8.5時間・${healText(e)}${e.heal === 'g80' ? '' : `・起床時げんき${r.wakeE}${recText}`}・${tapText(e)}`;
 };
 const genkiRow = (r, e) => (e.heal === 'g80' ? '常に81%以上' : `${genkiText(r.genki)}<span>起床時${r.wakeE}・${e.heal ? `ヒーラー${e.heal}匹` : 'ヒーラーなし'}</span>`);
 const timeRows = (r, m, e) => {
@@ -477,7 +472,7 @@ function renderIngStats(engine) {
   $('rBase').innerHTML = `${ref.v.toFixed(1)}個<span>${arrName(mm, ref.arr)}・無補正</span>`;
 
   // 食材配列が決まるまでは、無補正基準の配列で時間・確率などを表示する。
-  const arrOk = !state.arr.includes(null);
+  const arrOk = !currentArr().includes(null);
   const r = engine.daily(m, arrOk ? state.arr : ref.arr, e);
   $('cond').textContent = condText(m, e, r);
   $('hLabel').textContent = `1日の${mm.short[state.target]}`;
@@ -493,7 +488,7 @@ function renderIngStats(engine) {
     $('rDRatio').textContent = '—';
     return;
   }
-  const slots = slotsOf(mm, state.arr);
+  const slots = slotsOf(mm, state.arr, ingOpen(state.lv));
   const tAmt = slots.reduce((s, [ing, a]) => s + (ing === state.target ? a : 0), 0) / slots.length;
   const allAmt = slots.reduce((s, [, a]) => s + a, 0) / slots.length;
   const tDay = r.day[tName] || 0, tNight = r.night[tName] || 0, self = tDay + tNight;
@@ -634,8 +629,20 @@ function requestDist(engines) {
   worker.postMessage({ type, env: next });
 }
 
+// 帯の上の1行。何の確率かと、確率を出すのに足りない入力。
+function barCaption() {
+  const N = slotCount();
+  const missing = [
+    currentSubs().every(Boolean) ? '' : `サブスキル${N}枠`,
+    state.up && state.down ? '' : '性格',
+    currentArr().includes(null) ? '食材配列' : '',
+  ].filter(Boolean);
+  return missing.length ? `Lv.${state.lv}の確率は、${missing.join('・')}がそろうと出ます` : `Lv.${state.lv}・サブスキル${N}枠での確率`;
+}
+
 function renderBar(engines) {
   const ok = isComplete();
+  $('bCap').textContent = barCaption();
   ['bRatio', 'bRank', 'bOdds'].forEach((id) => $(id).classList.toggle('dim', !ok));
   $('save').disabled = !ok;
   // 結果の行（同等以上の確率・平均何匹に1匹・性能値の順位）。
@@ -676,20 +683,22 @@ function renderLog(engines) {
   const e = env(), mm = monData(), engine = engines[state.type], { NATL } = def();
   const rd = engine.ready(e);
   requestDist(engines);
+  // 今のレベルで開いている枠がそろっている記録だけを、その枠で評価する（5枠の記録は Lv.50〜80 のどれでも出る）。
+  const N = slotCount(), open = ingOpen(state.lv);
   const L = loadLog()
-    .filter((x) => x.subs.length === state.N)
-    .map((x) => ({ ...x, r: scoreOf(engine, x, e) }))
+    .filter((x) => x.subs.length >= N && (state.type !== 'ingredient' || x.arr.slice(0, open).every(Number.isInteger)))
+    .map((x) => ({ ...x, r: scoreOf(engine, { ...x, subs: x.subs.slice(0, N) }, e) }))
     .sort((a, b) => b.r - a.r);
 
   $('log').innerHTML = L.length
     ? L.map((x) => {
-      const detail = `${state.type === 'ingredient' ? `${arrName(mm, x.arr)}　` : ''}${x.subs.map(subShort).join('／')}　${x.nat ? `${esc(x.nat)} ` : ''}▲${NATL[x.up]} ▼${NATL[x.down]}`;
+      const detail = `${state.type === 'ingredient' ? `${arrName(mm, x.arr.slice(0, open))}　` : ''}${x.subs.slice(0, N).map(subShort).join('／')}　${x.nat ? `${esc(x.nat)} ` : ''}▲${NATL[x.up]} ▼${NATL[x.down]}`;
       // Entries saved before the memo prompt was removed keep their memo as the heading.
       const cur = isCurrent(x);
       const ge = rd && x.r > 0 ? engine.atLeast(x.r, e) : 0;
       return `<li class="${cur ? 'cur' : ''}" data-t="${x.t}" tabindex="0" title="タップで入力に戻す" aria-current="${cur}"><div>${cur ? '<span class="now">表示中</span>' : ''}${x.memo ? `${esc(x.memo)}<div class="m">${detail}</div>` : detail}</div><div><b>${x.r.toFixed(2)}倍</b><div class="m">${rd ? (x.r > 0 ? `同等以上${fmtPct(ge)}<br>約${Math.round(1 / ge).toLocaleString()}匹に1匹` : '—') : pendingText()}</div></div><button class="del" data-t="${x.t}">削除</button></li>`;
     }).join('')
-    : `<li class="empty">${modeLabel(state.N)}の記録はまだありません</li>`;
+    : `<li class="empty">Lv.${state.lv}（サブスキル${N}枠）で見られる記録はまだありません</li>`;
 
   // 行をタップすると、その個体を入力に戻して今の入力と見比べられるようにする。削除ボタンは除く。
   const byT = Object.fromEntries(L.map((x) => [String(x.t), x]));
@@ -707,7 +716,8 @@ function renderLog(engines) {
 
 // 同等以上の確率・平均何匹に1匹・性能値の順位の意味と、確率の前提（抽選条件）。
 function renderRankNote() {
-  const arr = state.type === 'ingredient' ? '食材配列は捕獲時の出現率（Lv.30 は A 1/3・B 2/3、Lv.60 は3候補を等確率）、' : '食材配列は捕獲時の出現率で平均、';
+  const lv60 = ingOpen(state.lv) >= 3 ? '、Lv.60 は3候補を等確率' : '。Lv.60 の枠はまだ開いていないので使わない';
+  const arr = state.type === 'ingredient' ? `食材配列は捕獲時の出現率（Lv.30 は A 1/3・B 2/3${lv60}）、` : `食材配列は捕獲時の出現率で平均${ingOpen(state.lv) >= 3 ? '' : '（Lv.60 の枠は使わない）'}、`;
   $('rankNote').textContent = '「同等以上の確率」は、同じポケモン・同じパラメーターで、サブスキルを1枠ずつ色（金14%・青33%・白53%）で抽選して'
     + `その色の未所持のものから均等に選び、性格25種を等確率とした場合（${arr}フレンドメダルによる金枠確定なし）に、`
     + 'この個体の無補正比以上になる推定確率です。「平均何匹に1匹」はその逆数（丸める前の確率から計算）です。'
@@ -717,7 +727,6 @@ function renderRankNote() {
 function refresh(engines) {
   renderHeader();
   renderRankNote();
-  renderMode();
   renderParams();
   renderIngs(engines);
   renderSlots();

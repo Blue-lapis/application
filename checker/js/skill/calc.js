@@ -2,7 +2,7 @@
 // 倍率・げんきの推移・おてつだい回数・分布の数え上げは共通の部品（../engine.js）を使い、
 // 共通の計算（../../../js/calc.js の抽選回数・ストックの発動回数）を、ポケモンごとの基礎値・天井・食材の個数で使う。
 // スキルの数え方はにとよんツールと同じ（天井込みの実質確率で抽選し、満タン後は抽選しない）。
-// 呼び出し側は env = { N, camp, mon, heal, tap, team, healAmt, healTimes } を渡す。
+// 呼び出し側は env = { lv, N, camp, mon, heal, tap, team, healAmt, healTimes } を渡す（lv はレベル、N はサブスキルの枠の数）。
 // heal・healAmt・healTimes・team はきのみタイプと共通、tap は日中の受け取り（'always' / '3h'、食材タイプと共通）。
 import { eff, rateOf, fillCurve, curveRolls, stockSkills, NO_SUBS } from '../../../js/calc.js';
 import { mk as mkOf, mults as multsOf, mixed, timesMix, curveOf, energyAt, scheduleOf, basics, amountPatterns, buildDist, distStore } from '../engine.js';
@@ -53,7 +53,7 @@ function daySkills(r, segs) {
 // 区間の抽選回数は、所持数0から n 回（小数）おてつだいしたときの分布（curveRolls）。berry は1回に拾うきのみの個数。
 function averagePatterns(r, mon, berry) {
   const o = { day: 0, night: 0, rolls: 0, full: 0 };
-  for (const { amts, p } of amountPatterns(mon)) {
+  for (const { amts, p } of amountPatterns(mon, r.ingSlots)) {
     const c = fillCurve(r.cap, r.ingP, berry, amts);
     const d = daySkills(r, r.segs.map((s) => (s.tap ? s : { ...s, rolls: curveRolls(c, s.n) })));
     Object.keys(o).forEach((k) => { o[k] += p * d[k]; });
@@ -74,7 +74,7 @@ export function daily(m, env) {
   return out;
 }
 
-export const envKey = (env) => [env.N, env.camp, env.mon, env.heal, env.tap, env.team, env.healAmt, env.healTimes].join('|');
+export const envKey = (env) => [env.lv, env.N, env.camp, env.mon, env.heal, env.tap, env.team, env.healAmt, env.healTimes].join('|');
 
 export function createEngine() {
   const metricCache = new Map();

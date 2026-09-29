@@ -5,7 +5,7 @@
 // スキルは、このアプリだけが満タン後のキュー4回を抽選するので、所持数が満タンになる条件では値が多くなる（docs/design-v1.5.md の6章）。
 import { readFileSync, writeFileSync } from 'node:fs';
 import { TYPES } from '../checker/js/types.js';
-import { LEVEL, slotWeights } from '../js/constants.js';
+import { SLOTS_AT, slotWeights } from '../js/constants.js';
 
 const NAME = {
   'mr-mime': 'Mr. Mime', farfetchd: "Farfetch'd",
@@ -55,18 +55,19 @@ if (mode === 'gen') {
   const eng = def.createEngine();
   const cases = [], rows = [];
   for (const [key, mon] of Object.entries(def.MONS)) {
-    for (const N of [3, 5]) for (const e0 of ENVS) for (const ss0 of SUBSETS[type]) for (const [nat, up, down] of NATS) {
+    for (const lv of [50, 60, 80]) for (const e0 of ENVS) for (const ss0 of SUBSETS[type]) for (const [nat, up, down] of NATS) {
       if (skip(key, nat)) continue;
+      const N = SLOTS_AT[lv];
       const ss = ss0.slice(0, N);
-      const env = { N, camp: e0.camp, mon: key, target: 'A', heal: e0.heal, tap: e0.tap, team: false, healAmt: 18, healTimes: 3 };
+      const env = { lv, N, camp: e0.camp, mon: key, target: 'A', heal: e0.heal, tap: e0.tap, team: false, healAmt: 18, healTimes: 3 };
       const m = def.mults(ss, up, down);
       const base = {
-        name: nameOf(key), level: LEVEL[N], subs: ss.map((s) => SUBNAME[s]), nature: nat,
+        name: nameOf(key), level: lv, subs: ss.map((s) => SUBNAME[s]), nature: nat,
         e4eEnergy: 18, e4eCount: e0.heal === 1 ? 3 : 0, full: e0.heal === 'g80', tap: tapOf(e0.tap), camp: e0.camp, helpBonusCount: 0,
       };
       const arrs = allArrs(mon);
       const push = (extra) => arrs.map((a) => cases.push({ ...base, ing: letters(a.arr), ...extra }) - 1);
-      const row = { key, N, env: e0, ss, nat, arrs, idx: push({}) };
+      const row = { key, lv, env: e0, ss, nat, arrs, idx: push({}) };
       row.ours = type === 'ingredient'
         ? arrs.map((a) => Object.keys(mon.ings).map((t) => eng.metric(m, a.arr, { ...env, target: t })))
         : eng.metric(m, env);
@@ -106,5 +107,5 @@ if (mode === 'gen') {
   const q = (f) => diffs[Math.floor((1 - f) * (diffs.length - 1))].d.toExponential(2);
   console.log(`${type}: ${diffs.length}件 相対差 中央値 ${q(0.5)} 99% ${q(0.99)} 最大 ${diffs[0].d.toExponential(2)}`);
   diffs.slice(0, 5).forEach((x) => console.log(
-    `  ${x.r.key} Lv.${LEVEL[x.r.N]} ${JSON.stringify(x.r.env)} [${x.r.ss}] ${x.r.nat} ${x.label} このアプリ ${x.ours} にとよん ${x.nito}`));
+    `  ${x.r.key} Lv.${x.r.lv} ${JSON.stringify(x.r.env)} [${x.r.ss}] ${x.r.nat} ${x.label} このアプリ ${x.ours} にとよん ${x.nito}`));
 }

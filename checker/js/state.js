@@ -4,17 +4,17 @@
 // 共通の設定は ck 接頭辞で持ち、まだなければ統合前の設定を引き継ぐ。
 import { TYPES, DEFAULT_TYPE, typeOf } from './types.js';
 import { natByName } from './picker.js';
-import { UNLOCK, LEVEL, byId } from '../../js/constants.js';
+import { UNLOCK, LEVEL, LEVELS, SLOTS_AT, ingOpen, byId } from '../../js/constants.js';
 import { HEALS, TAPS, HEAL_AMT, HEAL_TIMES, PARAM_LIMITS } from './berry/constants.js';
 import { TAPS as ING_TAPS } from './ingredient/constants.js';
 
 const KEYS = {
-  camp: 'ckcamp', g80: 'ckg80', mode: 'ckmode', mon: 'ckmon', mons: 'ckmons', target: 'igtarget',
+  camp: 'ckcamp', g80: 'ckg80', mode: 'ckmode', lv: 'cklv', mon: 'ckmon', mons: 'ckmons', target: 'igtarget',
   heal: 'ckheal', tap: 'cktap', team: 'ckteam', healAmt: 'ckhealamt', healTimes: 'ckhealtimes', ingTap: 'ckingtap',
 };
 const LOG_KEYS = { ingredient: 'iglog', berry: 'bflog', skill: 'sklog' };
 const OLD = {
-  camp: ['igcamp', 'bfcamp'], g80: ['igg80', 'bfg80'], mode: ['igmode', 'bfmode'], mon: ['igmon', 'bfmon'],
+  camp: ['igcamp', 'bfcamp'], g80: ['igg80', 'bfg80'], mode: ['igmode', 'bfmode'], lv: [], mon: ['igmon', 'bfmon'],
   heal: [], tap: [], team: [], healAmt: [], healTimes: [], ingTap: [],
 };
 
@@ -44,7 +44,8 @@ export const state = {
   nat: null,
   up: null,
   down: null,
-  N: 3,
+  // 計算するレベル（50・60・70・80）。サブスキルは常に5枠入力でき、計算にはこのレベルで開いている枠（SLOTS_AT）だけを使う。
+  lv: 60,
   camp: true,
   g80: false,
   // ヒーラー・回復量・発動回数・チーム効果は3タイプで共通。受け取りは選択肢が違うので、きのみタイプ（tap）と食材・スキルタイプ（ingTap）で別に持つ。
@@ -103,8 +104,10 @@ export function loadSettings() {
   state.team = loadSetting('team', true) !== false;
   state.healAmt = paramOr('healAmt', loadSetting('healAmt', HEAL_AMT), HEAL_AMT);
   state.healTimes = paramOr('healTimes', loadSetting('healTimes', HEAL_TIMES), HEAL_TIMES);
+  // レベルの設定がまだなければ、以前の対象レベルの切り替え（枠の数）から引き継ぐ（Lv.50まで→60・Lv.70まで→70・Lv.80まで→80）。
   const n = loadSetting('mode', 3);
-  state.N = Object.hasOwn(LEVEL, n) ? n : 3;
+  const lv = loadSetting('lv', LEVEL[n] ?? 60);
+  state.lv = LEVELS.includes(lv) ? lv : 60;
   // URL の ?mon= を優先し、なければ前回選んだポケモンにする。
   let q = null;
   try { q = new URLSearchParams(location.search).get('mon'); } catch { /* no location */ }
@@ -127,7 +130,7 @@ function lastMonOf(type) {
 }
 
 export function setCamp(v) { state.camp = v; save(KEYS.camp, v); }
-export function setMode(n) { state.N = n; save(KEYS.mode, n); }
+export function setLevel(lv) { if (LEVELS.includes(lv)) { state.lv = lv; save(KEYS.lv, lv); } }
 export function setHeal(v) { if (HEALS.includes(v)) { state.heal = v; save(KEYS.heal, v); } }
 export function setTap(v) { if (TAPS.includes(v)) { state.tap = v; save(KEYS.tap, v); } }
 export function setIngTap(v) { if (ING_TAPS.includes(v)) { state.ingTap = v; save(KEYS.ingTap, v); } }
@@ -180,13 +183,24 @@ export function resetSelection() {
   setNature(null);
 }
 
-export const currentSubs = () => state.subs.slice(0, state.N);
-export const isComplete = () => currentSubs().every(Boolean) && state.up && state.down && !state.arr.includes(null);
+// 今のレベルで開いているサブスキルの枠の数と、そのサブスキル（未入力は null）。期待値はこの枠で計算する。
+export const slotCount = () => SLOTS_AT[state.lv];
+export const currentSubs = () => state.subs.slice(0, slotCount());
+// 今のレベルで開いている食材の枠（Lv.50 は2枠）。
+export const currentArr = () => state.arr.slice(0, ingOpen(state.lv));
+// 確率を出せるか。今のレベルで開いているサブスキルの枠・性格・食材の枠がすべて入っていること。
+export const isComplete = () => currentSubs().every(Boolean) && state.up && state.down && !currentArr().includes(null);
+// 入力してあるサブスキル（低いレベルから続けて入っている分）。記録にはこれを保存する。
+export const filledSubs = () => {
+  const i = state.subs.findIndex((v) => !v);
+  return state.subs.slice(0, i < 0 ? state.subs.length : i);
+};
 export const env = () => {
-  const { N, camp, mon, heal, tap, ingTap, team, healAmt, healTimes } = state;
-  if (state.type === 'berry') return { N, camp, mon, heal, tap, team, healAmt, healTimes };
-  if (state.type === 'ingredient') return { N, camp, mon, target: state.target, heal, tap: ingTap, team, healAmt, healTimes };
-  return { N, camp, mon, heal, tap: ingTap, team, healAmt, healTimes };
+  const { lv, camp, mon, heal, tap, ingTap, team, healAmt, healTimes } = state;
+  const N = slotCount();
+  if (state.type === 'berry') return { lv, N, camp, mon, heal, tap, team, healAmt, healTimes };
+  if (state.type === 'ingredient') return { lv, N, camp, mon, target: state.target, heal, tap: ingTap, team, healAmt, healTimes };
+  return { lv, N, camp, mon, heal, tap: ingTap, team, healAmt, healTimes };
 };
 
 // 記録はタイプごとのキーに保存する（食材・きのみは統合前と同じキー）。食材タイプの記録は食材配列のあるものだけ使う。
@@ -225,7 +239,7 @@ export function restoreEntry(x) {
   }
 }
 
-// 今の入力が記録の個体と同じか。
-export const isCurrent = (x) => currentSubs().join() === x.subs.join()
+// 今の入力が記録の個体と、今のレベルで開いている枠について同じか。
+export const isCurrent = (x) => currentSubs().join() === x.subs.slice(0, slotCount()).join()
   && (natByName(x.nat) ? x.nat === state.nat : !state.nat && state.up === x.up && state.down === x.down)
-  && (state.type !== 'ingredient' || state.arr.join() === x.arr.join());
+  && (state.type !== 'ingredient' || currentArr().join() === x.arr.slice(0, ingOpen(state.lv)).join());
