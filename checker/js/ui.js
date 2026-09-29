@@ -1,7 +1,7 @@
 // DOM 描画とイベント配線。計算はタイプごとの calc.js のエンジンに委譲する。
 import { byId, UNLOCK, LEVEL } from '../../js/constants.js';
 import { fmtPct, trunc, mmss } from '../../js/format.js';
-import { eff } from '../../js/calc.js';
+import { eff, SAME_REL } from '../../js/calc.js';
 import { TYPES } from './types.js';
 import { arrName, SLOT_LV } from './ingredient/constants.js';
 import { slotsOf } from './ingredient/calc.js';
@@ -56,7 +56,7 @@ const ROWS = {
     ['grp', 'おてつだい'], ['rTime', 'おてつだい時間'], ['rCut', '時間の短縮'], ['rHelps', '1日のおてつだい回数'],
     ['grp', '食材'], ['rIng', '食材確率'], ['rAmt', '1回あたりの狙い食材'], ['rIngHelps', '1日の食材おてつだい回数'],
     ['rAllDay', '1日の全食材の個数'], ['rCap', '最大所持数'], ['rFull', '睡眠中に満タンになる確率'],
-    ['grp', '無補正個体との比較'], ['rBase', '無補正個体の1日個数'], ['rDRatio', '1日の個数の比（順位の基準）'], ['rPos', '全パターン中の順位'],
+    ['grp', '無補正個体との比較'], ['rBase', '無補正個体の1日個数'], ['rDRatio', '1日の個数の比（評価の基準）'], ['rGe', '同等以上の個体になる確率'], ['rOdds', '平均何匹に1匹'], ['rPos', '性能値の順位（参考）'],
   ],
   berry: [
     ['grp', 'おてつだい'], ['rTime', 'おてつだい時間'], ['rCut', '時間の短縮'], ['rHelps', '1日のおてつだい回数'], ['rGenki', 'げんき'],
@@ -64,13 +64,13 @@ const ROWS = {
     ['grp', '所持数'], ['rIng', '食材確率（満タンまで）'], ['rCap', '最大所持数'], ['rFull', '就寝時までに満タンになる確率'],
     ['rIngs', '1日に持ち帰る食材'],
     ['grp', 'エナジーの内訳'], ['rSelf', '自分のきのみエナジー'], ['rTeam', `おてボによるほかの${TEAM_OTHERS}匹の増加`],
-    ['grp', '無補正個体との比較'], ['rBase', '無補正個体の1日エナジー'], ['rDRatio', '1日のエナジーの比（順位の基準）'], ['rPos', '全パターン中の順位'],
+    ['grp', '無補正個体との比較'], ['rBase', '無補正個体の1日エナジー'], ['rDRatio', '1日のエナジーの比（評価の基準）'], ['rGe', '同等以上の個体になる確率'], ['rOdds', '平均何匹に1匹'], ['rPos', '性能値の順位（参考）'],
   ],
   skill: [
     ['grp', 'おてつだい'], ['rTime', 'おてつだい時間'], ['rCut', '時間の短縮'], ['rHelps', '1日のおてつだい回数'],
     ['rCap', '最大所持数'], ['rIng', '食材おてつだい確率'], ['rRoll', '睡眠中のスキル抽選'],
     ['grp', 'スキル'], ['rRate', 'スキル確率'], ['rEff', '天井込みの実質確率'], ['rAvg', '発動までの平均おてつだい'], ['rAvgT', '発動までの平均時間'],
-    ['grp', '無補正個体との比較'], ['rBase', '無補正個体の1日回数'], ['rDRatio', '1日の回数の比（順位の基準）'], ['rPos', '全パターン中の順位'],
+    ['grp', '無補正個体との比較'], ['rBase', '無補正個体の1日回数'], ['rDRatio', '1日の回数の比（評価の基準）'], ['rGe', '同等以上の個体になる確率'], ['rOdds', '平均何匹に1匹'], ['rPos', '性能値の順位（参考）'],
   ],
 };
 
@@ -83,7 +83,7 @@ const scoreOf = (engine, x, e) => (state.type === 'ingredient'
 // 無補正比が同じ個体は同じ順位。分布ができてから呼ぶ。
 function rankOf(engine, r, e) {
   const d = engine.dist(e);
-  return { pos: 1 + d.filter((x) => x.r > r * (1 + 1e-7)).length, total: d.length };
+  return { pos: 1 + d.filter((x) => x.r > r * (1 + SAME_REL)).length, total: d.length };
 }
 // 数値に小さめの単位を付ける（帯とヒーローの大きな数字用）。
 const withUnit = (v, u) => `${v}<span class="u">${u}</span>`;
@@ -94,7 +94,6 @@ const fmtOdds = (n) => {
   if (n < 1e8) return withUnit(Math.round(n / 1e4).toLocaleString(), '万匹');
   return withUnit((n / 1e8).toFixed(1), '億匹');
 };
-const fmtPos = ({ pos, total }) => `${pos.toLocaleString()}位 / ${total.toLocaleString()}`;
 
 let worker = null;
 let inFlight = null;
@@ -599,10 +598,16 @@ function renderBar(engines) {
   const ok = isComplete();
   ['bRatio', 'bRank', 'bOdds'].forEach((id) => $(id).classList.toggle('dim', !ok));
   $('save').disabled = !ok;
-  const setPos = (bar, row) => { $('bPos').textContent = bar; if ($('rPos')) $('rPos').innerHTML = row; };
+  // 結果の行（同等以上の確率・平均何匹に1匹・性能値の順位）。
+  const setRows = (ge, odds, pos) => {
+    if (!$('rPos')) return;
+    $('rGe').innerHTML = ge;
+    $('rOdds').innerHTML = odds;
+    $('rPos').innerHTML = pos;
+  };
   if (!ok) {
     ['bRatio', 'bRank', 'bOdds'].forEach((id) => { $(id).textContent = '—'; });
-    setPos('', '—');
+    setRows('—', '—', '—');
     return;
   }
   const e = env(), engine = engines[state.type];
@@ -611,15 +616,20 @@ function renderBar(engines) {
   if (!engine.ready(e)) {
     $('bRank').textContent = pendingText();
     $('bOdds').textContent = '…';
-    setPos('', pendingText());
+    setRows(pendingText(), '…', '…');
     requestDist(engines);
     return;
   }
+  // 何匹に1匹は、丸める前の確率の逆数。
   const ge = engine.atLeast(r, e);
   $('bRank').innerHTML = r > 0 ? withUnit(fmtPct(ge).slice(0, -1), '%') : '—';
   $('bOdds').innerHTML = r > 0 ? fmtOdds(1 / ge) : '—';
   const rk = rankOf(engine, r, e);
-  setPos(fmtPos(rk), `${rk.pos.toLocaleString()}位<span>${rk.total.toLocaleString()}パターン中（無補正比が同じものは同順位）</span>`);
+  setRows(
+    r > 0 ? `${fmtPct(ge)}<span>この個体の無補正比以上になる推定確率</span>` : '—',
+    r > 0 ? `約${Math.round(1 / ge).toLocaleString()}匹<span>同じポケモン・抽選条件での平均</span>` : '—',
+    `${rk.pos.toLocaleString()}位<span>無補正比が異なる${rk.total.toLocaleString()}通りの中で。出やすさは考えないので確率とは一致しません</span>`,
+  );
 }
 
 function renderLog(engines) {
@@ -636,7 +646,7 @@ function renderLog(engines) {
       const detail = `${state.type === 'ingredient' ? `${arrName(mm, x.arr)}　` : ''}${x.subs.map(subShort).join('／')}　${x.nat ? `${esc(x.nat)} ` : ''}▲${NATL[x.up]} ▼${NATL[x.down]}`;
       // Entries saved before the memo prompt was removed keep their memo as the heading.
       const cur = isCurrent(x);
-      return `<li class="${cur ? 'cur' : ''}" data-t="${x.t}" tabindex="0" title="タップで入力に戻す" aria-current="${cur}"><div>${cur ? '<span class="now">表示中</span>' : ''}${x.memo ? `${esc(x.memo)}<div class="m">${detail}</div>` : detail}</div><div><b>${x.r.toFixed(2)}倍</b><div class="m">${rd ? (x.r > 0 ? `上位${fmtPct(engine.atLeast(x.r, e))}<br>${fmtPos(rankOf(engine, x.r, e))}` : '—') : pendingText()}</div></div><button class="del" data-t="${x.t}">削除</button></li>`;
+      return `<li class="${cur ? 'cur' : ''}" data-t="${x.t}" tabindex="0" title="タップで入力に戻す" aria-current="${cur}"><div>${cur ? '<span class="now">表示中</span>' : ''}${x.memo ? `${esc(x.memo)}<div class="m">${detail}</div>` : detail}</div><div><b>${x.r.toFixed(2)}倍</b><div class="m">${rd ? (x.r > 0 ? `同等以上${fmtPct(engine.atLeast(x.r, e))}<br>約${Math.round(1 / engine.atLeast(x.r, e)).toLocaleString()}匹に1匹` : '—') : pendingText()}</div></div><button class="del" data-t="${x.t}">削除</button></li>`;
     }).join('')
     : `<li class="empty">${modeLabel(state.N)}の記録はまだありません</li>`;
 
@@ -654,8 +664,18 @@ function renderLog(engines) {
   });
 }
 
+// 同等以上の確率・平均何匹に1匹・性能値の順位の意味と、確率の前提（抽選条件）。
+function renderRankNote() {
+  const arr = state.type === 'ingredient' ? '食材配列は各スロットの候補を等確率、' : '食材配列は全パターンの平均で計算、';
+  $('rankNote').textContent = '「同等以上の確率」は、同じポケモン・同じパラメーターで、サブスキルを1枠ずつ色（金14%・青33%・白53%）で抽選して'
+    + `その色の未所持のものから均等に選び、性格25種を等確率とした場合（${arr}フレンドメダルによる金枠確定なし）に、`
+    + 'この個体の無補正比以上になる推定確率です。「平均何匹に1匹」はその逆数（丸める前の確率から計算）です。'
+    + '「性能値の順位」は、無補正比が異なる組み合わせの中での順位で、組み合わせごとの出やすさを考えないため、確率とは一致しません（参考値）。';
+}
+
 function refresh(engines) {
   renderHeader();
+  renderRankNote();
   renderMode();
   renderParams();
   renderIngs(engines);

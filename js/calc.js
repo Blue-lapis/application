@@ -279,3 +279,19 @@ function buildSubsetDist(n) {
   rec(0, 0, 1, NO_SUBS);
   return [...out.values()];
 }
+
+// 同じ性能とみなす無補正比の差（相対）。順位・同等以上の確率・分布の行のすべてで同じ値を使う。
+export const SAME_REL = 1e-7;
+
+// 無補正比ごとの分布 [{ r, p }] で、差が SAME_REL 以内の値を1行にまとめる（計算の丸め誤差で分かれた同じ性能をそろえる）。
+// 高い順に並べ、まとめた行の値はその中で最大のもの、確率は合計。
+export function mergeSame(rows) {
+  const sorted = [...rows].sort((a, b) => b.r - a.r);
+  const out = [];
+  for (const x of sorted) {
+    const top = out[out.length - 1];
+    if (top && top.r - x.r <= top.r * SAME_REL) top.p += x.p;
+    else out.push({ r: x.r, p: x.p });
+  }
+  return out;
+}

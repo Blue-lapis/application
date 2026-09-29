@@ -4,7 +4,7 @@
 // heal はヒーラーの数（0/1/2）か 'g80'（げんき常に81%以上）、tap は日中の受け取り（'none' / '3h'）、
 // team はおてつだいボーナスのチームへの効果を含めるか。
 import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, byId, LEVEL } from '../../../js/constants.js';
-import { energyCurve, helpsPerTap, subsetDist, AWAKE_SEC, DAY_SEC } from '../../../js/calc.js';
+import { energyCurve, helpsPerTap, subsetDist, AWAKE_SEC, DAY_SEC, mergeSame, SAME_REL } from '../../../js/calc.js';
 import { MONS, natCat, amountPatterns, TAP_EVERY, TEAM_OTHERS, HB_SPEED, EVO_CAP, ENERGY_REC } from './constants.js';
 
 const natMul = (up, down, key, hi, lo) => (up === key ? hi : 1) * (down === key ? lo : 1);
@@ -248,7 +248,7 @@ export function createEngine() {
         acc.set(k, (acc.get(k) || 0) + p * v);
       }
     }
-    return [...acc].map(([r, p]) => ({ r: +r, p }));
+    return mergeSame([...acc].map(([r, p]) => ({ r: +r, p })));
   }
 
   function dist(env) {
@@ -259,7 +259,7 @@ export function createEngine() {
 
   const ready = (env) => distCache.has(envKey(env));
   const setDist = (env, d) => { distCache.set(envKey(env), d); };
-  const atLeast = (r, env) => dist(env).reduce((a, x) => a + (x.r >= r * (1 - 1e-7) ? x.p : 0), 0);
+  const atLeast = (r, env) => dist(env).reduce((a, x) => a + (x.r >= r * (1 - SAME_REL) ? x.p : 0), 0);
 
   return { metric, baseMetric, teamGain, value, score, dist, ready, setDist, atLeast, daily };
 }

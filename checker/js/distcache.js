@@ -5,7 +5,9 @@ import { SUBS, RARITY_P, NAT, ENERGY_BANDS } from '../../js/constants.js';
 import { TYPES } from './types.js';
 
 // 計算方法を変えたら上げる。キーが変わるので古い分布は使われず、そのうち消える。
-const MODEL_VERSION = 3;
+const MODEL_VERSION = 4;
+// 公開時にモジュールの URL に付く版（?v=コミット）。上げ忘れても、公開のたびに分布を計算し直す。
+const BUILD = new URL(import.meta.url).searchParams.get('v') || '';
 const DB_NAME = 'checker-dist';
 const STORE = 'dist';
 // 保存する分布の数の上限。超えたら最後に使ったのが古いものから消す。
@@ -19,11 +21,10 @@ function hash(s) {
 }
 const COMMON = hash(JSON.stringify([SUBS, RARITY_P, NAT, ENERGY_BANDS]));
 
+// 条件（env）はすべての項目をキーに入れる。パラメーターを増やしても書き足さなくてよい。
+const envText = (env) => JSON.stringify(Object.keys(env).sort().map((k) => [k, env[k]]));
 export const cacheKey = (type, env) => [
-  MODEL_VERSION, COMMON, type, hash(JSON.stringify(TYPES[type].MONS[env.mon])),
-  env.mon, env.N, env.camp, env.g80 ?? '', env.target ?? '',
-  // きのみタイプだけのパラメーター。
-  env.heal ?? '', env.tap ?? '', env.team ?? '', env.healAmt ?? '', env.healTimes ?? '',
+  MODEL_VERSION, BUILD, COMMON, type, hash(JSON.stringify(TYPES[type].MONS[env.mon])), envText(env),
 ].join('|');
 
 let dbPromise = null;

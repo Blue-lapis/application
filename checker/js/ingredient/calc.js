@@ -2,7 +2,7 @@
 // おてつだいのタイミング（げんき・日またぎ）は共通の schedule（../../../js/calc.js）を使う。
 // 呼び出し側は env = { N, camp, g80, mon, target } を渡す。mon は MONS のキー、target は狙う食材（'A' など）。
 import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, byId, LEVEL } from '../../../js/constants.js';
-import { schedule, subsetDist } from '../../../js/calc.js';
+import { schedule, subsetDist, mergeSame, SAME_REL } from '../../../js/calc.js';
 import { MONS, natCat, allArrs } from './constants.js';
 
 const natMul = (up, down, key, hi, lo) => (up === key ? hi : 1) * (down === key ? lo : 1);
@@ -177,7 +177,7 @@ export function createEngine() {
         }
       }
     }
-    return [...acc].map(([r, p]) => ({ r: +r, p }));
+    return mergeSame([...acc].map(([r, p]) => ({ r: +r, p })));
   }
 
   function dist(env) {
@@ -188,7 +188,7 @@ export function createEngine() {
 
   const ready = (env) => distCache.has(envKey(env));
   const setDist = (env, d) => { distCache.set(envKey(env), d); };
-  const atLeast = (r, env) => dist(env).reduce((a, x) => a + (x.r >= r * (1 - 1e-7) ? x.p : 0), 0);
+  const atLeast = (r, env) => dist(env).reduce((a, x) => a + (x.r >= r * (1 - SAME_REL) ? x.p : 0), 0);
 
   return { metric, reference, baseMetric, score, dist, ready, setDist, atLeast, daily };
 }
