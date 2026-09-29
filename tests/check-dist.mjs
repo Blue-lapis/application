@@ -12,7 +12,8 @@ const CASES = [
   ['berry', { N: 4, camp: false, mon: 'raichu', heal: 0, tap: 'none', team: false, healAmt: 18, healTimes: 2.5 }, ['hb', 'spS', 'invM', 'erb'], 'energy', 'other'],
   ['ingredient', { N: 3, camp: true, mon: 'flygon', target: 'A', heal: 1, tap: 'always', team: true, healAmt: 18, healTimes: 3 }, ['ingM', 'spS', 'invL'], 'ing', 'speed'],
   ['ingredient', { N: 4, camp: false, mon: 'toxicroak', target: 'B', heal: 0, tap: '3h', team: true, healAmt: 18, healTimes: 2.5 }, ['hb', 'ingM', 'invM', 'erb'], 'energy', 'other'],
-  ['skill', { N: 3, camp: true, g80: false, mon: 'mewtwo' }, ['skM', 'spM', 'hb'], 'skill', 'other'],
+  ['skill', { N: 3, camp: true, mon: 'mewtwo', heal: 1, tap: 'always', team: true, healAmt: 18, healTimes: 3 }, ['skM', 'spM', 'hb'], 'skill', 'other'],
+  ['skill', { N: 3, camp: false, mon: 'golduck', heal: 0, tap: '3h', team: true, healAmt: 18, healTimes: 2.5 }, ['hb', 'invM', 'erb'], 'energy', 'speed'],
 ];
 
 let failed = 0;
