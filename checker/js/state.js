@@ -5,10 +5,17 @@
 import { TYPES, DEFAULT_TYPE, typeOf } from './types.js';
 import { natByName } from './picker.js';
 import { UNLOCK, LEVEL, byId } from '../../js/constants.js';
+import { HEALS, TAPS, HEAL_AMT, HEAL_TIMES, PARAM_LIMITS } from './berry/constants.js';
 
-const KEYS = { camp: 'ckcamp', g80: 'ckg80', mode: 'ckmode', mon: 'ckmon', mons: 'ckmons', target: 'igtarget' };
+const KEYS = {
+  camp: 'ckcamp', g80: 'ckg80', mode: 'ckmode', mon: 'ckmon', mons: 'ckmons', target: 'igtarget',
+  heal: 'ckheal', tap: 'cktap', team: 'ckteam', healAmt: 'ckhealamt', healTimes: 'ckhealtimes',
+};
 const LOG_KEYS = { ingredient: 'iglog', berry: 'bflog', skill: 'sklog' };
-const OLD = { camp: ['igcamp', 'bfcamp'], g80: ['igg80', 'bfg80'], mode: ['igmode', 'bfmode'], mon: ['igmon', 'bfmon'] };
+const OLD = {
+  camp: ['igcamp', 'bfcamp'], g80: ['igg80', 'bfg80'], mode: ['igmode', 'bfmode'], mon: ['igmon', 'bfmon'],
+  heal: [], tap: [], team: [], healAmt: [], healTimes: [],
+};
 
 const load = (key, def) => {
   try {
@@ -39,6 +46,12 @@ export const state = {
   N: 3,
   camp: true,
   g80: false,
+  // きのみタイプだけのパラメーター。
+  heal: 1,
+  tap: 'none',
+  team: true,
+  healAmt: HEAL_AMT,
+  healTimes: HEAL_TIMES,
 };
 
 export const monData = () => TYPES[state.type].MONS[state.mon];
@@ -78,6 +91,14 @@ export function loadSettings() {
   moveMewtwoLog();
   state.camp = loadSetting('camp', true) === true;
   state.g80 = loadSetting('g80', false) === true;
+  // ヒーラーの設定がまだなければ、「げんき常時81%以上」がオンだった人は「常に81%以上」から始める。
+  const heal = loadSetting('heal', state.g80 ? 'g80' : 1);
+  state.heal = HEALS.includes(heal) ? heal : 1;
+  const tap = loadSetting('tap', 'none');
+  state.tap = TAPS.includes(tap) ? tap : 'none';
+  state.team = loadSetting('team', true) !== false;
+  state.healAmt = paramOr('healAmt', loadSetting('healAmt', HEAL_AMT), HEAL_AMT);
+  state.healTimes = paramOr('healTimes', loadSetting('healTimes', HEAL_TIMES), HEAL_TIMES);
   const n = loadSetting('mode', 3);
   state.N = Object.hasOwn(LEVEL, n) ? n : 3;
   // URL の ?mon= を優先し、なければ前回選んだポケモンにする。
@@ -104,6 +125,19 @@ function lastMonOf(type) {
 export function setCamp(v) { state.camp = v; save(KEYS.camp, v); }
 export function setG80(v) { state.g80 = v; save(KEYS.g80, v); }
 export function setMode(n) { state.N = n; save(KEYS.mode, n); }
+export function setHeal(v) { if (HEALS.includes(v)) { state.heal = v; save(KEYS.heal, v); } }
+export function setTap(v) { if (TAPS.includes(v)) { state.tap = v; save(KEYS.tap, v); } }
+export function setTeam(v) { state.team = v; save(KEYS.team, v); }
+
+// 詳細画面の数値。範囲外や整数でない値は受け付けない（false を返す）。
+const paramOk = (k, v) => Number.isInteger(v) && v >= PARAM_LIMITS[k][0] && v <= PARAM_LIMITS[k][1];
+const paramOr = (k, v, def) => (paramOk(k, v) ? v : def);
+export function setParam(k, v) {
+  if (!paramOk(k, v)) return false;
+  state[k] = v;
+  save(KEYS[k], v);
+  return true;
+}
 
 export function setMon(m) {
   selectMon(m);
@@ -138,6 +172,10 @@ export function resetSelection() {
 export const currentSubs = () => state.subs.slice(0, state.N);
 export const isComplete = () => currentSubs().every(Boolean) && state.up && state.down && !state.arr.includes(null);
 export const env = () => {
+  if (state.type === 'berry') {
+    const { N, camp, mon, heal, tap, team, healAmt, healTimes } = state;
+    return { N, camp, mon, heal, tap, team, healAmt, healTimes };
+  }
   const e = { N: state.N, camp: state.camp, g80: state.g80, mon: state.mon };
   return state.type === 'ingredient' ? { ...e, target: state.target } : e;
 };

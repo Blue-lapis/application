@@ -59,7 +59,13 @@
 
   <div class="col-out">
     <section>
-      <div class="perf-head"><h2>性能</h2><div class="sws"><label class="switch"><input type="checkbox" id="camp" role="switch"><span><span>いいキャンプ</span><span>チケット</span></span></label><label class="switch"><input type="checkbox" id="g80" role="switch"><span><span>げんき常時</span><span>81%以上</span></span></label></div></div>
+      <div class="perf-head"><h2>性能</h2><div class="sws"><label class="switch"><input type="checkbox" id="camp" role="switch"><span><span>いいキャンプ</span><span>チケット</span></span></label><label class="switch" id="g80Sw"><input type="checkbox" id="g80" role="switch"><span><span>げんき常時</span><span>81%以上</span></span></label></div></div>
+      <div class="params" id="params" hidden>
+        <div class="prow"><span>ヒーラー</span><div class="mode" role="group" aria-label="ヒーラー（げんきオールS）" id="healSeg"><button data-v="0">なし</button><button data-v="1">1匹</button><button data-v="2">2匹</button><button data-v="g80">常に81%以上</button></div></div>
+        <div class="prow"><span>日中の受け取り</span><div class="mode" role="group" aria-label="日中の受け取り" id="tapSeg"><button data-v="none">なし（いつ育）</button><button data-v="3h">3時間ごと</button></div></div>
+        <div class="prow"><label class="switch"><input type="checkbox" id="team" role="switch"><span><span>おてつだいボーナスの</span><span>チームへの効果を含める</span></span></label></div>
+        <div class="psum"><p id="paramSum"></p><button class="txt" id="paramBtn" aria-haspopup="dialog">詳細</button></div>
+      </div>
       <p class="cond" id="cond"></p>
       <div class="hero">
         <div class="stat main"><small id="hLabel">—</small><b id="hAll">—</b></div>
@@ -114,6 +120,19 @@
     <div class="natgrid" id="natGrid"></div>
     <p class="note" id="natNote"></p>
     <div class="dlg-foot"><button class="txt" id="natClear">クリア</button><button class="primary" id="natClose">閉じる</button></div>
+  </div>
+</dialog>
+
+<dialog class="sheet" id="paramDlg" aria-labelledby="paramTitle">
+  <div class="dlg-in">
+    <h2 id="paramTitle" tabindex="-1" autofocus>パラメーターの詳細</h2>
+    <h3>ヒーラー（げんきオールS）</h3>
+    <div class="nums">
+      <label class="num"><span>1回の回復量</span><input type="number" id="healAmt" min="1" max="150" step="1" inputmode="numeric"></label>
+      <label class="num"><span>1匹あたりの1日の発動回数</span><input type="number" id="healTimes" min="0" max="20" step="1" inputmode="numeric"></label>
+    </div>
+    <p class="note" id="paramNote"></p>
+    <div class="dlg-foot"><button class="txt" id="paramReset">初期値に戻す</button><button class="primary" id="paramClose">閉じる</button></div>
   </div>
 </dialog>
 
