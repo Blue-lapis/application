@@ -36,6 +36,17 @@ export function mults(subs, up, down) {
   return mk(e, up, down);
 }
 
+// 1日の発動回数が小数（2.5回など）のときは、その前後の整数回の日（2回と3回）が混ざるとみなし、
+// それぞれの条件と割合 [env, 重み] を返す。整数ならその条件だけ。ヒーラーなし・常に81%以上では回数は効かない。
+export function timesMix(env) {
+  const t = env.healTimes;
+  if (env.heal !== 1 || Number.isInteger(t)) return [[env, 1]];
+  const lo = Math.floor(t), f = Math.round((t - lo) * 100) / 100;
+  return [[{ ...env, healTimes: lo }, 1 - f], [{ ...env, healTimes: lo + 1 }, f]];
+}
+// 条件ごとの値 fn(env) を、timesMix の割合で平均する。
+export const mixed = (env, fn) => timesMix(env).reduce((s, [e, w]) => s + w * fn(e), 0);
+
 // げんきの推移。'g80' は常に81%以上（倍率0.45）として一定の値にする。
 export function curveOf(env, wake) {
   if (env.heal === 'g80') return () => WAKE_ENERGY;
@@ -133,13 +144,22 @@ function runDays(r, segOf) {
   return o;
 }
 
-// 就寝時と起床直前のげんき（表示用）。
+// 就寝時と起床直前のげんき（表示用）。発動回数が小数のときは前後の整数回の日の平均（整数に丸める）。
 export function energyAt(env, wake) {
-  const f = curveOf(env, wake);
-  return { bed: f(AWAKE_SEC), end: f(DAY_SEC - 1) };
+  const at = (t) => Math.round(mixed(env, (e) => curveOf(e, wake)(t)));
+  return { bed: at(AWAKE_SEC), end: at(DAY_SEC - 1) };
 }
 
+// 表示用の1日の値。発動回数が小数のときは、回数に関係する値を前後の整数回の日の割合で平均する。
+const MIXED_KEYS = ['day', 'night', 'ings', 'fullBed', 'full', 'Ha', 'Hs'];
 export function daily(m, env) {
+  const parts = timesMix(env).map(([e, w]) => [dailyOne(m, e), w]);
+  const out = { ...parts[0][0], genki: energyAt(env, m.wake) };
+  MIXED_KEYS.forEach((k) => { out[k] = parts.reduce((s, [d, w]) => s + w * d[k], 0); });
+  return out;
+}
+
+function dailyOne(m, env) {
   const r = { ...prepare(m, env), mon: env.mon };
   const days = new Map();
   const d = runDays(r, (ha, hs, amts) => {
@@ -147,7 +167,7 @@ export function daily(m, env) {
     if (!days.has(key)) days.set(key, dayBerries(r.cap, ha, hs, r.ingP, r.berry, amts));
     return days.get(key);
   });
-  return { ...r, ...d, Ha: avg(r.Ha), Hs: avg(r.Hs), genki: energyAt(env, m.wake) };
+  return { ...r, ...d, Ha: avg(r.Ha), Hs: avg(r.Hs) };
 }
 
 export const envKey = (env) => [env.N, env.camp, env.mon, env.heal, env.tap, env.team, env.healAmt, env.healTimes].join('|');
@@ -157,8 +177,9 @@ export function createEngine() {
   const dayCache = new Map();
   const distCache = new Map();
 
-  // 自分のきのみのエナジー（きのみ1個のエナジー × 個数）。
-  function metric(m, env) {
+  // 自分のきのみのエナジー（きのみ1個のエナジー × 個数）。発動回数が小数のときは前後の整数回の日の割合で平均する。
+  const metric = (m, env) => mixed(env, (e) => metricOne(m, e));
+  function metricOne(m, env) {
     const r = { ...prepare(m, env), mon: env.mon };
     const key = `${envKey(env)}|${r.Te}|${r.ingP.toFixed(8)}|${r.cap}|${r.berry}|${m.wake}`;
     if (!metricCache.has(key)) {

@@ -129,13 +129,20 @@ export function setHeal(v) { if (HEALS.includes(v)) { state.heal = v; save(KEYS.
 export function setTap(v) { if (TAPS.includes(v)) { state.tap = v; save(KEYS.tap, v); } }
 export function setTeam(v) { state.team = v; save(KEYS.team, v); }
 
-// 詳細画面の数値。範囲外や整数でない値は受け付けない（false を返す）。
-const paramOk = (k, v) => Number.isInteger(v) && v >= PARAM_LIMITS[k][0] && v <= PARAM_LIMITS[k][1];
-const paramOr = (k, v, def) => (paramOk(k, v) ? v : def);
+// 詳細画面の数値。回復量は整数、発動回数は小数第2位まで。範囲外や桁の多い値は受け付けない（false を返す）。
+const PARAM_DIGITS = { healAmt: 0, healTimes: 2 };
+const paramOk = (k, v) => {
+  if (typeof v !== 'number' || !Number.isFinite(v) || v < PARAM_LIMITS[k][0] || v > PARAM_LIMITS[k][1]) return false;
+  const s = 10 ** PARAM_DIGITS[k];
+  return Math.abs(Math.round(v * s) - v * s) < 1e-6;
+};
+// 2.55 のような値を浮動小数点の誤差なしに持つ。
+const tidy = (k, v) => Math.round(v * 10 ** PARAM_DIGITS[k]) / 10 ** PARAM_DIGITS[k];
+const paramOr = (k, v, def) => (paramOk(k, v) ? tidy(k, v) : def);
 export function setParam(k, v) {
   if (!paramOk(k, v)) return false;
-  state[k] = v;
-  save(KEYS[k], v);
+  state[k] = tidy(k, v);
+  save(KEYS[k], state[k]);
   return true;
 }
 
