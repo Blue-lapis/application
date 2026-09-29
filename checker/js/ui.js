@@ -520,7 +520,7 @@ function renderBerryStats(engine) {
   const base = engine.baseMetric(e);
   const r = engine.daily(m, e);
   const recText = m.rec > 1 ? '・げんき回復量↑1.2倍' : m.rec < 1 ? '・げんき回復量↓0.88倍' : '';
-  $('cond').textContent = `Lv.${LEVEL[state.N]}・睡眠8.5時間・${healText(e)}${e.heal === 'g80' ? '' : `・起床時げんき${r.wakeE}${recText}`}・${tapText(e)}・食材配列は全パターンの平均で計算`;
+  $('cond').textContent = `Lv.${LEVEL[state.N]}・睡眠8.5時間・${healText(e)}${e.heal === 'g80' ? '' : `・起床時げんき${r.wakeE}${recText}`}・${tapText(e)}・食材配列は捕獲時の出現率で平均`;
   $('hLabel').textContent = e.team ? '1日のエナジー（チームへの効果込み）' : '1日のきのみエナジー';
 
   const count = r.day + r.night;
@@ -557,7 +557,7 @@ function renderBerryStats(engine) {
 function renderSkillStats(engine) {
   const e = env(), mm = monData();
   const m = def().mults(currentSubs(), state.up, state.down);
-  $('cond').textContent = `${condText(m, e)}・日中は常時タップ・食材配列は全パターンの平均で計算`;
+  $('cond').textContent = `${condText(m, e)}・日中は常時タップ・食材配列は捕獲時の出現率で平均`;
   $('hLabel').textContent = '1日の期待発動回数';
 
   const base = engine.baseMetric(e);
@@ -666,7 +666,7 @@ function renderLog(engines) {
 
 // 同等以上の確率・平均何匹に1匹・性能値の順位の意味と、確率の前提（抽選条件）。
 function renderRankNote() {
-  const arr = state.type === 'ingredient' ? '食材配列は各スロットの候補を等確率、' : '食材配列は全パターンの平均で計算、';
+  const arr = state.type === 'ingredient' ? '食材配列は捕獲時の出現率（Lv.30 は A 1/3・B 2/3、Lv.60 は3候補を等確率）、' : '食材配列は捕獲時の出現率で平均、';
   $('rankNote').textContent = '「同等以上の確率」は、同じポケモン・同じパラメーターで、サブスキルを1枠ずつ色（金14%・青33%・白53%）で抽選して'
     + `その色の未所持のものから均等に選び、性格25種を等確率とした場合（${arr}フレンドメダルによる金枠確定なし）に、`
     + 'この個体の無補正比以上になる推定確率です。「平均何匹に1匹」はその逆数（丸める前の確率から計算）です。'

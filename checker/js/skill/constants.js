@@ -1,5 +1,5 @@
 // スキルタイプ版だけで使う定義。サブスキル・性格・げんきなどの共通データは ../../../js/constants.js を使う。
-import { cat } from '../../../js/constants.js';
+import { cat, slotWeights } from '../../../js/constants.js';
 
 // ポケモンごとの基礎値は mons.js にまとめる。
 export { MONS } from './mons.js';
@@ -16,11 +16,11 @@ export const natCat = cat;
 // 連続不発の天井。スキルとくいは基準おてつだい時間で約40時間分（Floor[144000 / 基準おてつだい時間]）。
 export const ceilOf = (mon) => Math.floor(144000 / mon.time);
 
-// すべての食材配列について、各スロットで拾う個数と出現確率（各スロットの候補は等確率）。
+// すべての食材配列について、各スロットで拾う個数と出現確率（各スロットの候補の確率は slotWeights）。
 // スキル発動回数の計算では食材の種類は関係ないので、個数の並びが同じ配列はまとめる。
 export function amountPatterns(mon) {
   const all = mon.slots.reduce(
-    (acc, opts) => acc.flatMap(({ amts, p }) => opts.map(([, a]) => ({ amts: [...amts, a], p: p / opts.length }))),
+    (acc, opts) => acc.flatMap(({ amts, p }) => opts.map(([, a], k) => ({ amts: [...amts, a], p: p * slotWeights(opts.length)[k] }))),
     [{ amts: [], p: 1 }],
   );
   const out = new Map();
