@@ -518,11 +518,12 @@ function renderIngStats(engine) {
 function renderBerryStats(engine) {
   const e = env(), mm = monData();
   const m = def().mults(currentSubs(), state.up, state.down);
-  $('cond').textContent = `Lv.${LEVEL[state.N]}・睡眠8.5時間・${healText(e)}${e.heal === 'g80' ? '' : `・起床時げんき${m.wake}`}・${tapText(e)}・食材配列は全パターンの平均で計算`;
-  $('hLabel').textContent = e.team ? '1日のエナジー（チームへの効果込み）' : '1日のきのみエナジー';
-
   const base = engine.baseMetric(e);
   const r = engine.daily(m, e);
+  const recText = m.rec > 1 ? '・げんき回復量↑1.2倍' : m.rec < 1 ? '・げんき回復量↓0.88倍' : '';
+  $('cond').textContent = `Lv.${LEVEL[state.N]}・睡眠8.5時間・${healText(e)}${e.heal === 'g80' ? '' : `・起床時げんき${r.wakeE}${recText}`}・${tapText(e)}・食材配列は全パターンの平均で計算`;
+  $('hLabel').textContent = e.team ? '1日のエナジー（チームへの効果込み）' : '1日のきのみエナジー';
+
   const count = r.day + r.night;
   const self = count * r.energy;
   const team = engine.teamGain(m, e);
@@ -545,7 +546,7 @@ function renderBerryStats(engine) {
   $('rFull').innerHTML = e.tap === 'none' ? '100%<span>受け取らないので常に満タン</span>'
     : `${pct(r.fullBed)}<span>就寝前の受け取りまで・睡眠中は起床時まで${pct(r.full)}</span>`;
   $('rIngs').innerHTML = `${r.ings.toFixed(1)}個<span>満タンになるまで</span>`;
-  $('rGenki').innerHTML = e.heal === 'g80' ? '常に81%以上' : `${genkiText(r.genki)}<span>${e.heal ? `ヒーラー${e.heal}匹` : 'ヒーラーなし'}</span>`;
+  $('rGenki').innerHTML = e.heal === 'g80' ? '常に81%以上' : `${genkiText(r.genki)}<span>起床時${r.wakeE}・${e.heal ? `ヒーラー${e.heal}匹` : 'ヒーラーなし'}</span>`;
   $('rSelf').innerHTML = `${Math.round(self).toLocaleString()}<span>日中${Math.round(r.day * r.energy).toLocaleString()}・睡眠中${Math.round(r.night * r.energy).toLocaleString()}</span>`;
   $('rTeam').innerHTML = !e.team ? '—<span>含めない設定</span>'
     : !m.hb ? '0<span>おてつだいボーナスなし</span>'

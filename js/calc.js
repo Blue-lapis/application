@@ -50,25 +50,35 @@ export function schedule(Te, g80, wake) {
   return { Ha, Hs };
 }
 
-// 起床からの秒 t のげんきを返す関数（きのみタイプ）。起床時は wake で、起床中・睡眠中を問わず10分ごとに1減る（0で止まる）。
+// 起床からの秒 t のげんきを返す関数（きのみタイプ）。起床中・睡眠中を問わず10分ごとに1減る（0で止まる）。
 // 起床中は次の回復が入る（どちらも10分単位の時刻で、同じ時刻の10分ごとの減少のあとに入る）。
-// - ヒーラー（チーム全員を回復するスキル）: 起床中を heals + 1 等分した時刻（10分単位に切り捨て）に1回ずつ amt 回復する（上限 HEAL_CAP）。
+// - ヒーラー（チーム全員を回復するスキル）: 起床中を heals + 1 等分した時刻（10分単位に切り捨て）に1回ずつ amt × rec 回復する（上限 HEAL_CAP）。
 // - 料理: 起床から COOK_AT 分後に、そのときのげんきに応じて cookRecovery だけ回復する。
-// 睡眠中は回復しない。起床時の回復で翌日はまた wake から始まるので、毎日同じ推移になる。
-export function energyCurve(wake, heals, amt) {
+// 回復したげんきは整数に切り上げる。睡眠中は回復しない。
+// 起床時は睡眠で 100 × rec 回復する（上限 wakeMax）。rec は性格のげんき回復量の補正で、回復量が100に届かないと
+// 前の晩の残りによって起床時のげんきが変わる。毎日同じ推移になるとして、前の晩の残りから起床時のげんきを決める（にとよんツールと同じ2回の計算）。
+export function energyCurve(wakeMax, heals, amt, rec = 1) {
   const events = new Map();
   const add = (min, f) => { const k = min * 60; events.set(k, [...(events.get(k) || []), f]); };
-  for (let i = 0; i < heals; i++) add(Math.floor(((i + 1) * AWAKE_SEC) / 60 / (heals + 1) / 10) * 10, (e) => Math.min(HEAL_CAP, e + amt));
-  COOK_AT.forEach((min) => add(min, (e) => e + cookRecovery(e)));
-  // 変化点の時刻 ts と、その時刻からの値 vs。
-  const ts = [0], vs = [wake];
-  let e = wake;
-  for (let k = 1; k * ENERGY_TICK < DAY_SEC; k++) {
-    const tk = k * ENERGY_TICK;
-    e = Math.max(0, e - 1);
-    for (const f of events.get(tk) || []) e = f(e);
-    ts.push(tk); vs.push(e);
+  for (let i = 0; i < heals; i++) {
+    add(Math.floor(((i + 1) * AWAKE_SEC) / 60 / (heals + 1) / 10) * 10, (e) => Math.ceil(Math.min(HEAL_CAP, e + amt * rec)));
   }
+  COOK_AT.forEach((min) => add(min, (e) => e + cookRecovery(e)));
+  const sleepRec = Math.min(wakeMax, WAKE_ENERGY * rec);
+  // 変化点の時刻 ts と、その時刻からの値 vs。end は次の起床の直前（回復前）のげんき。
+  const build = (wake) => {
+    const ts = [0], vs = [wake];
+    let e = wake;
+    for (let k = 1; k * ENERGY_TICK < DAY_SEC; k++) {
+      const tk = k * ENERGY_TICK;
+      e = Math.max(0, e - 1);
+      for (const f of events.get(tk) || []) e = f(e);
+      ts.push(tk); vs.push(e);
+    }
+    return { ts, vs, end: Math.max(0, e - 1) };
+  };
+  const wake = Math.min(wakeMax, Math.ceil(build(sleepRec).end + sleepRec));
+  const { ts, vs } = build(wake);
   return (t) => {
     let lo = 0, hi = ts.length - 1;
     while (lo < hi) {
