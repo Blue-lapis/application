@@ -1,10 +1,11 @@
 // スキルタイプ向けの期待値計算エンジン。DOM に触れない。
 // げんきの推移とおてつだい回数はきのみタイプ・食材タイプと同じ規則（共通の energyCurve・helpsPerTap と、きのみタイプの curveOf・timesMix）を使い、
-// 共通の計算（../../../js/calc.js の睡眠中の抽選回数・天井カウンタ）を、ポケモンごとの基礎値・天井・食材の個数で使う。
+// 共通の計算（../../../js/calc.js の抽選回数・ストックの発動回数）を、ポケモンごとの基礎値・天井・食材の個数で使う。
+// スキルの数え方はにとよんツールと同じ（天井込みの実質確率で抽選し、満タン後は抽選しない）。
 // 呼び出し側は env = { N, camp, mon, heal, tap, team, healAmt, healTimes } を渡す。
 // heal・healAmt・healTimes・team はきのみタイプと共通、tap は日中の受け取り（'always' / '3h'、食材タイプと共通）。
 import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, byId, LEVEL } from '../../../js/constants.js';
-import { helpsPerTap, segRolls, runSegs, subsetDist, mergeSame, SAME_REL, AWAKE_SEC, DAY_SEC } from '../../../js/calc.js';
+import { helpsPerTap, helpTime, rateOf, eff, segRolls, stockSkills, subsetDist, mergeSame, SAME_REL, AWAKE_SEC, DAY_SEC } from '../../../js/calc.js';
 import { curveOf, timesMix, mixed, energyAt } from '../berry/calc.js';
 import { EVO_CAP, ENERGY_REC, TEAM_OTHERS, HB_SPEED } from '../berry/constants.js';
 import { MONS, natCat, ceilOf, amountPatterns, TAP_EVERY } from './constants.js';
@@ -60,10 +61,10 @@ function scheduleOf(Te, env, wake, rec) {
 export function prepare(m, env) {
   const mon = MONS[env.mon];
   const LV = LEVEL[env.N];
-  const T = Math.floor(mon.time * (1 - (LV - 1) * 0.002) * m.timeMul);
+  const T = helpTime(mon.time, LV, m.timeMul);
   const Te = env.camp ? T / 1.2 : T;
-  const p = Math.min(1, mon.skillP * m.skillMul);
-  const ingP = Math.min(1, mon.ingP * m.ingMul);
+  const p = rateOf(mon.skillP, m.skillMul);
+  const ingP = rateOf(mon.ingP, m.ingMul);
   // 最終進化形は進化してきた個体とみなし、進化1回ごとに最大所持数が5増える（きのみタイプと同じ）。
   const cap0 = mon.cap + EVO_CAP * mon.evo + m.inv;
   const cap = env.camp ? Math.ceil(cap0 * 1.2) : cap0;
@@ -72,14 +73,33 @@ export function prepare(m, env) {
   return { LV, T, Te, p, ingP, cap, ceil: ceilOf(mon), segs, Ha: sum(false), Hs: sum(true) };
 }
 
-// 食材配列は入力しないので、配列ごとに天井カウンタを追った結果を出現確率で平均する。
+// 1日の期待発動回数。天井込みの実質確率 pe = eff(p, ceil) で抽選する。
+// 常にタップする日中の区間は、おてつだい n 回（小数）のすべてで抽選する（n × pe）。
+// それ以外の区間（3時間ごとの受け取りの区間と睡眠中）は所持数0から追い、ストックは2回まで（stockSkills）。
+// rolls は区間の segRolls の結果。
+function daySkills(r, segs) {
+  const pe = eff(r.p, r.ceil);
+  const o = { day: 0, night: 0, rolls: 0, full: 0 };
+  for (const s of segs) {
+    if (s.tap) { o.day += s.n * pe; continue; }
+    const got = stockSkills(pe, s.rolls.P);
+    if (s.night) {
+      o.night += got;
+      o.rolls = s.rolls.P.reduce((a, w, k) => a + w * k, 0);
+      o.full = s.rolls.full;
+    } else {
+      o.day += got;
+    }
+  }
+  return o;
+}
+
+// 食材配列は入力しないので、配列ごとの結果を出現確率で平均する。
 // rollsOf(n, amts) は所持数0から n 回（小数）おてつだいする区間の segRolls の結果。
-// run(segs) は runSegs の結果（呼び出し側で使い回せるように渡す）。
-function averagePatterns(r, mon, rollsOf, run = (segs) => runSegs(r.p, segs, r.ceil)) {
+function averagePatterns(r, mon, rollsOf) {
   const o = { day: 0, night: 0, rolls: 0, full: 0 };
   for (const { amts, p } of amountPatterns(mon)) {
-    const segs = r.segs.map((s) => (s.tap ? s : { ...s, rolls: rollsOf(s.n, amts) }));
-    const d = run(segs);
+    const d = daySkills(r, r.segs.map((s) => (s.tap ? s : { ...s, rolls: rollsOf(s.n, amts) })));
     Object.keys(o).forEach((k) => { o[k] += p * d[k]; });
   }
   return o;
@@ -103,38 +123,21 @@ export const envKey = (env) => [env.N, env.camp, env.mon, env.heal, env.tap, env
 export function createEngine() {
   const metricCache = new Map();
   const distCache = new Map();
-  const segsCache = new Map();
 
-  // 抽選回数の分布が同じ（例: 所持数が満タンにならない）区間は結果も同じなので、
-  // 分布の中身をキーにして計算を共有する。
   const rollsCache = new Map();
-  const rollsIds = new Map();
   function rollsFor(cap, n, ingP, berry, amts) {
-    const key = `${cap}|${n}|${ingP.toFixed(6)}|${berry}|${amts.join(',')}`;
-    if (!rollsCache.has(key)) {
-      const r = segRolls(cap, n, ingP, berry, amts);
-      const sig = Array.from(r.P, (x) => x.toFixed(12)).join(',');
-      if (!rollsIds.has(sig)) rollsIds.set(sig, rollsIds.size);
-      rollsCache.set(key, { ...r, id: rollsIds.get(sig) });
-    }
+    const key = `${cap}|${n}|${ingP}|${berry}|${amts.join(',')}`;
+    if (!rollsCache.has(key)) rollsCache.set(key, segRolls(cap, n, ingP, berry, amts));
     return rollsCache.get(key);
   }
 
   // 自分の1日の期待スキル発動回数（日中＋睡眠中）。発動回数が小数のときは前後の整数回の日の割合で平均する。
   const metric = (m, env) => mixed(env, (e) => metricOne(m, e));
   function metricOne(m, env) {
-    const r = prepare(m, env), mon = MONS[env.mon];
-    const rollsOf = (n, amts) => rollsFor(r.cap, n, r.ingP, m.berry, amts);
-    const sig = amountPatterns(mon).map(({ amts }) => r.segs.map((s) => (s.tap ? `t${s.n}` : rollsOf(s.n, amts).id)).join(',')).join('/');
-    const key = `${envKey(env)}|${r.p.toFixed(8)}|${sig}`;
+    const r = prepare(m, env);
+    const key = `${envKey(env)}|${r.Te}|${r.p}|${r.ingP}|${r.cap}|${m.berry}|${m.wake}|${m.rec}`;
     if (!metricCache.has(key)) {
-      // 食材配列が違っても、区間ごとの抽選回数の分布が同じなら天井カウンタの結果も同じ。
-      const run = (segs) => {
-        const k = `${r.p}|${r.ceil}|${segs.map((s) => (s.tap ? `t${s.n}` : s.rolls.id)).join(',')}`;
-        if (!segsCache.has(k)) segsCache.set(k, runSegs(r.p, segs, r.ceil));
-        return segsCache.get(k);
-      };
-      const d = averagePatterns(r, mon, rollsOf, run);
+      const d = averagePatterns(r, MONS[env.mon], (n, amts) => rollsFor(r.cap, n, r.ingP, m.berry, amts));
       metricCache.set(key, d.day + d.night);
     }
     return metricCache.get(key);

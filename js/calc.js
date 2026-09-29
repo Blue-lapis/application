@@ -1,14 +1,24 @@
 // 3タイプの計算エンジン（checker/js/*/calc.js）が共有する計算。DOM に一切触れない。
-// げんきとおてつだいのタイミング、スキル抽選回数、天井カウンタ、サブスキルの抽選分布。
+// げんきとおてつだいのタイミング、スキル抽選回数、サブスキルの抽選分布。
 import {
-  SLEEP, ENERGY_TICK, WAKE_ENERGY, ENERGY_BANDS, QUEUE_AFTER_FULL, CHAIN_MAX_DAYS, CHAIN_TOL, RARITY_P, SUBS, HEAL_CAP, COOK_AT, cookRecovery,
+  SLEEP, ENERGY_TICK, WAKE_ENERGY, ENERGY_BANDS, RARITY_P, SUBS, HEAL_CAP, COOK_AT, cookRecovery,
 } from './constants.js';
 
 export const DAY_SEC = 86400;
 export const AWAKE_SEC = Math.round((24 - SLEEP) * 3600);
 
-// 天井込みの実質スキル確率。ceil は連続不発の天井（ポケモンごとに違う）。
+// 天井込みの実質スキル確率。ceil は発動が確定するおてつだいの回数（ポケモンごとに違う）。
 export const eff = (p, ceil) => (p >= 1 ? 1 : p / (1 - (1 - p) ** ceil));
+
+// 小数第4位までの切り捨て（にとよんツールと同じ。浮動小数の誤差を小数第6位で丸めてから切り捨てる）。
+export const trunc4 = (v) => Math.floor(+(v * 1e4).toFixed(6)) / 1e4;
+
+// おてつだい時間（秒）。レベル・性格・サブスキルの倍率の積を小数第4位まで切り捨て、基準のおてつだい時間に掛ける。
+// 秒は切り捨てない（にとよんツールと同じ）。timeMul は性格 × (1 − サブスキル合計)。
+export const helpTime = (time, LV, timeMul) => time * trunc4(((501 - LV) / 500) * timeMul);
+
+// 食材確率・スキル確率。基礎値 × 性格 × (1 + サブスキル合計) を小数第4位まで切り捨てる（上限1）。
+export const rateOf = (base, mul) => Math.min(1, trunc4(base * mul));
 
 const NO_SUBS = { sk: 0, sp: 0, inv: 0, ing: 0, berry: 0, erb: false, hb: false };
 
@@ -116,8 +126,8 @@ export function helpsPerTap(Te, energy, start, tap, duration) {
   return out;
 }
 
-// 睡眠中のおてつだいHs回のうち、スキル抽選が行われる回数の分布。
-// 所持数が満タンになったおてつだいの後も、キューに残る QUEUE_AFTER_FULL 回は抽選される。
+// 所持数0からのおてつだいHs回のうち、スキル抽選が行われる回数の分布。
+// 所持数が満タンになったおてつだいまで抽選され、その後は抽選されない（にとよんツールと同じ）。
 // ing は食材おてつだい1回で拾う個数の候補（食材配列の3スロット）。
 export function nightRolls(cap, Hs, ingP, berry, ing) {
   const P = new Float64Array(Hs + 1);
@@ -135,7 +145,7 @@ export function nightRolls(cap, Hs, ingP, berry, ing) {
     [d, n] = [n, d];
     let s = 0;
     for (let c = 0; c < cap; c++) s += d[c];
-    P[Math.min(Hs, j + QUEUE_AFTER_FULL)] += open - s;
+    P[j] += open - s;
     open = s;
     // 未満タンの確率が0なら、以後の遷移で分布は変わらない。
     if (open === 0) break;
@@ -157,113 +167,18 @@ export function segRolls(cap, n, ingP, berry, ing) {
   return { P, full: a.full + (b.full - a.full) * f, n: lo + 1 };
 }
 
-// 天井カウンタの分布を、毎日同じ区間の並び segs で追い、分布が落ち着いた日の発動回数を返す。
-// segs の要素は { night, tap, n, rolls }。
-// - tap: 常にタップする日中の区間。おてつだい n 回（小数）のすべてで抽選し、ストックは発生しない。
-//   小数の分は、最後の1回を f の確率で行うとみなす。
-// - それ以外: 所持数0から追う区間（3時間ごとの受け取りの区間と睡眠中）。ストックは2回までで、2回たまると抽選が止まる。
-//   rolls は segRolls の結果（抽選が i 回で止まる確率 P[i]）。区間の終わりにストックを受け取る。
-//
-// 連続不発回数 j の分布は、おてつだい1回ごとに「全体が1つ右にずれて (1-p) 倍、発動した分が j=0 へ」
-// となるだけなので、リングバッファの先頭位置 h と共通倍率 sc を動かして1回あたり O(1) で進める。
-// ストックのある区間では、開始時の状態（ストック0）と、最初の発動後の状態（ストック1）は
-// 同じ不発回数に重ならない。i 回進めたとき、前者は j >= i、後者は j < i にある。
-// このため同じリング b0 を共有できる。2回目の発動後は j=0 に固定し、スカラー z で持つ。
-export function runSegs(p, segs, ceil) {
-  const L = ceil - 1, q = 1 - p;
-  const b0 = new Float64Array(ceil), fc = new Float64Array(ceil), prev = new Float64Array(ceil);
-  let h = 0, sc = 1;
-  const at = (j) => (h + j) % ceil;
-  const step = () => {
-    const slot = h === 0 ? L : h - 1;
-    h = slot;
-    sc *= q;
-    if (sc < 1e-150) {
-      for (let k = 0; k < ceil; k++) b0[k] *= sc;
-      sc = 1;
-    }
-  };
-  // リングバッファを普通の並び（h = 0、sc = 1）に戻して、値 v で置き換える。
-  const reset = (v) => { h = 0; sc = 1; b0.set(v); };
-  const tapStep = () => {
-    const last = b0[h === 0 ? L : h - 1] * sc;
-    const trig = p * (1 - last) + last;
-    step();
-    b0[h] = trig / sc;
-    return trig;
-  };
-
-  const runDay = () => {
-    const o = { day: 0, night: 0, rolls: 0, full: 0 };
-    for (const s of segs) {
-      if (s.tap) {
-        const lo = Math.floor(s.n), f = s.n - lo;
-        for (let i = 0; i < lo; i++) o.day += tapStep();
-        if (f > 1e-12) {
-          for (let j = 0; j < ceil; j++) fc[j] = b0[at(j)] * sc;
-          o.day += f * tapStep();
-          for (let j = 0; j < ceil; j++) fc[j] = (1 - f) * fc[j] + f * b0[at(j)] * sc;
-          reset(fc);
-        }
-        continue;
-      }
-      // 抽選回数が i 回で止まる確率 RP[i] で、その時点の状態を足し合わせる。
-      const RP = s.rolls.P;
-      // 確率が厳密に0の末尾では、足し合わせる状態がない。
-      // 小さい正の確率は切り捨てず、元の分布をそのまま使う。
-      let hs = s.rolls.n;
-      while (hs > 0 && RP[hs] === 0) hs--;
-      let A0 = 1, A1 = 0, z = 0, fz = 0, got = 0;
-      fc.fill(0);
-      const collect = (w) => {
-        // リングの折り返しで2つに分け、内側のループから剰余を外す。
-        const end = ceil - h;
-        for (let j = 0, x = h; j < end; j++, x++) fc[j] += w * b0[x] * sc;
-        for (let j = end, x = 0; j < ceil; j++, x++) fc[j] += w * b0[x] * sc;
-        fz += w * z;
-        got += w * (A1 + 2 * z);
-      };
-      if (RP[0]) collect(RP[0]);
-      for (let i = 0; i < hs; i++) {
-        const x = h === 0 ? L : h - 1;
-        // 天井へ届く状態は、最初の ceil 回までは区間開始時のストック0、
-        // その後は区間内で1回発動したストック1だけ。
-        const last0 = i < ceil ? b0[x] * sc : 0;
-        const last1 = i < ceil ? 0 : b0[x] * sc;
-        const t0 = p * (A0 - last0) + last0;
-        const t1 = p * (A1 - last1) + last1;
-        step();
-        b0[h] = t0 / sc;
-        z += t1;
-        A0 -= t0;
-        A1 += t0 - t1;
-        if (RP[i + 1]) collect(RP[i + 1]);
-      }
-      // 受け取り（起床）時にストックは回収され、不発回数の分布だけが引き継がれる。
-      fc[0] += fz;
-      reset(fc);
-      if (s.night) {
-        o.night += got;
-        for (let j = 0; j < RP.length; j++) o.rolls += j * RP[j];
-        o.full = s.rolls.full;
-      } else {
-        o.day += got;
-      }
-    }
-    return o;
-  };
-
-  // 毎日同じ区間なので、日の終わりの不発回数の分布が変わらなくなるまで日を進める。
-  b0[0] = 1;
-  let o;
-  for (let d = 0; d < CHAIN_MAX_DAYS; d++) {
-    for (let j = 0; j < ceil; j++) prev[j] = b0[at(j)] * sc;
-    o = runDay();
-    let diff = 0;
-    for (let j = 0; j < ceil; j++) diff += Math.abs(b0[at(j)] * sc - prev[j]);
-    if (d > 0 && diff < CHAIN_TOL) break;
+// ストックのある区間（3時間ごとの受け取りの区間と睡眠中）の期待発動回数。
+// 抽選が k 回行われる確率 P[k] で、k 回の二項分布の発動回数を2回（ストックの上限）で打ち切って平均する。
+// p は天井込みの実質スキル確率。区間ごとに独立に数え、天井の途中経過は持ち越さない（にとよんツールと同じ）。
+export function stockSkills(p, P) {
+  const q = 1 - p;
+  let s = 0;
+  for (let k = 1; k < P.length; k++) {
+    if (!P[k]) continue;
+    const once = k * p * q ** (k - 1);
+    s += P[k] * (2 - 2 * q ** k - once);
   }
-  return o;
+  return s;
 }
 
 // サブスキルN枠の効果合計の分布。1枠ごとに色を RARITY_P で抽選し、

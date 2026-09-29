@@ -216,7 +216,7 @@ function renderHeader() {
   // 食材は名前の途中で折り返さないよう、アイコンの下に名前を置いて横に並べる。
   const ings = [...new Set(mm.slots.flat().map(([i]) => mm.ings[i]))]
     .map((n) => `<li>${ingIcon(n)}<span>${esc(n)}</span></li>`).join('');
-  const note = state.type === 'berry' ? esc(mm.berry) : state.type === 'skill' ? `スキル発動の天井 ${d.ceilOf(mm)}回` : '';
+  const note = state.type === 'berry' ? esc(mm.berry) : state.type === 'skill' ? `スキル発動の天井 ${d.ceilOf(mm)}回目` : '';
   $('monInfo').innerHTML = (note ? `<p>${note}</p>` : '') + `<div class="ingrow"><small>食材</small><ul>${ings}</ul></div>`;
   $('arrSec').hidden = state.type !== 'ingredient';
   $('reset').textContent = state.type === 'ingredient' ? '食材配列・サブスキル・性格を消す' : 'サブスキル・性格を消す';
