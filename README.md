@@ -15,7 +15,7 @@ https://lapis-blue.github.io/application/checker/
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、睡眠中のスキル抽選回数、天井カウンタ、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数
 - `css/style.css` — 土台のスタイル（見た目は `checker/css/theme.css` で上書き）
-- `docs/` — 要件定義書（`requirements-v1.1.md`）と設計書（`design-v1.1.md`）
+- `docs/` — 要件定義書（`requirements-v1.1.md`、食材タイプの見直しの叩き台 `requirements-v1.2.md`）と設計書（`design-v1.1.md`）
 - `tests/check-dist.mjs` — 上位%の分布の整合性テスト（`node tests/check-dist.mjs`）
 - `index.html`・`ingredient/index.html`・`berry/index.html` — `checker/` へ移動するページ
 
