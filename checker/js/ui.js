@@ -5,10 +5,13 @@ import { eff } from '../../js/calc.js';
 import { TYPES } from './types.js';
 import { arrName, SLOT_LV } from './ingredient/constants.js';
 import { slotsOf } from './ingredient/calc.js';
+import { HEAL_AMT, HEAL_TIMES, TEAM_OTHERS } from './berry/constants.js';
+import { energyAt } from './berry/calc.js';
 import { ingIcon } from './ingicons.js';
 import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLabel } from './picker.js';
 import {
   state, monData, loadSettings, setCamp, setG80, setMode, setMon, setType, setTarget, setNature, resetSelection,
+  setHeal, setTap, setTeam, setParam,
   currentSubs, isComplete, env, loadLog, appendLog, removeLogEntry, restoreEntry, isCurrent,
 } from './state.js';
 
@@ -39,6 +42,8 @@ function matchRank(q, name, key) {
 // 「キュウコン(アローラのすがた)」を名前と姿に分ける。
 const splitName = (name) => name.match(/^([^(]+)(?:\((.+)\))?$/).slice(1);
 const ALL_FLAGS = Object.keys(LEVEL).map(Number).flatMap((N) => [true, false].flatMap((camp) => [false, true].map((g80) => ({ N, camp, g80 }))));
+// きのみタイプは、ほかのパラメーターは今の値のまま、対象レベルとチケットだけを先に計算しておく。
+const BERRY_FLAGS = Object.keys(LEVEL).map(Number).flatMap((N) => [true, false].map((camp) => ({ N, camp })));
 const def = () => TYPES[state.type];
 // 対象レベルの切り替えの名前。最後の枠が開くレベルまで（3枠なら「Lv.50まで」）。
 const modeLabel = (N) => `Lv.${UNLOCK[N - 1]}まで`;
@@ -54,10 +59,11 @@ const ROWS = {
     ['grp', '無補正個体との比較'], ['rBase', '無補正個体の1日個数'], ['rDRatio', '1日の個数の比（順位の基準）'], ['rPos', '全パターン中の順位'],
   ],
   berry: [
-    ['grp', 'おてつだい'], ['rTime', 'おてつだい時間'], ['rCut', '時間の短縮'], ['rHelps', '1日のおてつだい回数'],
+    ['grp', 'おてつだい'], ['rTime', 'おてつだい時間'], ['rCut', '時間の短縮'], ['rHelps', '1日のおてつだい回数'], ['rGenki', 'げんき'],
     ['grp', 'きのみ'], ['rEnergy', 'きのみ1個のエナジー'], ['rAmt', '1回あたりのきのみ'], ['rCount', '1日のきのみの個数'],
     ['grp', '所持数'], ['rIng', '食材確率（満タンまで）'], ['rCap', '最大所持数'], ['rFull', '就寝時までに満タンになる確率'],
     ['rIngs', '1日に持ち帰る食材'],
+    ['grp', 'エナジーの内訳'], ['rSelf', '自分のきのみエナジー'], ['rTeam', `おてボによるほかの${TEAM_OTHERS}匹の増加`],
     ['grp', '無補正個体との比較'], ['rBase', '無補正個体の1日エナジー'], ['rDRatio', '1日のエナジーの比（順位の基準）'], ['rPos', '全パターン中の順位'],
   ],
   skill: [
@@ -165,8 +171,9 @@ export function initUI(engines) {
   $('g80').checked = state.g80;
   $('camp').addEventListener('change', () => { setCamp($('camp').checked); refresh(engines); });
   $('g80').addEventListener('change', () => { setG80($('g80').checked); refresh(engines); });
+  initParams(engines);
 
-  document.querySelectorAll('.mode button').forEach((b) => {
+  document.querySelectorAll('.sec-head .mode button').forEach((b) => {
     b.onclick = () => { setMode(+b.dataset.n); refresh(engines); };
   });
 
@@ -223,7 +230,7 @@ function renderHeader() {
 }
 
 function renderMode() {
-  document.querySelectorAll('.mode button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.n === state.N)));
+  document.querySelectorAll('.sec-head .mode button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.n === state.N)));
 }
 
 function renderIngs(engines) {
@@ -382,6 +389,62 @@ function renderNatDlg() {
   $('natNote').textContent = `${METRIC[state.type]}に効くのは ${labels.join(' と ')} の補正だけです。薄い色の性格は「無補正」と同じ結果になります。`;
 }
 
+// きのみタイプのパラメーター。ヒーラー・日中の受け取り・チームへの効果はその場で切り替え、
+// げんきオールS の回復量と発動回数は詳細のダイアログで変える。
+const healText = (e) => (e.heal === 'g80' ? 'げんき常時81%以上'
+  : e.heal ? `ヒーラー${e.heal}匹（げんきオールS ${e.healAmt}×${e.healTimes}回/日）` : 'ヒーラーなし');
+const tapText = (e) => (e.tap === '3h' ? '起床中は3時間ごとに受け取る' : '日中は受け取らない（いつのまに育成）');
+const genkiText = (g) => `就寝時${g.bed}→起床前${g.end}`;
+
+function initParams(engines) {
+  const seg = (id, set, parse) => $(id).querySelectorAll('button').forEach((b) => {
+    b.onclick = () => { set(parse(b.dataset.v)); refresh(engines); };
+  });
+  seg('healSeg', setHeal, (v) => (v === 'g80' ? v : +v));
+  seg('tapSeg', setTap, (v) => v);
+  $('team').addEventListener('change', () => { setTeam($('team').checked); refresh(engines); });
+
+  $('paramBtn').onclick = () => { renderParamDlg(); $('paramDlg').showModal(); };
+  $('paramClose').onclick = () => $('paramDlg').close();
+  $('paramDlg').addEventListener('click', (e) => { if (e.target === $('paramDlg')) $('paramDlg').close(); });
+  // 範囲外の値は受け付けず、入力欄を今の値に戻す。
+  ['healAmt', 'healTimes'].forEach((k) => {
+    $(k).addEventListener('change', () => {
+      if (!setParam(k, Number($(k).value))) $(k).value = state[k];
+      refresh(engines);
+    });
+  });
+  $('paramReset').onclick = () => {
+    setParam('healAmt', HEAL_AMT);
+    setParam('healTimes', HEAL_TIMES);
+    refresh(engines);
+  };
+}
+
+function renderParams() {
+  const berry = state.type === 'berry';
+  $('params').hidden = !berry;
+  $('g80Sw').hidden = berry;
+  if (!berry) return;
+  const e = env();
+  $('healSeg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(String(e.heal) === b.dataset.v)));
+  $('tapSeg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(e.tap === b.dataset.v)));
+  $('team').checked = e.team;
+  const g = energyAt(e, 100);
+  $('paramSum').textContent = e.heal === 'g80' ? healText(e)
+    : `${e.heal ? `げんきオールS ${e.healAmt}×${e.healTimes}回/匹` : 'ヒーラーなし'}・げんき${genkiText(g)}`;
+  if ($('paramDlg').open) renderParamDlg();
+}
+
+function renderParamDlg() {
+  ['healAmt', 'healTimes'].forEach((k) => {
+    if (document.activeElement !== $(k)) $(k).value = state[k];
+  });
+  const e = env();
+  const lines = [1, 2].map((n) => `ヒーラー${n}匹: ${genkiText(energyAt({ ...e, heal: n }, 100))}`);
+  $('paramNote').textContent = `ヒーラーは起床中に等間隔で発動し、チーム全員のげんきを回復します（上限150）。睡眠中は回復せず、10分ごとに1減ります。今の値でのげんき（起床時100）: ${lines.join('・')}`;
+}
+
 const condText = (m, e) => `Lv.${LEVEL[state.N]}・睡眠8.5時間・${e.g80 ? 'げんき常時81%以上' : `起床時げんき${m.wake}から10分ごとに1減少（回復スキルなし）`}`;
 const timeRows = (r, m, e) => {
   const Tm = Math.floor(r.Te / 60), Ts = Math.floor(r.Te % 60);
@@ -440,13 +503,15 @@ function renderIngStats(engine) {
 function renderBerryStats(engine) {
   const e = env(), mm = monData();
   const m = def().mults(currentSubs(), state.up, state.down);
-  $('cond').textContent = `${condText(m, e)}・起床時に回収して日中はタップしない（いつのまに育成）・食材配列は全パターンの平均で計算`;
-  $('hLabel').textContent = '1日のきのみエナジー';
+  $('cond').textContent = `Lv.${LEVEL[state.N]}・睡眠8.5時間・${healText(e)}${e.heal === 'g80' ? '' : `・起床時げんき${m.wake}`}・${tapText(e)}・食材配列は全パターンの平均で計算`;
+  $('hLabel').textContent = e.team ? '1日のエナジー（チームへの効果込み）' : '1日のきのみエナジー';
 
   const base = engine.baseMetric(e);
   const r = engine.daily(m, e);
   const count = r.day + r.night;
-  const total = count * r.energy;
+  const self = count * r.energy;
+  const team = engine.teamGain(m, e);
+  const total = self + team;
   $('hAll').textContent = Math.round(total).toLocaleString();
   $('hDay').textContent = Math.round(r.day * r.energy).toLocaleString();
   $('hNight').textContent = Math.round(r.night * r.energy).toLocaleString();
@@ -458,8 +523,14 @@ function renderBerryStats(engine) {
   $('rCount').innerHTML = `${count.toFixed(1)}個<span>日中${r.day.toFixed(1)}個・睡眠中${r.night.toFixed(1)}個</span>`;
   $('rIng').innerHTML = `${(r.ingP * 100).toFixed(1)}%<span>基礎${+(mm.ingP * 100).toFixed(2)}% × ${m.ingMul.toFixed(3)}</span>`;
   $('rCap').innerHTML = `${r.cap}個<span>${e.camp ? 'チケット込み' : '基礎＋サブスキル'}</span>`;
-  $('rFull').innerHTML = `${(r.fullBed * 100).toFixed(1)}%<span>起床時まで${(r.full * 100).toFixed(1)}%</span>`;
+  const pct = (x) => `${(Math.max(0, x) * 100).toFixed(1)}%`;
+  $('rFull').innerHTML = `${pct(r.fullBed)}<span>${e.tap === '3h' ? '最後の受け取りから・' : ''}起床時まで${pct(r.full)}</span>`;
   $('rIngs').innerHTML = `${r.ings.toFixed(1)}個<span>満タンになるまで</span>`;
+  $('rGenki').innerHTML = e.heal === 'g80' ? '常に81%以上' : `${genkiText(r.genki)}<span>${e.heal ? `ヒーラー${e.heal}匹` : 'ヒーラーなし'}</span>`;
+  $('rSelf').innerHTML = `${Math.round(self).toLocaleString()}<span>日中${Math.round(r.day * r.energy).toLocaleString()}・睡眠中${Math.round(r.night * r.energy).toLocaleString()}</span>`;
+  $('rTeam').innerHTML = !e.team ? '—<span>含めない設定</span>'
+    : !m.hb ? '0<span>おてつだいボーナスなし</span>'
+      : `+${Math.round(team).toLocaleString()}<span>1匹あたり+${Math.round(team / TEAM_OTHERS).toLocaleString()}（同じポケモン・無補正）</span>`;
   $('rBase').innerHTML = `${Math.round(base).toLocaleString()}<span>無補正</span>`;
   $('rDRatio').textContent = isComplete() ? `${(total / base).toFixed(2)}倍` : '—';
 }
@@ -497,7 +568,8 @@ function requestDist(engines) {
   if (inFlight) return;
   const type = state.type, engine = engines[type];
   const cur = env();
-  const next = [cur, ...ALL_FLAGS.map((f) => ({ ...cur, ...f }))].find((e) => !engine.ready(e));
+  const flags = type === 'berry' ? BERRY_FLAGS : ALL_FLAGS;
+  const next = [cur, ...flags.map((f) => ({ ...cur, ...f }))].find((e) => !engine.ready(e));
   if (!next) return;
   inFlight = next;
   worker.postMessage({ type, env: next });
@@ -565,6 +637,7 @@ function renderLog(engines) {
 function refresh(engines) {
   renderHeader();
   renderMode();
+  renderParams();
   renderIngs(engines);
   renderSlots();
   renderNat();

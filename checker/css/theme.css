@@ -162,6 +162,22 @@ header{align-items:center}
 .perf-head{margin-bottom:10px}
 .switch{color:var(--ink)}
 .cond{font-size:.7rem;font-weight:500;line-height:1.6;margin:0 0 12px}
+
+/* きのみタイプのパラメーター。よく使うものはその場で切り替え、細かい数値は「詳細」のダイアログで変える。 */
+.params[hidden]{display:none}
+.params{background:var(--bg);border-radius:14px;padding:10px 12px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px}
+.prow{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 10px}
+.prow>span{font-size:.78rem;font-weight:700;white-space:nowrap}
+.params .mode{grid-auto-columns:max-content;margin:0;background:var(--card);border-radius:10px;padding:3px;gap:2px}
+.params .mode button{font-size:.75rem;font-weight:700;padding:8px 8px;border-radius:8px;min-height:36px;white-space:nowrap}
+.params .mode button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+.psum{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--line);padding-top:6px}
+.psum p{margin:0;font-size:.7rem;font-weight:500;line-height:1.5;color:var(--muted)}
+.psum .txt{font:inherit;font-size:.8rem;font-weight:700;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:0 14px;min-height:36px;cursor:pointer;flex:none}
+.nums{display:flex;flex-direction:column;gap:8px}
+.num{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:.85rem;font-weight:700}
+.num input{font:inherit;font-family:var(--font-num);font-size:1rem;width:5.5em;box-sizing:border-box;text-align:right;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.num input:invalid{border-color:var(--tail)}
 .hero{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin-bottom:12px;padding:16px;border-radius:16px;background:var(--psy);color:#fff}
 .hero .stat{background:none;border-radius:0;padding:0;text-align:left;display:flex;align-items:baseline;gap:6px}
 .hero .stat small{color:#fff;opacity:.9;font-size:.75rem;font-weight:700}

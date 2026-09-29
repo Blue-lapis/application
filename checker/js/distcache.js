@@ -5,7 +5,7 @@ import { SUBS, RARITY_P, NAT, ENERGY_BANDS } from '../../js/constants.js';
 import { TYPES } from './types.js';
 
 // 計算方法を変えたら上げる。キーが変わるので古い分布は使われず、そのうち消える。
-const MODEL_VERSION = 1;
+const MODEL_VERSION = 2;
 const DB_NAME = 'checker-dist';
 const STORE = 'dist';
 // 保存する分布の数の上限。超えたら最後に使ったのが古いものから消す。
@@ -21,7 +21,9 @@ const COMMON = hash(JSON.stringify([SUBS, RARITY_P, NAT, ENERGY_BANDS]));
 
 export const cacheKey = (type, env) => [
   MODEL_VERSION, COMMON, type, hash(JSON.stringify(TYPES[type].MONS[env.mon])),
-  env.mon, env.N, env.camp, env.g80, env.target ?? '',
+  env.mon, env.N, env.camp, env.g80 ?? '', env.target ?? '',
+  // きのみタイプだけのパラメーター。
+  env.heal ?? '', env.tap ?? '', env.team ?? '', env.healAmt ?? '', env.healTimes ?? '',
 ].join('|');
 
 let dbPromise = null;

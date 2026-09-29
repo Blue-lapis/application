@@ -8,6 +8,8 @@ export const LEVEL = { 3: 60, 4: 70, 5: 80 };
 export const ENERGY_TICK = 600;
 export const WAKE_ENERGY = 100;
 export const WAKE_ENERGY_ERB = 105;
+// スキルでげんきを回復したときの上限。
+export const HEAL_CAP = 150;
 // げんきによるおてつだい時間の倍率（Ver.1.8.1以降）。[下限げんき, 倍率] を上から判定する。
 export const ENERGY_BANDS = [[81, 0.45], [61, 0.52], [41, 0.58], [1, 0.66], [0, 1]];
 // 所持数が満タンになった後も、おてつだいキューに積まれている残り4回分はスキル抽選が行われる。
