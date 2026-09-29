@@ -186,6 +186,8 @@ header{align-items:center}
 .hero .stat:last-child{justify-content:flex-end}
 .hero .stat.team{grid-column:1/-1;justify-content:space-between;border-top:1px solid rgba(255,255,255,.3);padding-top:10px}
 .hero .stat[hidden]{display:none}
+.hero .stat.main small.sub{font-weight:500;opacity:.85;font-size:.8rem;margin-top:-2px}
+.hero .stat.main small.sub[hidden]{display:none}
 .split{grid-column:1/-1;height:8px;border-radius:999px;background:rgba(255,255,255,.28);overflow:hidden}
 .split i{display:block;height:100%;width:0;background:#fff;border-radius:999px}
 dl.rows{grid-template-columns:minmax(8.5em,1fr) auto;column-gap:0}
