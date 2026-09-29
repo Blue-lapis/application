@@ -166,26 +166,27 @@ export function segRolls(cap, n, ingP, berry, ing) {
 //
 // 連続不発回数 j の分布は、おてつだい1回ごとに「全体が1つ右にずれて (1-p) 倍、発動した分が j=0 へ」
 // となるだけなので、リングバッファの先頭位置 h と共通倍率 sc を動かして1回あたり O(1) で進める。
-// ストックのある区間はストック数ごとに b0（ストック0）・b1（ストック1）を持ち、ストック2になった分は
-// 抽選が止まって j=0 に固定されるのでスカラー z で持つ。
+// ストックのある区間では、開始時の状態（ストック0）と、最初の発動後の状態（ストック1）は
+// 同じ不発回数に重ならない。i 回進めたとき、前者は j >= i、後者は j < i にある。
+// このため同じリング b0 を共有できる。2回目の発動後は j=0 に固定し、スカラー z で持つ。
 export function runSegs(p, segs, ceil) {
   const L = ceil - 1, q = 1 - p;
-  const b0 = new Float64Array(ceil), b1 = new Float64Array(ceil), fc = new Float64Array(ceil), prev = new Float64Array(ceil);
+  const b0 = new Float64Array(ceil), fc = new Float64Array(ceil), prev = new Float64Array(ceil);
   let h = 0, sc = 1;
   const at = (j) => (h + j) % ceil;
   const step = () => {
-    const slot = at(L);
+    const slot = h === 0 ? L : h - 1;
     h = slot;
     sc *= q;
     if (sc < 1e-150) {
-      for (let k = 0; k < ceil; k++) { b0[k] *= sc; b1[k] *= sc; }
+      for (let k = 0; k < ceil; k++) b0[k] *= sc;
       sc = 1;
     }
   };
   // リングバッファを普通の並び（h = 0、sc = 1）に戻して、値 v で置き換える。
-  const reset = (v) => { h = 0; sc = 1; b0.set(v); b1.fill(0); };
+  const reset = (v) => { h = 0; sc = 1; b0.set(v); };
   const tapStep = () => {
-    const last = b0[at(L)] * sc;
+    const last = b0[h === 0 ? L : h - 1] * sc;
     const trig = p * (1 - last) + last;
     step();
     b0[h] = trig / sc;
@@ -207,23 +208,32 @@ export function runSegs(p, segs, ceil) {
         continue;
       }
       // 抽選回数が i 回で止まる確率 RP[i] で、その時点の状態を足し合わせる。
-      const RP = s.rolls.P, hs = s.rolls.n;
+      const RP = s.rolls.P;
+      // 確率が厳密に0の末尾では、足し合わせる状態がない。
+      // 小さい正の確率は切り捨てず、元の分布をそのまま使う。
+      let hs = s.rolls.n;
+      while (hs > 0 && RP[hs] === 0) hs--;
       let A0 = 1, A1 = 0, z = 0, fz = 0, got = 0;
       fc.fill(0);
       const collect = (w) => {
-        for (let j = 0; j < ceil; j++) { const x = at(j); fc[j] += w * (b0[x] + b1[x]) * sc; }
+        // リングの折り返しで2つに分け、内側のループから剰余を外す。
+        const end = ceil - h;
+        for (let j = 0, x = h; j < end; j++, x++) fc[j] += w * b0[x] * sc;
+        for (let j = end, x = 0; j < ceil; j++, x++) fc[j] += w * b0[x] * sc;
         fz += w * z;
         got += w * (A1 + 2 * z);
       };
       if (RP[0]) collect(RP[0]);
       for (let i = 0; i < hs; i++) {
-        const x = at(L);
-        const last0 = b0[x] * sc, last1 = b1[x] * sc;
+        const x = h === 0 ? L : h - 1;
+        // 天井へ届く状態は、最初の ceil 回までは区間開始時のストック0、
+        // その後は区間内で1回発動したストック1だけ。
+        const last0 = i < ceil ? b0[x] * sc : 0;
+        const last1 = i < ceil ? 0 : b0[x] * sc;
         const t0 = p * (A0 - last0) + last0;
         const t1 = p * (A1 - last1) + last1;
         step();
-        b0[h] = 0;
-        b1[h] = t0 / sc;
+        b0[h] = t0 / sc;
         z += t1;
         A0 -= t0;
         A1 += t0 - t1;
