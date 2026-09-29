@@ -1,7 +1,7 @@
 // 3タイプの計算エンジン（checker/js/*/calc.js）が共有する計算。DOM に一切触れない。
 // げんきとおてつだいのタイミング、スキル抽選回数、サブスキルの抽選分布。
 import {
-  SLEEP, ENERGY_TICK, WAKE_ENERGY, ENERGY_BANDS, RARITY_P, SUBS, HEAL_CAP, COOK_AT, cookRecovery,
+  SLEEP, ENERGY_TICK, WAKE_ENERGY, ENERGY_BANDS, QUEUE_AFTER_FULL, RARITY_P, SUBS, HEAL_CAP, COOK_AT, cookRecovery,
 } from './constants.js';
 
 export const DAY_SEC = 86400;
@@ -127,7 +127,8 @@ export function helpsPerTap(Te, energy, start, tap, duration) {
 }
 
 // 所持数0からのおてつだいHs回のうち、スキル抽選が行われる回数の分布。
-// 所持数が満タンになったおてつだいまで抽選され、その後は抽選されない（にとよんツールと同じ）。
+// 所持数が満タンになった後も、おてつだいキューに残る QUEUE_AFTER_FULL 回は抽選される（ポケモンスリープ攻略・検証 Wiki）。
+// にとよんツールは満タンになったおてつだいまでしか抽選しないので、ここだけ値が違う。
 // ing は食材おてつだい1回で拾う個数の候補（食材配列の3スロット）。
 export function nightRolls(cap, Hs, ingP, berry, ing) {
   const P = new Float64Array(Hs + 1);
@@ -145,7 +146,7 @@ export function nightRolls(cap, Hs, ingP, berry, ing) {
     [d, n] = [n, d];
     let s = 0;
     for (let c = 0; c < cap; c++) s += d[c];
-    P[j] += open - s;
+    P[Math.min(Hs, j + QUEUE_AFTER_FULL)] += open - s;
     open = s;
     // 未満タンの確率が0なら、以後の遷移で分布は変わらない。
     if (open === 0) break;

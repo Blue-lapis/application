@@ -4,21 +4,32 @@ import assert from 'node:assert/strict';
 import { segRolls, stockSkills, eff } from '../js/calc.js';
 const near = (a, b, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b) <= 1e-12 * Math.max(1, Math.abs(b)), `${label}: ${a} != ${b}`);
 
-// 所持数0から end 回おてつだいする全経路。満タンになったおてつだいまで抽選し、発動はストック2回まで。
+// 所持数0から end 回おてつだいする全経路。満タンになった後もキューに残る4回までは抽選し、発動はストック2回まで。
 // 抽選回数の分布 P と、発動回数の期待値 got を返す。
 function brute(cap, n, ingP, berry, ing, p) {
   const P = Array(Math.ceil(n) + 1).fill(0);
   let full = 0, got = 0;
-  const walk = (i, end, count, rolls, stock, isFull, w) => {
+  // left は満タン後に残る抽選の回数（満タンになるまでは null）。
+  const walk = (i, end, count, rolls, stock, left, w) => {
     if (!w) return;
-    if (i === end || isFull) {
+    if (i === end || left === 0) {
       P[rolls] += w;
-      if (isFull) full += w;
+      if (left !== null) full += w;
       got += w * stock;
       return;
     }
+    if (left !== null) {
+      // 満タン後は所持数が増えず、キューの残りで抽選だけ行う。
+      if (stock < 2) {
+        walk(i + 1, end, count, rolls + 1, stock + 1, left - 1, w * p);
+        walk(i + 1, end, count, rolls + 1, stock, left - 1, w * (1 - p));
+      } else {
+        walk(i + 1, end, count, rolls + 1, stock, left - 1, w);
+      }
+      return;
+    }
     for (const [amt, prob] of [[berry, 1 - ingP], ...ing.map((a) => [a, ingP / ing.length])]) {
-      const c = count + amt, f = c >= cap;
+      const c = count + amt, f = c >= cap ? 4 : null;
       if (stock < 2) {
         walk(i + 1, end, c, rolls + 1, stock + 1, f, w * prob * p);
         walk(i + 1, end, c, rolls + 1, stock, f, w * prob * (1 - p));
@@ -28,8 +39,8 @@ function brute(cap, n, ingP, berry, ing, p) {
     }
   };
   const lo = Math.floor(n), f = n - lo;
-  walk(0, lo, 0, 0, 0, false, 1 - f);
-  if (f) walk(0, lo + 1, 0, 0, 0, false, f);
+  walk(0, lo, 0, 0, 0, null, 1 - f);
+  if (f) walk(0, lo + 1, 0, 0, 0, null, f);
   return { P, full, got };
 }
 
