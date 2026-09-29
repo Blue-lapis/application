@@ -1,7 +1,7 @@
 // 3タイプの計算エンジン（checker/js/*/calc.js）が共有する計算。DOM に一切触れない。
-// げんきとおてつだいのタイミング、睡眠中のスキル抽選回数、天井カウンタ、サブスキルの抽選分布。
+// げんきとおてつだいのタイミング、スキル抽選回数、天井カウンタ、サブスキルの抽選分布。
 import {
-  SLEEP, ENERGY_TICK, WAKE_ENERGY, ENERGY_BANDS, QUEUE_AFTER_FULL, WARMUP_DAYS, CHAIN_WARMUP, DAYS, RARITY_P, SUBS, HEAL_CAP, COOK_AT, cookRecovery,
+  SLEEP, ENERGY_TICK, WAKE_ENERGY, ENERGY_BANDS, QUEUE_AFTER_FULL, CHAIN_MAX_DAYS, CHAIN_TOL, RARITY_P, SUBS, HEAL_CAP, COOK_AT, cookRecovery,
 } from './constants.js';
 
 export const DAY_SEC = 86400;
@@ -26,29 +26,6 @@ function addSub(e, s) {
 }
 
 export const band = (e) => ENERGY_BANDS.find(([min]) => e >= min)[1];
-
-// おてつだいのタイムラインを起床時刻を0として秒単位で追う。
-// 次のおてつだいの所要時間は、ひとつ前のおてつだいが終わった時点のげんきで決まる。
-// 起床時のげんき回復は進行中のおてつだいにも即座に反映される。
-// 日をまたいで端数を持ち越すため、捨て日のあとの DAYS 日分の回数を返す。
-export function schedule(Te, g80, wake) {
-  const energy = (t) => (g80 ? WAKE_ENERGY : Math.max(0, wake - Math.floor(t / ENERGY_TICK)));
-  const Ha = [], Hs = [];
-  let rest = 1;
-  for (let d = 0; d < WARMUP_DAYS + DAYS; d++) {
-    let t = 0, ha = 0, hs = 0;
-    for (;;) {
-      const dur = Te * band(energy(t));
-      const fin = t + rest * dur;
-      if (fin > DAY_SEC) { rest -= (DAY_SEC - t) / dur; break; }
-      if (fin <= AWAKE_SEC) ha++; else hs++;
-      t = fin;
-      rest = 1;
-    }
-    if (d >= WARMUP_DAYS) { Ha.push(ha); Hs.push(hs); }
-  }
-  return { Ha, Hs };
-}
 
 // 起床からの秒 t のげんきを返す関数（きのみタイプ）。起床中・睡眠中を問わず10分ごとに1減る（0で止まる）。
 // 起床中は次の回復が入る（どちらも10分単位の時刻で、同じ時刻の10分ごとの減少のあとに入る）。
@@ -167,19 +144,35 @@ export function nightRolls(cap, Hs, ingP, berry, ing) {
   return { P, full: 1 - open };
 }
 
-// 天井カウンタの分布を日ごとに追い、捨て日のあとの DAYS 日分の平均発動回数を返す。
-// rollsOf(hs) は睡眠中 hs 回のおてつだいに対する nightRolls の結果。
+// おてつだいが小数回（lo + f 回）の区間の、スキル抽選が行われる回数の分布。
+// 前後の整数回（lo 回と lo + 1 回）の nightRolls を f の割合で混ぜる（f の確率で1回多い日とみなす）。
+export function segRolls(cap, n, ingP, berry, ing) {
+  const lo = Math.floor(n), f = n - lo;
+  const a = nightRolls(cap, lo, ingP, berry, ing);
+  if (f < 1e-12) return { P: a.P, full: a.full, n: lo };
+  const b = nightRolls(cap, lo + 1, ingP, berry, ing);
+  const P = new Float64Array(lo + 2);
+  for (let i = 0; i <= lo; i++) P[i] = (1 - f) * a.P[i];
+  for (let i = 0; i <= lo + 1; i++) P[i] += f * b.P[i];
+  return { P, full: a.full + (b.full - a.full) * f, n: lo + 1 };
+}
+
+// 天井カウンタの分布を、毎日同じ区間の並び segs で追い、分布が落ち着いた日の発動回数を返す。
+// segs の要素は { night, tap, n, rolls }。
+// - tap: 常にタップする日中の区間。おてつだい n 回（小数）のすべてで抽選し、ストックは発生しない。
+//   小数の分は、最後の1回を f の確率で行うとみなす。
+// - それ以外: 所持数0から追う区間（3時間ごとの受け取りの区間と睡眠中）。ストックは2回までで、2回たまると抽選が止まる。
+//   rolls は segRolls の結果（抽選が i 回で止まる確率 P[i]）。区間の終わりにストックを受け取る。
 //
 // 連続不発回数 j の分布は、おてつだい1回ごとに「全体が1つ右にずれて (1-p) 倍、発動した分が j=0 へ」
 // となるだけなので、リングバッファの先頭位置 h と共通倍率 sc を動かして1回あたり O(1) で進める。
-// 睡眠中はストック数ごとに b0（ストック0）・b1（ストック1）を持ち、ストック2になった分は
+// ストックのある区間はストック数ごとに b0（ストック0）・b1（ストック1）を持ち、ストック2になった分は
 // 抽選が止まって j=0 に固定されるのでスカラー z で持つ。
-export function runDays(p, Ha, Hs, rollsOf, ceil) {
+export function runSegs(p, segs, ceil) {
   const L = ceil - 1, q = 1 - p;
-  const b0 = new Float64Array(ceil), b1 = new Float64Array(ceil), fc = new Float64Array(ceil);
+  const b0 = new Float64Array(ceil), b1 = new Float64Array(ceil), fc = new Float64Array(ceil), prev = new Float64Array(ceil);
   let h = 0, sc = 1;
   const at = (j) => (h + j) % ceil;
-  // おてつだい1回分、分布を1つずらして (1-p) 倍する。先頭 j=0 の値は呼び出し側で入れる。
   const step = () => {
     const slot = at(L);
     h = slot;
@@ -189,61 +182,78 @@ export function runDays(p, Ha, Hs, rollsOf, ceil) {
       sc = 1;
     }
   };
+  // リングバッファを普通の並び（h = 0、sc = 1）に戻して、値 v で置き換える。
+  const reset = (v) => { h = 0; sc = 1; b0.set(v); b1.fill(0); };
+  const tapStep = () => {
+    const last = b0[at(L)] * sc;
+    const trig = p * (1 - last) + last;
+    step();
+    b0[h] = trig / sc;
+    return trig;
+  };
+
+  const runDay = () => {
+    const o = { day: 0, night: 0, rolls: 0, full: 0 };
+    for (const s of segs) {
+      if (s.tap) {
+        const lo = Math.floor(s.n), f = s.n - lo;
+        for (let i = 0; i < lo; i++) o.day += tapStep();
+        if (f > 1e-12) {
+          for (let j = 0; j < ceil; j++) fc[j] = b0[at(j)] * sc;
+          o.day += f * tapStep();
+          for (let j = 0; j < ceil; j++) fc[j] = (1 - f) * fc[j] + f * b0[at(j)] * sc;
+          reset(fc);
+        }
+        continue;
+      }
+      // 抽選回数が i 回で止まる確率 RP[i] で、その時点の状態を足し合わせる。
+      const RP = s.rolls.P, hs = s.rolls.n;
+      let A0 = 1, A1 = 0, z = 0, fz = 0, got = 0;
+      fc.fill(0);
+      const collect = (w) => {
+        for (let j = 0; j < ceil; j++) { const x = at(j); fc[j] += w * (b0[x] + b1[x]) * sc; }
+        fz += w * z;
+        got += w * (A1 + 2 * z);
+      };
+      if (RP[0]) collect(RP[0]);
+      for (let i = 0; i < hs; i++) {
+        const x = at(L);
+        const last0 = b0[x] * sc, last1 = b1[x] * sc;
+        const t0 = p * (A0 - last0) + last0;
+        const t1 = p * (A1 - last1) + last1;
+        step();
+        b0[h] = 0;
+        b1[h] = t0 / sc;
+        z += t1;
+        A0 -= t0;
+        A1 += t0 - t1;
+        if (RP[i + 1]) collect(RP[i + 1]);
+      }
+      // 受け取り（起床）時にストックは回収され、不発回数の分布だけが引き継がれる。
+      fc[0] += fz;
+      reset(fc);
+      if (s.night) {
+        o.night += got;
+        for (let j = 0; j < RP.length; j++) o.rolls += j * RP[j];
+        o.full = s.rolls.full;
+      } else {
+        o.day += got;
+      }
+    }
+    return o;
+  };
+
+  // 毎日同じ区間なので、日の終わりの不発回数の分布が変わらなくなるまで日を進める。
   b0[0] = 1;
-  let sumDay = 0, sumNight = 0, sumRolls = 0, sumFull = 0;
-
-  for (let d = -CHAIN_WARMUP; d < DAYS; d++) {
-    const k = (d + DAYS) % DAYS;
-    const ha = Ha[k], hs = Hs[k];
-    const { P: RP, full } = rollsOf(hs);
-
-    // 日中: 常にタップするのでストックは発生しない。分布の総量は常に1。
-    let day = 0;
-    for (let i = 0; i < ha; i++) {
-      const last = b0[at(L)] * sc;
-      const trig = p * (1 - last) + last;
-      day += trig;
-      step();
-      b0[h] = trig / sc;
-    }
-
-    // 睡眠中: 抽選回数が i 回で止まる確率 RP[i] で、その時点の状態を足し合わせる。
-    let A0 = 1, A1 = 0, z = 0, fz = 0, night = 0;
-    fc.fill(0);
-    const collect = (w) => {
-      for (let j = 0; j < ceil; j++) { const x = at(j); fc[j] += w * (b0[x] + b1[x]) * sc; }
-      fz += w * z;
-      night += w * (A1 + 2 * z);
-    };
-    if (RP[0]) collect(RP[0]);
-    for (let i = 0; i < hs; i++) {
-      const x = at(L);
-      const last0 = b0[x] * sc, last1 = b1[x] * sc;
-      const t0 = p * (A0 - last0) + last0;
-      const t1 = p * (A1 - last1) + last1;
-      step();
-      b0[h] = 0;
-      b1[h] = t0 / sc;
-      z += t1;
-      A0 -= t0;
-      A1 += t0 - t1;
-      if (RP[i + 1]) collect(RP[i + 1]);
-    }
-
-    // 起床時にストックは回収され、不発回数の分布だけが翌日に引き継がれる。
-    h = 0; sc = 1;
-    b0.set(fc);
-    b0[0] += fz;
-    b1.fill(0);
-
-    if (d >= 0) {
-      sumDay += day;
-      sumNight += night;
-      for (let j = 0; j <= hs; j++) sumRolls += j * RP[j];
-      sumFull += full;
-    }
+  let o;
+  for (let d = 0; d < CHAIN_MAX_DAYS; d++) {
+    for (let j = 0; j < ceil; j++) prev[j] = b0[at(j)] * sc;
+    o = runDay();
+    let diff = 0;
+    for (let j = 0; j < ceil; j++) diff += Math.abs(b0[at(j)] * sc - prev[j]);
+    if (d > 0 && diff < CHAIN_TOL) break;
   }
-  return { day: sumDay / DAYS, night: sumNight / DAYS, rolls: sumRolls / DAYS, full: sumFull / DAYS };
+  return o;
 }
 
 // サブスキルN枠の効果合計の分布。1枠ごとに色を RARITY_P で抽選し、

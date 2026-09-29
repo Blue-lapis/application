@@ -19,11 +19,10 @@ export const cookRecovery = (e) => (COOK_RECOVERY.find(([over]) => e > over) || 
 export const ENERGY_BANDS = [[81, 0.45], [61, 0.52], [41, 0.58], [1, 0.66], [0, 1]];
 // 所持数が満タンになった後も、おてつだいキューに積まれている残り4回分はスキル抽選が行われる。
 export const QUEUE_AFTER_FULL = 4;
-// おてつだいのタイミングは日をまたいで持ち越すため、捨て日を回してから DAYS 日分を平均する。
-// 天井カウンタの分布も CHAIN_WARMUP 日ぶん慣らしてから数える。
-export const WARMUP_DAYS = 6;
-export const CHAIN_WARMUP = 3;
-export const DAYS = 8;
+// 天井カウンタの分布は日をまたいで引き継ぐ。毎日同じ推移になるので、日の終わりの分布の変化
+// （絶対値の合計）が CHAIN_TOL 未満になるまで、最大 CHAIN_MAX_DAYS 日進める。
+export const CHAIN_MAX_DAYS = 200;
+export const CHAIN_TOL = 1e-12;
 
 // 1枠ごとにまず色を抽選し、その色の中で未所持のサブスキルから均等に1つ選ぶ。
 export const RARITY_P = { gold: 0.14, blue: 0.33, white: 0.53 };

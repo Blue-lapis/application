@@ -47,7 +47,7 @@ export const state = {
   N: 3,
   camp: true,
   g80: false,
-  // ヒーラー・回復量・発動回数・チーム効果はきのみタイプと食材タイプで共通。受け取りはタイプごとに選択肢が違うので別に持つ。
+  // ヒーラー・回復量・発動回数・チーム効果は3タイプで共通。受け取りは選択肢が違うので、きのみタイプ（tap）と食材・スキルタイプ（ingTap）で別に持つ。
   heal: 1,
   tap: 'none',
   ingTap: 'always',
@@ -127,7 +127,6 @@ function lastMonOf(type) {
 }
 
 export function setCamp(v) { state.camp = v; save(KEYS.camp, v); }
-export function setG80(v) { state.g80 = v; save(KEYS.g80, v); }
 export function setMode(n) { state.N = n; save(KEYS.mode, n); }
 export function setHeal(v) { if (HEALS.includes(v)) { state.heal = v; save(KEYS.heal, v); } }
 export function setTap(v) { if (TAPS.includes(v)) { state.tap = v; save(KEYS.tap, v); } }
@@ -187,7 +186,7 @@ export const env = () => {
   const { N, camp, mon, heal, tap, ingTap, team, healAmt, healTimes } = state;
   if (state.type === 'berry') return { N, camp, mon, heal, tap, team, healAmt, healTimes };
   if (state.type === 'ingredient') return { N, camp, mon, target: state.target, heal, tap: ingTap, team, healAmt, healTimes };
-  return { N, camp, g80: state.g80, mon };
+  return { N, camp, mon, heal, tap: ingTap, team, healAmt, healTimes };
 };
 
 // 記録はタイプごとのキーに保存する（食材・きのみは統合前と同じキー）。食材タイプの記録は食材配列のあるものだけ使う。

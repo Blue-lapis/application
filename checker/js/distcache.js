@@ -5,7 +5,7 @@ import { SUBS, RARITY_P, NAT, ENERGY_BANDS, slotWeights } from '../../js/constan
 import { TYPES } from './types.js';
 
 // 計算方法を変えたら上げる。キーが変わるので古い分布は使われず、そのうち消える。
-const MODEL_VERSION = 6;
+const MODEL_VERSION = 7;
 // 公開時にモジュールの URL に付く版（?v=コミット）。上げ忘れても、公開のたびに分布を計算し直す。
 const BUILD = new URL(import.meta.url).searchParams.get('v') || '';
 const DB_NAME = 'checker-dist';
