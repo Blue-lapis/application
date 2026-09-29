@@ -15,8 +15,10 @@ https://lapis-blue.github.io/application/checker/
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、睡眠中のスキル抽選回数、天井カウンタ、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数
 - `css/style.css` — 土台のスタイル（見た目は `checker/css/theme.css` で上書き）
-- `docs/` — 要件定義書（`requirements-v1.1.md`・`requirements-v1.2.md`）と設計書（`design-v1.1.md`・`design-v1.2.md`）
+- `docs/` — ver1.1〜ver1.4 の要件定義書・設計書（最新: [要件定義](docs/requirements-v1.4.md)・[設計書](docs/design-v1.4.md)）
 - `tests/check-dist.mjs` — 上位%の分布の整合性テスト（`node tests/check-dist.mjs`）
+- `tests/check-segs.mjs` — 天井・ストック・キューの境界テスト（`node tests/check-segs.mjs`）
+- `tests/compare-values.mjs`・`tests/bench-dist.mjs`・`tests/compare-dist.mjs` — 変更前後の値・分布・計算時間の比較（[実行手順](docs/design-v1.4.md#5-再確認する手順)）
 - `index.html`・`ingredient/index.html`・`berry/index.html` — `checker/` へ移動するページ
 
 ## 共通の計算モデル
@@ -41,6 +43,7 @@ https://lapis-blue.github.io/application/checker/
 - 所持数が満タンになると「いつのまに育成」になり抽選されない。ただし満タンになったおてつだいのあと、キューに残る4回分は抽選される。
 - おてつだい回数が小数の区間は、前後の整数回を小数部分の割合で混ぜる（その確率で1回多い日とみなす）。
 - 天井カウンタの分布を日をまたいで引き継ぎ、毎日同じ推移になるので、日の終わりの分布が変わらなくなるまで日を進める。
+- ver1.4 で状態配列とリングの参照を整理し、確率0の末尾の計算を省いた。天井・ストック・収束の規則は変えない。数値比較と測定結果は [設計書](docs/design-v1.4.md) にある。
 
 ### 上位%の分布
 
