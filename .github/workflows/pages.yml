@@ -25,6 +25,7 @@ jobs:
           node-version: 22
       - run: node tests/check-segs.mjs
       - run: node tests/check-dist.mjs
+      - run: node tests/check-boost.mjs
 
   deploy:
     needs: test

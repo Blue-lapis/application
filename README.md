@@ -15,9 +15,10 @@ https://blue-lapis.github.io/application/checker/
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、おてつだい時間と確率の丸め、所持数の遷移、スキル抽選回数とストック、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数
 - `css/style.css` — 土台のスタイル（見た目は `checker/css/theme.css` で上書き）
-- `docs/` — ver1.1〜ver1.7 の要件定義書・設計書（最新: [要件定義](docs/requirements-v1.5.md)・[設計書](docs/design-v1.7.md)）。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力で、どちらも要件定義はない
+- `docs/` — ver1.1〜ver1.8 の要件定義書・設計書（最新: [要件定義](docs/requirements-v1.5.md)・[設計書](docs/design-v1.8.md)）。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない
 - `tests/check-dist.mjs` — 上位%の分布の整合性テスト（`node tests/check-dist.mjs`）
 - `tests/check-segs.mjs` — 所持数・ストック・天井込みの確率の境界テスト（`node tests/check-segs.mjs`）
+- `tests/check-boost.mjs` — きのみタイプのフィールドボーナス・好きなきのみの切り上げと、無補正比が変わらないことのテスト（`node tests/check-boost.mjs`）
 - `tests/compare-values.mjs`・`tests/bench-dist.mjs`・`tests/compare-dist.mjs` — 変更前後の値・分布・計算時間の比較（[実行手順](docs/design-v1.4.md#5-再確認する手順)）
 - `tests/compare-nitoyon.mjs`・`tests/nitoyon/runner.ts` — にとよんツールとの値の比較（[実行手順](docs/design-v1.5.md#5-再確認する手順)）
 - `index.html`・`ingredient/index.html`・`berry/index.html` — `checker/` へ移動するページ
