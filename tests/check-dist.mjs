@@ -10,7 +10,8 @@ const engines = createEngines();
 const CASES = [
   ['berry', { N: 3, camp: true, mon: 'walrein', heal: 1, tap: '3h', team: true, healAmt: 18, healTimes: 3 }, ['berry', 'spM', 'ingS'], 'speed', 'energy'],
   ['berry', { N: 4, camp: false, mon: 'raichu', heal: 0, tap: 'none', team: false, healAmt: 18, healTimes: 2.5 }, ['hb', 'spS', 'invM', 'erb'], 'energy', 'other'],
-  ['ingredient', { N: 3, camp: true, g80: false, mon: 'flygon', target: 'A' }, ['ingM', 'spS', 'invL'], 'ing', 'speed'],
+  ['ingredient', { N: 3, camp: true, mon: 'flygon', target: 'A', heal: 1, tap: 'always', team: true, healAmt: 18, healTimes: 3 }, ['ingM', 'spS', 'invL'], 'ing', 'speed'],
+  ['ingredient', { N: 4, camp: false, mon: 'toxicroak', target: 'B', heal: 0, tap: '3h', team: true, healAmt: 18, healTimes: 2.5 }, ['hb', 'ingM', 'invM', 'erb'], 'energy', 'other'],
   ['skill', { N: 3, camp: true, g80: false, mon: 'mewtwo' }, ['skM', 'spM', 'hb'], 'skill', 'other'],
 ];
 
@@ -36,5 +37,6 @@ for (const [type, env, subs, up, down] of CASES) {
   check(dist.some((x) => Math.abs(x.r - r) <= r * SAME_REL), `${type} ${env.mon}: 個体の無補正比 ${r} が分布にない`);
   console.log(`${type} ${env.mon}: ${dist.length}通り 合計 ${sum.toFixed(12)} / 個体 ${r.toFixed(3)}倍 同等以上 ${(en.atLeast(r, env) * 100).toFixed(3)}%`);
 }
+
 console.log(failed ? `NG ${failed}件` : 'OK');
 process.exit(failed ? 1 : 0);

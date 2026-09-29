@@ -6,15 +6,16 @@ import { TYPES, DEFAULT_TYPE, typeOf } from './types.js';
 import { natByName } from './picker.js';
 import { UNLOCK, LEVEL, byId } from '../../js/constants.js';
 import { HEALS, TAPS, HEAL_AMT, HEAL_TIMES, PARAM_LIMITS } from './berry/constants.js';
+import { TAPS as ING_TAPS } from './ingredient/constants.js';
 
 const KEYS = {
   camp: 'ckcamp', g80: 'ckg80', mode: 'ckmode', mon: 'ckmon', mons: 'ckmons', target: 'igtarget',
-  heal: 'ckheal', tap: 'cktap', team: 'ckteam', healAmt: 'ckhealamt', healTimes: 'ckhealtimes',
+  heal: 'ckheal', tap: 'cktap', team: 'ckteam', healAmt: 'ckhealamt', healTimes: 'ckhealtimes', ingTap: 'ckingtap',
 };
 const LOG_KEYS = { ingredient: 'iglog', berry: 'bflog', skill: 'sklog' };
 const OLD = {
   camp: ['igcamp', 'bfcamp'], g80: ['igg80', 'bfg80'], mode: ['igmode', 'bfmode'], mon: ['igmon', 'bfmon'],
-  heal: [], tap: [], team: [], healAmt: [], healTimes: [],
+  heal: [], tap: [], team: [], healAmt: [], healTimes: [], ingTap: [],
 };
 
 const load = (key, def) => {
@@ -46,9 +47,10 @@ export const state = {
   N: 3,
   camp: true,
   g80: false,
-  // きのみタイプだけのパラメーター。
+  // ヒーラー・回復量・発動回数・チーム効果はきのみタイプと食材タイプで共通。受け取りはタイプごとに選択肢が違うので別に持つ。
   heal: 1,
   tap: 'none',
+  ingTap: 'always',
   team: true,
   healAmt: HEAL_AMT,
   healTimes: HEAL_TIMES,
@@ -96,6 +98,8 @@ export function loadSettings() {
   state.heal = HEALS.includes(heal) ? heal : 1;
   const tap = loadSetting('tap', 'none');
   state.tap = TAPS.includes(tap) ? tap : 'none';
+  const ingTap = loadSetting('ingTap', 'always');
+  state.ingTap = ING_TAPS.includes(ingTap) ? ingTap : 'always';
   state.team = loadSetting('team', true) !== false;
   state.healAmt = paramOr('healAmt', loadSetting('healAmt', HEAL_AMT), HEAL_AMT);
   state.healTimes = paramOr('healTimes', loadSetting('healTimes', HEAL_TIMES), HEAL_TIMES);
@@ -127,6 +131,7 @@ export function setG80(v) { state.g80 = v; save(KEYS.g80, v); }
 export function setMode(n) { state.N = n; save(KEYS.mode, n); }
 export function setHeal(v) { if (HEALS.includes(v)) { state.heal = v; save(KEYS.heal, v); } }
 export function setTap(v) { if (TAPS.includes(v)) { state.tap = v; save(KEYS.tap, v); } }
+export function setIngTap(v) { if (ING_TAPS.includes(v)) { state.ingTap = v; save(KEYS.ingTap, v); } }
 export function setTeam(v) { state.team = v; save(KEYS.team, v); }
 
 // 詳細画面の数値。回復量は整数、発動回数は小数第2位まで。範囲外や桁の多い値は受け付けない（false を返す）。
@@ -179,12 +184,10 @@ export function resetSelection() {
 export const currentSubs = () => state.subs.slice(0, state.N);
 export const isComplete = () => currentSubs().every(Boolean) && state.up && state.down && !state.arr.includes(null);
 export const env = () => {
-  if (state.type === 'berry') {
-    const { N, camp, mon, heal, tap, team, healAmt, healTimes } = state;
-    return { N, camp, mon, heal, tap, team, healAmt, healTimes };
-  }
-  const e = { N: state.N, camp: state.camp, g80: state.g80, mon: state.mon };
-  return state.type === 'ingredient' ? { ...e, target: state.target } : e;
+  const { N, camp, mon, heal, tap, ingTap, team, healAmt, healTimes } = state;
+  if (state.type === 'berry') return { N, camp, mon, heal, tap, team, healAmt, healTimes };
+  if (state.type === 'ingredient') return { N, camp, mon, target: state.target, heal, tap: ingTap, team, healAmt, healTimes };
+  return { N, camp, g80: state.g80, mon };
 };
 
 // 記録はタイプごとのキーに保存する（食材・きのみは統合前と同じキー）。食材タイプの記録は食材配列のあるものだけ使う。

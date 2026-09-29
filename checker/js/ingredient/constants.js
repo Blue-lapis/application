@@ -10,11 +10,18 @@ export const SLOT_LV = ['Lv.1', 'Lv.30', 'Lv.60'];
 // 食材の個数に影響するサブスキル。スキル確率アップなどは「なし他」にまとめる。
 export const PICK = ['ingM', 'ingS', 'spM', 'spS', 'hb', 'berry', 'invS', 'invM', 'invL', 'erb', 'none'];
 
-export const NATL = { ing: '食材', speed: 'おてスピ', other: 'なし他' };
-export const NAT_CATS = ['ing', 'speed', 'other'];
+export const NATL = { ing: '食材', speed: 'おてスピ', energy: 'げんき回復', other: 'なし他' };
+export const NAT_CATS = ['ing', 'speed', 'energy', 'other'];
 
-// スキル補正は食材の個数に影響しないので「なし他」と同じ扱いにする。
+// 日中の受け取り。「常にタップ」は所持数があふれない。「3時間ごと」は起床から3時間ごとと就寝時に受け取る。
+// ヒーラー・回復量・発動回数はきのみタイプと共通（../berry/constants.js）。
+export const TAPS = ['always', '3h'];
+export const TAP_EVERY = { always: 0, '3h': 3 * 3600 };
+// おてつだいボーナスのチーム効果は、ほかの4匹を同じポケモン（基準の食材配列・サブスキルなし・無補正性格）として数える。
+
+// スキル補正は食材の個数に影響しないので「なし他」と同じ扱いにする。げんき回復量は睡眠中のおてつだいの速さに効く。
 export const natCat = (s) => {
+  if (s === 'en') return 'energy';
   const c = cat(s);
   return c === 'skill' ? 'other' : c;
 };
