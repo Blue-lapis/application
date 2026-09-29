@@ -387,10 +387,11 @@ function renderNatDlg() {
   $('natNote').textContent = `${METRIC[state.type]}に効くのは ${labels.join(' と ')} の補正だけです。薄い色の性格は「無補正」と同じ結果になります。`;
 }
 
-// きのみタイプのパラメーター。ヒーラー・日中の受け取り・チームへの効果はその場で切り替え、
-// げんきオールS の回復量と発動回数は詳細のダイアログで変える。
+// パラメーター。日中の受け取り（きのみタイプ）といいキャンプチケットはその場で切り替え、
+// ヒーラー・げんき・チームへの効果・げんきオールS の回復量と発動回数は詳細のダイアログで変える。
 const healText = (e) => (e.heal === 'g80' ? 'げんき常時81%以上'
   : e.heal ? `ヒーラー${e.heal}匹（げんきオールS ${e.healAmt}×${e.healTimes}回/日）` : 'ヒーラーなし');
+const teamText = (e) => `おてボのチーム効果を${e.team ? '含める' : '含めない'}`;
 const tapText = (e) => (e.tap === '3h' ? '起床中は3時間ごとに受け取る' : '日中は受け取らない（いつのまに育成）');
 const genkiText = (g) => `就寝時${g.bed}→起床前${g.end}`;
 
@@ -427,13 +428,16 @@ function initParams(engines) {
 
 function renderParams() {
   const berry = state.type === 'berry';
-  $('params').querySelectorAll('[data-for]').forEach((row) => { row.hidden = (row.dataset.for === 'berry') !== berry; });
+  // 性能の欄と詳細のダイアログの両方で、タイプに合う行だけを出す。
+  document.querySelectorAll('[data-for]').forEach((row) => { row.hidden = (row.dataset.for === 'berry') !== berry; });
   SEGS.forEach(([id, cur]) => $(id).querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(cur() === b.dataset.v))));
-  if (!berry) return;
+  // 詳細のダイアログにある設定の要約。
   const e = env();
-  const g = energyAt(e, 100);
-  $('paramSum').textContent = e.heal === 'g80' ? healText(e)
-    : `${e.heal ? `げんきオールS ${e.healAmt}×${e.healTimes}回/匹` : 'ヒーラーなし'}・げんき${genkiText(g)}`;
+  $('paramSum').textContent = !berry ? (e.g80 ? 'げんき常時81%以上' : 'げんきは10分ごとに1減少（回復スキルなし）')
+    : [
+      e.heal === 'g80' ? healText(e) : `${healText(e)}・げんき${genkiText(energyAt(e, 100))}`,
+      teamText(e),
+    ].join('・');
   if ($('paramDlg').open) renderParamDlg();
 }
 
@@ -442,7 +446,9 @@ function renderParamDlg() {
     if (document.activeElement !== $(k)) $(k).value = state[k];
   });
   const e = env();
-  $('paramNote').textContent = `ヒーラーは起床中に等間隔で発動し、チーム全員のげんきを回復します（上限150）。睡眠中は回復せず、10分ごとに1減ります。今の値でのげんき（起床時100）: ${genkiText(energyAt({ ...e, heal: 1 }, 100))}`;
+  $('paramNote').textContent = state.type !== 'berry'
+    ? '「10分ごとに減少」は、起床時100から10分ごとに1減り、回復スキルは考えません。「常に81%以上」は、おてつだい時間の倍率を常に0.45にします。'
+    : `ヒーラーは起床中に等間隔で発動し、チーム全員のげんきを回復します（上限150）。発動回数が小数のときは、前後の整数回の日が混ざるものとして平均します。睡眠中は回復せず、10分ごとに1減ります。今の値でのげんき（ヒーラー1匹・起床時100）: ${genkiText(energyAt({ ...e, heal: 1 }, 100))}`;
 }
 
 const condText = (m, e) => `Lv.${LEVEL[state.N]}・睡眠8.5時間・${e.g80 ? 'げんき常時81%以上' : `起床時げんき${m.wake}から10分ごとに1減少（回復スキルなし）`}`;
