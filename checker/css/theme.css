@@ -159,12 +159,10 @@ header{align-items:center}
 .reset{font-size:.82rem;min-height:44px;margin:0 auto 14px}
 
 /* 性能。タイプの色のカードに合計を大きく、横棒で日中と睡眠中の割合。 */
-.perf-head{margin-bottom:10px}
-.switch{color:var(--ink)}
 .cond{font-size:.7rem;font-weight:500;line-height:1.6;margin:0 0 12px}
 
 /* きのみタイプのパラメーター。よく使うものはその場で切り替え、細かい数値は「詳細」のダイアログで変える。 */
-.params[hidden]{display:none}
+.params [hidden]{display:none}
 .params{background:var(--bg);border-radius:14px;padding:10px 12px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px}
 .prow{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px 10px}
 .prow>span{font-size:.78rem;font-weight:700;white-space:nowrap}

@@ -5,8 +5,9 @@ import { cat } from '../../../js/constants.js';
 export { MONS } from './mons.js';
 export const DEFAULT_MON = 'walrein';
 
-// パラメーター（きのみタイプだけ）。ヒーラーは げんきオールS を持つポケモンの数で、'g80' は「常に81%以上」。
-export const HEALS = [0, 1, 2, 'g80'];
+// パラメーター（きのみタイプだけ）。ヒーラーは げんきオールS を持つポケモンの数（なし / 1匹）で、'g80' は「常に81%以上」。
+// 以前あった「2匹」を保存していた人は、読み込み時に既定の1匹に戻る。
+export const HEALS = [0, 1, 'g80'];
 export const TAPS = ['none', '3h'];
 // げんきオールS の1回の回復量と、ヒーラー1匹あたりの1日の発動回数の既定値。
 export const HEAL_AMT = 18;
