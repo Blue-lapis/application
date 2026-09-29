@@ -15,7 +15,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # 計算の整合性テスト。通らなければ公開しない。
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tests/check-segs.mjs
+      - run: node tests/check-dist.mjs
+
   deploy:
+    needs: test
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -32,8 +44,13 @@ jobs:
           sed -i -E "s#(href=\"(\.\./)?css/[a-z]+\.css)\"#\1?v=$v\"#g; s#(src=\"js/main\.js)\"#\1?v=$v\"#" checker/index.html
           sed -i -E "s#(from '\.{1,2}/[^'?]*\.js)'#\1?v=$v'#g" js/*.js checker/js/*.js checker/js/*/*.js
           grep -c "?v=$v" js/*.js checker/index.html checker/js/*.js checker/js/*/*.js
+      # 公開するのはアプリのファイルだけ（tests/・docs/ などは含めない）。
+      - name: Collect site files
+        run: |
+          mkdir _site
+          cp -r index.html berry ingredient checker css js _site/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

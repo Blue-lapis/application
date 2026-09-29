@@ -29,10 +29,14 @@ export const natCat = (s) => {
 // 食材配列 arr はスロットごとの候補の番号（例: [0, 0, 0] = AAA）。
 export const arrName = (mon, arr) => arr.map((k, i) => mon.slots[i][k][0]).join('');
 
-// すべての食材配列と、その出現確率（各スロットの候補の確率は slotWeights）。
+// すべての食材配列と、その出現確率（各スロットの候補の確率は slotWeights）。ポケモンごとに使い回す。
+const arrCache = new WeakMap();
 export function allArrs(mon) {
-  return mon.slots.reduce(
-    (acc, opts) => acc.flatMap(({ arr, p }) => opts.map((_, k) => ({ arr: [...arr, k], p: p * slotWeights(opts.length)[k] }))),
-    [{ arr: [], p: 1 }],
-  );
+  if (!arrCache.has(mon)) {
+    arrCache.set(mon, mon.slots.reduce(
+      (acc, opts) => acc.flatMap(({ arr, p }) => opts.map((_, k) => ({ arr: [...arr, k], p: p * slotWeights(opts.length)[k] }))),
+      [{ arr: [], p: 1 }],
+    ));
+  }
+  return arrCache.get(mon);
 }
