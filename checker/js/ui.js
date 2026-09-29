@@ -509,11 +509,15 @@ function renderBerryStats(engine) {
   const count = r.day + r.night;
   const self = count * r.energy;
   const team = engine.teamGain(m, e);
+  const ts = engine.teamSplit(m, e);
   const total = self + team;
+  // 日中・睡眠中の内訳にもチームへの効果を足す。睡眠中は合計との差にして、四捨五入で合計とずれないようにする。
+  const dayE = r.day * r.energy + ts.day;
+  const dayShown = Math.round(dayE);
   $('hAll').textContent = Math.round(total).toLocaleString();
-  $('hDay').textContent = Math.round(r.day * r.energy).toLocaleString();
-  $('hNight').textContent = Math.round(r.night * r.energy).toLocaleString();
-  setSplit(r.day, r.night);
+  $('hDay').textContent = dayShown.toLocaleString();
+  $('hNight').textContent = (Math.round(total) - dayShown).toLocaleString();
+  setSplit(dayE, total - dayE);
 
   timeRows(r, m, e);
   $('rEnergy').innerHTML = `${r.energy}<span>${mm.berry} Lv.${r.LV}</span>`;
@@ -528,7 +532,7 @@ function renderBerryStats(engine) {
   $('rSelf').innerHTML = `${Math.round(self).toLocaleString()}<span>日中${Math.round(r.day * r.energy).toLocaleString()}・睡眠中${Math.round(r.night * r.energy).toLocaleString()}</span>`;
   $('rTeam').innerHTML = !e.team ? '—<span>含めない設定</span>'
     : !m.hb ? '0<span>おてつだいボーナスなし</span>'
-      : `+${Math.round(team).toLocaleString()}<span>1匹あたり+${Math.round(team / TEAM_OTHERS).toLocaleString()}（同じポケモン・無補正）</span>`;
+      : `+${Math.round(team).toLocaleString()}<span>日中+${Math.round(ts.day).toLocaleString()}・睡眠中+${Math.round(ts.night).toLocaleString()}（1匹あたり+${Math.round(team / TEAM_OTHERS).toLocaleString()}）</span>`;
   $('rBase').innerHTML = `${Math.round(base).toLocaleString()}<span>無補正</span>`;
   $('rDRatio').textContent = isComplete() ? `${(total / base).toFixed(2)}倍` : '—';
 }
