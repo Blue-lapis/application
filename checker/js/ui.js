@@ -3,7 +3,7 @@ import { byId, UNLOCK, ingOpen } from '../../js/constants.js';
 import { fmtPct, trunc, mmss } from '../../js/format.js';
 import { eff } from '../../js/calc.js';
 import { TYPES } from './types.js';
-import { arrName, SLOT_LV, targetLevel } from './ingredient/constants.js';
+import { arrName, SLOT_LV, targetLevel, targetOpen } from './ingredient/constants.js';
 import { slotsOf } from './ingredient/calc.js';
 import { HEAL_AMT, HEAL_TIMES, TEAM_OTHERS, FIELD_BONUS, PARAM_LIMITS } from './berry/constants.js';
 import { boostedEnergy } from './berry/calc.js';
@@ -207,7 +207,11 @@ function renderHeader() {
 function renderIngs(engines) {
   if (state.type !== 'ingredient') return;
   const mm = monData();
-  $('target').innerHTML = Object.keys(mm.ings).map((k) => chipHtml(k, `${ingIcon(mm.ings[k])}${k} ${mm.short[k]}`, state.target === k)).join('');
+  // 今のレベルでまだ出ない食材は押せなくして、出るレベルを添える。選んである食材はそのまま残す（レベルを戻せば評価できる）。
+  $('target').innerHTML = Object.keys(mm.ings).map((k) => {
+    const lock = state.target !== k && !targetOpen(mm, state.lv, k);
+    return chipHtml(k, `${ingIcon(mm.ings[k])}${k} ${mm.short[k]}${lock ? `<small>Lv.${targetLevel(mm, k)}〜</small>` : ''}`, state.target === k, lock, lock ? 'lock' : '');
+  }).join('');
   $('target').querySelectorAll('.chip').forEach((b) => {
     b.onclick = () => { setTarget(b.dataset.v); refresh(engines); };
   });
