@@ -6,7 +6,7 @@ import { TYPES, DEFAULT_TYPE, typeOf } from './types.js';
 import { natByName } from './picker.js';
 import { UNLOCK, LEVEL, LEVELS, SLOTS_AT, ingOpen, byId } from '../../js/constants.js';
 import { HEALS, TAPS, HEAL_AMT, HEAL_TIMES, PARAM_LIMITS, FIELD_BONUS } from './berry/constants.js';
-import { TAPS as ING_TAPS } from './ingredient/constants.js';
+import { TAPS as ING_TAPS, targetOpen } from './ingredient/constants.js';
 
 const KEYS = {
   camp: 'ckcamp', g80: 'ckg80', mode: 'ckmode', lv: 'cklv', mon: 'ckmon', mons: 'ckmons', target: 'igtarget',
@@ -198,6 +198,11 @@ export const currentSubs = () => state.subs.slice(0, slotCount());
 export const currentArr = () => state.arr.slice(0, ingOpen(state.lv));
 // 確率を出せるか。今のレベルで開いているサブスキルの枠・性格・食材の枠がすべて入っていること。
 export const isComplete = () => currentSubs().every(Boolean) && state.up && state.down && !currentArr().includes(null);
+// 食材タイプで、狙い食材が今のレベルで開いている食材の枠に出ない（Lv.50 で Lv.60 の枠だけに出る食材）。
+// 無補正の個体も0個なので、無補正比・確率・順位は出さず、記録もしない。
+export const targetClosed = () => state.type === 'ingredient' && !!state.target && !targetOpen(monData(), state.lv, state.target);
+// 無補正比・確率・順位を出せるか。入力がそろっていて、狙い食材が今のレベルで出ること。
+export const canRate = () => isComplete() && !targetClosed();
 // 入力してあるサブスキル（低いレベルから続けて入っている分）。記録にはこれを保存する。
 export const filledSubs = () => {
   const i = state.subs.findIndex((v) => !v);

@@ -2,8 +2,9 @@
 // 計算して checker/dist/ に置き、Worker は IndexedDB に保存がなければここから読む。範囲外の条件や、
 // 読めない・合わないファイルは null を返し、Worker が今までどおり計算する。
 // Node とブラウザで同じ関数を使い、書き出しと読み込みの形をそろえる。
-import { SLOTS_AT, ingOpen } from '../../js/constants.js';
+import { SLOTS_AT } from '../../js/constants.js';
 import { HEAL_AMT, HEAL_TIMES } from './berry/constants.js';
+import { targetOpen } from './ingredient/constants.js';
 import { TYPES } from './types.js';
 import { MODEL_VERSION, dataKey } from './distcache.js';
 
@@ -15,9 +16,8 @@ const preEnv = (type, mon, lv, camp, target) => ({
   heal: 1, tap: TYPES[type].TAPS[0], team: true, healAmt: HEAL_AMT, healTimes: HEAL_TIMES,
 });
 
-// 食材タイプで、狙い食材がそのレベルで開いている食材の枠に出るか。出ない条件（Lv.50 で Lv.60 の枠だけに出る食材）は
-// 無補正の個体の個数が0で分布が作れない（無補正比が NaN）ので、事前計算しない。
-const targetOpen = (mon, lv, target) => mon.slots.slice(0, ingOpen(lv)).some((opts) => opts.some(([k]) => k === target));
+// 食材タイプで、狙い食材がそのレベルで開いている食材の枠に出ない条件（Lv.50 で Lv.60 の枠だけに出る食材）は
+// 無補正比が出せない（画面は「—」）ので、事前計算しない（targetOpen）。
 
 // 事前計算するすべての条件 [{ type, env }]。
 export function preEnvs() {
