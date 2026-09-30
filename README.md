@@ -15,7 +15,7 @@ https://blue-lapis.github.io/application/checker/
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、おてつだい時間と確率の丸め、所持数の遷移、スキル抽選回数とストック、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数
 - `css/style.css` — 土台のスタイル（見た目は `checker/css/theme.css` で上書き）
-- `docs/` — ver1.1〜ver1.9 の要件定義書・設計書（最新: [要件定義](docs/requirements-v1.9.md)・[設計書](docs/design-v1.9.md)）。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない。ver1.9 は上位%の分布の事前計算
+- `docs/` — ver1.1〜ver1.9 の要件定義書・設計書（最新: [要件定義](docs/requirements-v1.9.md)・[設計書](docs/design-v1.9.md)）。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない。ver1.9 は上位%の分布の事前計算（あわせて、レベル別の一覧と、Lv.50 でまだ出ない狙い食材を押せなくする変更。どちらも要件定義はない）
 - `scripts/precompute-dist.mjs` — 既定の条件の上位%の分布を事前計算し、`checker/dist/` に書き出す（公開時に実行。[ローカルでの実行手順](#事前計算した分布)）
 - `tests/check-dist.mjs` — 上位%の分布の整合性テスト（`node tests/check-dist.mjs`）
 - `tests/check-precomputed.mjs` — 事前計算の分布がそろっていて、計算した分布とビットまで一致し、版の違う・壊れたファイルを使わないことのテスト

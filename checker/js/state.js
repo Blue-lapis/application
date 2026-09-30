@@ -11,12 +11,12 @@ import { TAPS as ING_TAPS, targetOpen } from './ingredient/constants.js';
 const KEYS = {
   camp: 'ckcamp', g80: 'ckg80', mode: 'ckmode', lv: 'cklv', mon: 'ckmon', mons: 'ckmons', target: 'igtarget',
   heal: 'ckheal', tap: 'cktap', team: 'ckteam', healAmt: 'ckhealamt', healTimes: 'ckhealtimes', ingTap: 'ckingtap',
-  fieldBonus: 'ckfieldbonus', fav: 'ckfav',
+  fieldBonus: 'ckfieldbonus', fav: 'ckfav', lvOpen: 'cklvopen',
 };
 const LOG_KEYS = { ingredient: 'iglog', berry: 'bflog', skill: 'sklog' };
 const OLD = {
   camp: ['igcamp', 'bfcamp'], g80: ['igg80', 'bfg80'], mode: ['igmode', 'bfmode'], lv: [], mon: ['igmon', 'bfmon'],
-  heal: [], tap: [], team: [], healAmt: [], healTimes: [], ingTap: [], fieldBonus: [], fav: [],
+  heal: [], tap: [], team: [], healAmt: [], healTimes: [], ingTap: [], fieldBonus: [], fav: [], lvOpen: [],
 };
 
 const load = (key, def) => {
@@ -60,6 +60,8 @@ export const state = {
   // 無補正比に影響しないので env には入れない（分布の保存のキーも変わらない）。
   fieldBonus: FIELD_BONUS,
   fav: false,
+  // レベル別の一覧（性能の欄）を開いているか。
+  lvOpen: false,
 };
 
 export const monData = () => TYPES[state.type].MONS[state.mon];
@@ -111,6 +113,7 @@ export function loadSettings() {
   state.healTimes = paramOr('healTimes', loadSetting('healTimes', HEAL_TIMES), HEAL_TIMES);
   state.fieldBonus = paramOr('fieldBonus', loadSetting('fieldBonus', FIELD_BONUS), FIELD_BONUS);
   state.fav = loadSetting('fav', false) === true;
+  state.lvOpen = loadSetting('lvOpen', false) === true;
   // レベルの設定がまだなければ、以前の対象レベルの切り替え（枠の数）から引き継ぐ（Lv.50まで→60・Lv.70まで→70・Lv.80まで→80）。
   const n = loadSetting('mode', 3);
   const lv = loadSetting('lv', LEVEL[n] ?? 60);
@@ -137,6 +140,8 @@ function lastMonOf(type) {
 }
 
 export function setCamp(v) { state.camp = v; save(KEYS.camp, v); }
+// レベル別の一覧を開いているか。
+export function setLvOpen(on) { state.lvOpen = on; save(KEYS.lvOpen, on); }
 export function setLevel(lv) { if (LEVELS.includes(lv)) { state.lv = lv; save(KEYS.lv, lv); } }
 export function setHeal(v) { if (HEALS.includes(v)) { state.heal = v; save(KEYS.heal, v); } }
 export function setTap(v) { if (TAPS.includes(v)) { state.tap = v; save(KEYS.tap, v); } }
@@ -191,26 +196,26 @@ export function resetSelection() {
   setNature(null);
 }
 
-// 今のレベルで開いているサブスキルの枠の数と、そのサブスキル（未入力は null）。期待値はこの枠で計算する。
-export const slotCount = () => SLOTS_AT[state.lv];
-export const currentSubs = () => state.subs.slice(0, slotCount());
-// 今のレベルで開いている食材の枠（Lv.50 は2枠）。
-export const currentArr = () => state.arr.slice(0, ingOpen(state.lv));
-// 確率を出せるか。今のレベルで開いているサブスキルの枠・性格・食材の枠がすべて入っていること。
-export const isComplete = () => currentSubs().every(Boolean) && state.up && state.down && !currentArr().includes(null);
-// 食材タイプで、狙い食材が今のレベルで開いている食材の枠に出ない（Lv.50 で Lv.60 の枠だけに出る食材）。
+// レベル lv（省略時は今のレベル）で開いているサブスキルの枠の数と、そのサブスキル（未入力は null）。期待値はこの枠で計算する。
+export const slotCount = (lv = state.lv) => SLOTS_AT[lv];
+export const currentSubs = (lv = state.lv) => state.subs.slice(0, slotCount(lv));
+// レベル lv で開いている食材の枠（Lv.50 は2枠）。
+export const currentArr = (lv = state.lv) => state.arr.slice(0, ingOpen(lv));
+// 確率を出せるか。レベル lv で開いているサブスキルの枠・性格・食材の枠がすべて入っていること。
+export const isComplete = (lv = state.lv) => currentSubs(lv).every(Boolean) && state.up && state.down && !currentArr(lv).includes(null);
+// 食材タイプで、狙い食材がレベル lv で開いている食材の枠に出ない（Lv.50 で Lv.60 の枠だけに出る食材）。
 // 無補正の個体も0個なので、無補正比・確率・順位は出さず、記録もしない。
-export const targetClosed = () => state.type === 'ingredient' && !!state.target && !targetOpen(monData(), state.lv, state.target);
-// 無補正比・確率・順位を出せるか。入力がそろっていて、狙い食材が今のレベルで出ること。
-export const canRate = () => isComplete() && !targetClosed();
+export const targetClosed = (lv = state.lv) => state.type === 'ingredient' && !!state.target && !targetOpen(monData(), lv, state.target);
+// 無補正比・確率・順位を出せるか。入力がそろっていて、狙い食材がレベル lv で出ること。
+export const canRate = (lv = state.lv) => isComplete(lv) && !targetClosed(lv);
 // 入力してあるサブスキル（低いレベルから続けて入っている分）。記録にはこれを保存する。
 export const filledSubs = () => {
   const i = state.subs.findIndex((v) => !v);
   return state.subs.slice(0, i < 0 ? state.subs.length : i);
 };
-export const env = () => {
-  const { lv, camp, mon, heal, tap, ingTap, team, healAmt, healTimes } = state;
-  const N = slotCount();
+export const env = (lv = state.lv) => {
+  const { camp, mon, heal, tap, ingTap, team, healAmt, healTimes } = state;
+  const N = slotCount(lv);
   if (state.type === 'berry') return { lv, N, camp, mon, heal, tap, team, healAmt, healTimes };
   if (state.type === 'ingredient') return { lv, N, camp, mon, target: state.target, heal, tap: ingTap, team, healAmt, healTimes };
   return { lv, N, camp, mon, heal, tap: ingTap, team, healAmt, healTimes };

@@ -1,5 +1,5 @@
 // DOM 描画とイベント配線。計算はタイプごとの calc.js のエンジンに委譲する。
-import { byId, UNLOCK, ingOpen } from '../../js/constants.js';
+import { byId, UNLOCK, ingOpen, LEVELS } from '../../js/constants.js';
 import { fmtPct, trunc, mmss } from '../../js/format.js';
 import { eff } from '../../js/calc.js';
 import { TYPES } from './types.js';
@@ -11,7 +11,7 @@ import { energyAt } from './engine.js';
 import { ingIcon } from './ingicons.js';
 import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLabel } from './picker.js';
 import {
-  state, monData, loadSettings, setCamp, setLevel, setMon, setType, setTarget, setNature, resetSelection,
+  state, monData, loadSettings, setCamp, setLevel, setLvOpen, setMon, setType, setTarget, setNature, resetSelection,
   setHeal, setTap, setIngTap, setTeam, setFav, setParam,
   currentSubs, currentArr, filledSubs, slotCount, isComplete, canRate, targetClosed, env, loadLog, appendLog, removeLogEntry, restoreEntry, isCurrent,
 } from './state.js';
@@ -145,6 +145,7 @@ export function initUI(engines) {
   });
 
   initParams(engines);
+  $('lvxHead').onclick = () => { setLvOpen(!state.lvOpen); renderLvList(engines); };
 
   initDialogs(engines);
 
@@ -658,7 +659,9 @@ function requestDist(engines) {
     inFlight = null;
     startWorker(engines);
   }
-  const next = [cur, { ...cur, camp: !cur.camp }].find((e) => !engine.ready(e));
+  // そのあとに、レベル別の一覧で使うほかのレベルの分布（確率を出せるレベルだけ）。
+  const others = LEVELS.filter((lv) => lv !== state.lv && canRate(lv)).map((lv) => env(lv));
+  const next = [cur, { ...cur, camp: !cur.camp }, ...others].find((e) => !engine.ready(e));
   if (!next) return;
   inFlight = { type, env: next };
   worker.postMessage({ type, env: next });
@@ -680,7 +683,38 @@ function barCaption() {
   return missing.length ? `Lv.${state.lv}の確率は、${missing.join('・')}がそろうと出ます` : `Lv.${state.lv}・サブスキル${N}枠での確率`;
 }
 
+// レベル別の一覧。各レベルの無補正比と同等以上の確率を並べ、閉じているときは一番良いレベル（確率が一番低い）を1行で出す。
+function renderLvList(engines) {
+  const engine = engines[state.type], mm = monData();
+  const rows = LEVELS.map((lv) => {
+    if (targetClosed(lv)) return { lv, note: `Lv.${targetLevel(mm, state.target)}〜` };
+    if (!canRate(lv)) return { lv, note: '未入力' };
+    const e = env(lv);
+    const r = scoreOf(engine, { subs: currentSubs(lv), up: state.up, down: state.down, arr: state.arr }, e);
+    if (!engine.ready(e)) return { lv, r, wait: true };
+    return { lv, r, ge: r > 0 ? engine.atLeast(r, e) : null };
+  });
+  const best = rows.filter((x) => x.ge != null).reduce((a, x) => (!a || x.ge < a.ge ? x : a), null);
+  const waiting = rows.some((x) => x.wait);
+  $('lvxSum').innerHTML = best
+    ? `最高 <b>Lv.${best.lv}</b>・<b>${fmtPct(best.ge)}</b>${waiting ? '…' : ''}`
+    : (waiting ? '…' : '—');
+  $('lvxHead').setAttribute('aria-expanded', String(state.lvOpen));
+  $('lvxBody').hidden = !state.lvOpen;
+  if (!state.lvOpen) return;
+  $('lvxRows').innerHTML = rows.map((x) => {
+    const on = x.lv === state.lv, off = x.r == null;
+    const ratio = off ? '—' : `${x.r.toFixed(2)}倍`;
+    const ge = off ? `<small>${x.note}</small>` : x.wait ? '…' : x.ge == null ? '—' : `${x === best ? '<em>最高</em>' : ''}${fmtPct(x.ge)}`;
+    return `<button type="button" class="lvx-row${off ? ' off' : ''}" data-v="${x.lv}" aria-pressed="${on}"><span class="lvx-lv">Lv.${x.lv}${on ? '<i>表示中</i>' : ''}</span><b>${ratio}</b><b>${ge}</b></button>`;
+  }).join('');
+  $('lvxRows').querySelectorAll('.lvx-row').forEach((b) => {
+    b.onclick = () => { setLevel(+b.dataset.v); refresh(engines); };
+  });
+}
+
 function renderBar(engines) {
+  renderLvList(engines);
   const ok = canRate();
   $('bCap').textContent = barCaption();
   ['bRatio', 'bRank', 'bOdds'].forEach((id) => $(id).classList.toggle('dim', !ok));
