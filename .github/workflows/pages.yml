@@ -35,6 +35,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # 既定の条件の上位%の分布を事前計算して checker/dist/ に置き、公開物に含める（ver1.9）。
+      # 毎回今のコードで作り直す。版を付ける前（?v= のない import）で実行する。
+      - name: Precompute distributions
+        run: node scripts/precompute-dist.mjs
+      # ファイルがそろっていることと、抜き取りで計算した分布とビットまで一致することを確かめる。
+      - name: Check precomputed distributions
+        run: node tests/check-precomputed.mjs
       - uses: actions/configure-pages@v5
         with:
           enablement: true

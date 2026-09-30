@@ -1,5 +1,5 @@
 // 食材タイプ版だけで使う定義。サブスキル・性格・げんきなどの共通データは ../../js/constants.js を使う。
-import { cat, slotWeights } from '../../../js/constants.js';
+import { cat, slotWeights, ingOpen, ING_UNLOCK } from '../../../js/constants.js';
 
 // ポケモンごとの基礎値は mons.js にまとめる。
 export { MONS } from './mons.js';
@@ -28,6 +28,12 @@ export const natCat = (s) => {
 
 // 食材配列 arr はスロットごとの候補の番号（例: [0, 0, 0] = AAA）。
 export const arrName = (mon, arr) => arr.map((k, i) => mon.slots[i][k][0]).join('');
+
+// 狙い食材がレベル lv で開いている食材の枠に出るか。出ないとき（Lv.50 で Lv.60 の枠だけに出る食材）は
+// 無補正の個体の個数も0になり、無補正比（0 ÷ 0）・確率・順位は出せない。
+export const targetOpen = (mon, lv, target) => mon.slots.slice(0, ingOpen(lv)).some((opts) => opts.some(([k]) => k === target));
+// 狙い食材が出る最初の食材の枠のレベル（1 / 30 / 60）。
+export const targetLevel = (mon, target) => ING_UNLOCK[mon.slots.findIndex((opts) => opts.some(([k]) => k === target))];
 
 // 開いている n 枠のすべての食材配列と、その出現確率（各スロットの候補の確率は slotWeights）。ポケモンと枠の数ごとに使い回す。
 const arrCache = new WeakMap();

@@ -3,7 +3,7 @@ import { byId, UNLOCK, ingOpen } from '../../js/constants.js';
 import { fmtPct, trunc, mmss } from '../../js/format.js';
 import { eff } from '../../js/calc.js';
 import { TYPES } from './types.js';
-import { arrName, SLOT_LV } from './ingredient/constants.js';
+import { arrName, SLOT_LV, targetLevel } from './ingredient/constants.js';
 import { slotsOf } from './ingredient/calc.js';
 import { HEAL_AMT, HEAL_TIMES, TEAM_OTHERS, FIELD_BONUS, PARAM_LIMITS } from './berry/constants.js';
 import { boostedEnergy } from './berry/calc.js';
@@ -13,7 +13,7 @@ import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLab
 import {
   state, monData, loadSettings, setCamp, setLevel, setMon, setType, setTarget, setNature, resetSelection,
   setHeal, setTap, setIngTap, setTeam, setFav, setParam,
-  currentSubs, currentArr, filledSubs, slotCount, isComplete, env, loadLog, appendLog, removeLogEntry, restoreEntry, isCurrent,
+  currentSubs, currentArr, filledSubs, slotCount, isComplete, canRate, targetClosed, env, loadLog, appendLog, removeLogEntry, restoreEntry, isCurrent,
 } from './state.js';
 
 const $ = (id) => document.getElementById(id);
@@ -149,7 +149,7 @@ export function initUI(engines) {
   initDialogs(engines);
 
   $('save').onclick = () => {
-    if (!isComplete()) return;
+    if (!canRate()) return;
     // サブスキルは今のレベルの枠より多く入れてあればその分も残し、ほかのレベルでも一覧に出せるようにする。
     const entry = { t: Date.now(), mon: state.mon, subs: filledSubs(), nat: state.nat, up: state.up, down: state.down };
     appendLog(state.type === 'ingredient' ? { ...entry, arr: [...state.arr] } : entry);
@@ -538,7 +538,7 @@ function renderIngStats(engine) {
   $('rTeam').innerHTML = !e.team ? '—<span>含めない設定</span>'
     : !m.hb ? '0個<span>おてつだいボーナスなし</span>'
       : `+${team.toFixed(1)}個<span>1匹あたり+${(team / TEAM_OTHERS).toFixed(1)}個（同じポケモン・${arrName(mm, ref.arr)}・無補正）</span>`;
-  $('rDRatio').textContent = isComplete() ? `${((self + team) / ref.v).toFixed(2)}倍` : '—';
+  $('rDRatio').textContent = canRate() ? `${((self + team) / ref.v).toFixed(2)}倍` : '—';
 }
 
 function renderBerryStats(engine) {
@@ -663,6 +663,11 @@ function requestDist(engines) {
 // 帯の上の1行。何の確率かと、確率を出すのに足りない入力。
 function barCaption() {
   const N = slotCount();
+  // 狙い食材がまだ開いていない枠にしか出ないときは、入力をそろえても確率は出ないので先に伝える。
+  if (targetClosed()) {
+    const mm = monData();
+    return `Lv.${state.lv}では${mm.short[state.target]}は出ません（Lv.${targetLevel(mm, state.target)}の枠で開きます）`;
+  }
   const missing = [
     currentSubs().every(Boolean) ? '' : `サブスキル${N}枠`,
     state.up && state.down ? '' : '性格',
@@ -672,7 +677,7 @@ function barCaption() {
 }
 
 function renderBar(engines) {
-  const ok = isComplete();
+  const ok = canRate();
   $('bCap').textContent = barCaption();
   ['bRatio', 'bRank', 'bOdds'].forEach((id) => $(id).classList.toggle('dim', !ok));
   $('save').disabled = !ok;
@@ -713,6 +718,8 @@ function renderBar(engines) {
 function renderLog(engines) {
   const e = env(), mm = monData(), engine = engines[state.type], { NATL } = def();
   const rd = engine.ready(e);
+  // 狙い食材が今のレベルで出ないときは、記録の無補正比・確率も出さない（一覧には残し、タップで入力に戻せる）。
+  const closed = targetClosed();
   requestDist(engines);
   // 今のレベルで開いている枠がそろっている記録だけを、その枠で評価する（5枠の記録は Lv.50〜80 のどれでも出る）。
   const N = slotCount(), open = ingOpen(state.lv);
@@ -727,7 +734,7 @@ function renderLog(engines) {
       // Entries saved before the memo prompt was removed keep their memo as the heading.
       const cur = isCurrent(x);
       const ge = rd && x.r > 0 ? engine.atLeast(x.r, e) : 0;
-      return `<li class="${cur ? 'cur' : ''}" data-t="${x.t}" tabindex="0" title="タップで入力に戻す" aria-current="${cur}"><div>${cur ? '<span class="now">表示中</span>' : ''}${x.memo ? `${esc(x.memo)}<div class="m">${detail}</div>` : detail}</div><div><b>${x.r.toFixed(2)}倍</b><div class="m">${rd ? (x.r > 0 ? `同等以上${fmtPct(ge)}<br>約${Math.round(1 / ge).toLocaleString()}匹に1匹` : '—') : pendingText()}</div></div><button class="del" data-t="${x.t}">削除</button></li>`;
+      return `<li class="${cur ? 'cur' : ''}" data-t="${x.t}" tabindex="0" title="タップで入力に戻す" aria-current="${cur}"><div>${cur ? '<span class="now">表示中</span>' : ''}${x.memo ? `${esc(x.memo)}<div class="m">${detail}</div>` : detail}</div><div><b>${closed ? '—' : `${x.r.toFixed(2)}倍`}</b><div class="m">${closed ? '—' : rd ? (x.r > 0 ? `同等以上${fmtPct(ge)}<br>約${Math.round(1 / ge).toLocaleString()}匹に1匹` : '—') : pendingText()}</div></div><button class="del" data-t="${x.t}">削除</button></li>`;
     }).join('')
     : `<li class="empty">Lv.${state.lv}（サブスキル${N}枠）で見られる記録はまだありません</li>`;
 
