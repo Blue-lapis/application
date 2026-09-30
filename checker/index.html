@@ -76,6 +76,15 @@
         <div class="stat"><small id="hNightL">睡眠中</small><b id="hNight">—</b></div>
         <div class="stat team" id="hTeamW" hidden><small id="hTeamL">おてボによるほかの4匹の増加</small><b id="hTeam"></b></div>
       </div>
+      <!-- レベル別の一覧。閉じているときは一番良いレベルだけを1行で出し、開くと Lv.50〜80 を並べる。行をタップするとそのレベルにする。 -->
+      <div class="lvx" id="lvx">
+        <button type="button" class="lvx-head" id="lvxHead" aria-expanded="false" aria-controls="lvxBody"><small>レベル別</small><span id="lvxSum">—</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div id="lvxBody" hidden>
+          <div class="lvx-cols" aria-hidden="true"><span>レベル</span><span>無補正比</span><span>同等以上</span></div>
+          <div id="lvxRows"></div>
+          <p class="lvx-foot">行をタップするとそのレベルに切り替わります</p>
+        </div>
+      </div>
       <dl class="rows" id="rows"></dl>
       <p class="note" id="rankNote"></p>
     </section>

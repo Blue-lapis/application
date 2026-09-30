@@ -196,6 +196,27 @@ header{align-items:center}
 .hero .stat.main b .u{font-size:.5em}
 .hero .stat:last-child{justify-content:flex-end}
 .hero .stat.team{grid-column:1/-1;justify-content:space-between;border-top:1px solid rgba(255,255,255,.3);padding-top:10px}
+/* レベル別の一覧（折りたたみ）。表示中のレベルは淡いタイプの色、一番良いレベルに「最高」。 */
+.lvx{margin:0 0 12px;border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}
+.lvx-head{box-sizing:border-box;width:100%;min-height:52px;display:flex;align-items:center;gap:10px;padding:0 14px;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.lvx-head small{flex:none;font-size:.8rem;font-weight:700;color:var(--muted)}
+.lvx-head span{flex:1;font-weight:700;font-size:.95rem}
+.lvx-head b{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.lvx-head svg{flex:none;color:var(--muted);transition:transform .2s}
+.lvx-head[aria-expanded="true"] svg{transform:rotate(180deg)}
+.lvx-cols,.lvx-row{display:grid;grid-template-columns:1.3fr 1fr 1.2fr;align-items:center;padding:0 14px}
+.lvx-cols{padding-top:8px;padding-bottom:4px;font-size:.72rem;color:var(--muted);border-top:1px solid var(--line-soft)}
+.lvx-cols span+span,.lvx-row b{text-align:right}
+.lvx-row{box-sizing:border-box;width:100%;min-height:46px;border:0;border-top:1px solid var(--line-soft);background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.lvx-row b{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-weight:700;display:flex;justify-content:flex-end;align-items:center;gap:6px}
+.lvx-row[aria-pressed="true"]{background:var(--psy-soft)}
+.lvx-row.off{color:var(--off)}
+.lvx-lv{font-family:var(--font-num);font-weight:700;display:flex;align-items:center;gap:6px}
+.lvx-row i{font-style:normal;font-family:var(--font-jp);font-size:.66rem;font-weight:700;color:#fff;background:var(--psy);border-radius:999px;padding:2px 7px}
+.lvx-row em{font-style:normal;font-size:.66rem;font-weight:700;color:var(--psy-ink);background:var(--psy-soft);border:1px solid var(--psy);border-radius:999px;padding:1px 6px}
+.lvx-row[aria-pressed="true"] em{background:var(--card)}
+.lvx-row small{font-size:.72rem;font-weight:700}
+.lvx-foot{margin:0;padding:6px 14px 12px;font-size:.72rem;color:var(--muted)}
 .hero .stat[hidden]{display:none}
 .split{grid-column:1/-1;height:8px;border-radius:999px;background:rgba(255,255,255,.28);overflow:hidden}
 .split i{display:block;height:100%;width:0;background:#fff;border-radius:999px}
