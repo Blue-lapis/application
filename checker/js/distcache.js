@@ -5,7 +5,8 @@ import { SUBS, RARITY_P, NAT, ENERGY_BANDS, slotWeights } from '../../js/constan
 import { TYPES } from './types.js';
 
 // 計算方法を変えたら上げる。キーが変わるので古い分布は使われず、そのうち消える。
-const MODEL_VERSION = 10;
+// 事前計算のファイル（precomputed.js）も、置き場所と中身の照合にこの値を使う。
+export const MODEL_VERSION = 10;
 // 公開時にモジュールの URL に付く版（?v=コミット）。上げ忘れても、公開のたびに分布を計算し直す。
 const BUILD = new URL(import.meta.url).searchParams.get('v') || '';
 const DB_NAME = 'checker-dist';
@@ -25,9 +26,10 @@ const COMMON = hash(JSON.stringify([SUBS, RARITY_P, NAT, ENERGY_BANDS, String(sl
 
 // 条件（env）はすべての項目をキーに入れる。パラメーターを増やしても書き足さなくてよい。
 const envText = (env) => JSON.stringify(Object.keys(env).sort().map((k) => [k, env[k]]));
-export const cacheKey = (type, env) => [
-  MODEL_VERSION, BUILD, COMMON, type, hash(JSON.stringify(TYPES[type].MONS[env.mon])), envText(env),
-].join('|');
+const keyParts = (type, env) => [COMMON, type, hash(JSON.stringify(TYPES[type].MONS[env.mon])), envText(env)];
+export const cacheKey = (type, env) => [MODEL_VERSION, BUILD, ...keyParts(type, env)].join('|');
+// 公開した版（BUILD）を除いたキー。事前計算のファイルはデプロイのたびに作り直すので、版の代わりにこのキーで照合する。
+export const dataKey = (type, env) => [MODEL_VERSION, ...keyParts(type, env)].join('|');
 
 let dbPromise = null;
 function openDb() {

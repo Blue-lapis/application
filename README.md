@@ -15,14 +15,17 @@ https://blue-lapis.github.io/application/checker/
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、おてつだい時間と確率の丸め、所持数の遷移、スキル抽選回数とストック、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数
 - `css/style.css` — 土台のスタイル（見た目は `checker/css/theme.css` で上書き）
-- `docs/` — ver1.1〜ver1.8 の要件定義書・設計書（最新: [要件定義](docs/requirements-v1.5.md)・[設計書](docs/design-v1.8.md)）。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない
+- `docs/` — ver1.1〜ver1.9 の要件定義書・設計書（最新: [要件定義](docs/requirements-v1.9.md)・[設計書](docs/design-v1.9.md)）。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない。ver1.9 は上位%の分布の事前計算
+- `scripts/precompute-dist.mjs` — 既定の条件の上位%の分布を事前計算し、`checker/dist/` に書き出す（公開時に実行。[ローカルでの実行手順](#事前計算した分布)）
 - `tests/check-dist.mjs` — 上位%の分布の整合性テスト（`node tests/check-dist.mjs`）
+- `tests/check-precomputed.mjs` — 事前計算の分布がそろっていて、計算した分布とビットまで一致し、版の違う・壊れたファイルを使わないことのテスト
+- `tests/check-precomputed-browser.mjs` — 同じことをヘッドレス Chromium（スマートフォンの幅）の画面で確かめる（Playwright が要る。CI では実行しない）
 - `tests/check-segs.mjs` — 所持数・ストック・天井込みの確率の境界テスト（`node tests/check-segs.mjs`）
 - `tests/check-boost.mjs` — きのみタイプのフィールドボーナス・好きなきのみの切り上げと、無補正比が変わらないことのテスト（`node tests/check-boost.mjs`）
 - `tests/compare-values.mjs`・`tests/bench-dist.mjs`・`tests/compare-dist.mjs` — 変更前後の値・分布・計算時間の比較（[実行手順](docs/design-v1.4.md#5-再確認する手順)）
 - `tests/compare-nitoyon.mjs`・`tests/nitoyon/runner.ts` — にとよんツールとの値の比較（[実行手順](docs/design-v1.5.md#5-再確認する手順)）
 - `index.html`・`ingredient/index.html`・`berry/index.html` — `checker/` へ移動するページ
-- `.github/workflows/pages.yml` — `main` への push で `check-segs.mjs`・`check-dist.mjs` を実行し、通ればアプリのファイルだけを GitHub Pages に公開する
+- `.github/workflows/pages.yml` — `main` への push で `check-segs.mjs`・`check-dist.mjs`・`check-boost.mjs` を実行し、通れば分布を事前計算して `check-precomputed.mjs` で確かめ、アプリのファイルと事前計算の分布だけを GitHub Pages に公開する
 
 ## 共通の計算モデル
 
@@ -76,6 +79,20 @@ python3 -m http.server 8000
 ```
 
 ブラウザで `http://localhost:8000/checker/` を開いてください。
+
+### 事前計算した分布
+
+公開時は、既定の条件（Lv.50〜80・チケットあり／なし・ヒーラー1匹・回復量18・発動回数5・チーム効果を含める・受け取りは既定）の上位%の分布を事前計算して `checker/dist/` に置きます。ローカルでは `checker/dist/` がなければ、今までどおり画面（Worker）で計算します。事前計算を試すときは、リポジトリ直下で次を実行します。
+
+```bash
+node scripts/precompute-dist.mjs            # checker/dist/ を作り直す（1,554件。4コアで2〜3分、gzip で約68MB）
+node tests/check-precomputed.mjs            # ファイルと計算の一致（抜き取り）・版の違い・壊れたファイルの扱い
+node tests/check-precomputed.mjs --all      # 全件を計算と照合する（4コアでも7分ほど）
+node tests/check-precomputed-browser.mjs    # ヘッドレス Chromium での画面の確認（Playwright が要る）
+```
+
+- 並列数は `--jobs=2` のように変えられます（既定は CPU の数）。
+- `checker/dist/` は生成物なのでコミットしません（`.gitignore`）。計算方法・ポケモンのデータ・既定の値を変えたら作り直します。
 
 ## 著作権
 
