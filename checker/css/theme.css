@@ -33,6 +33,8 @@
 /* タイプの色。--psy は塗り（白文字が乗る）、--psy-soft は淡い地、--psy-ink は淡い地の上の文字、
    --psy-hi は夜空色の地の上の差し色（記録ボタン・ゲージの点）。 */
 :root{--psy:#3A7F37;--psy-soft:#E3EFDF;--psy-ink:#2C6329;--psy-hi:#8CCB7F}
+/* 土台（style.css）のダークモードの --psy（紫）より強くするため、食材タイプも data-type で指定する。 */
+:root[data-type="ingredient"]{--psy:#3A7F37;--psy-hi:#8CCB7F}
 :root[data-type="berry"]{--psy:#2C6BAE;--psy-soft:#E4EEF8;--psy-ink:#1F4F83;--psy-hi:#86BCE3}
 :root[data-type="skill"]{--psy:#7443B8;--psy-soft:#EEE6F8;--psy-ink:#57308F;--psy-hi:#B98AF0}
 @media (prefers-color-scheme:dark){
@@ -319,14 +321,22 @@ dialog.sheet::backdrop{background:var(--scrim)}
 
 /* ポケモンを選ぶダイアログ。 */
 .monq-w{display:flex;align-items:center;gap:8px;height:48px;border-radius:14px;background:var(--bg);padding:0 14px;margin-bottom:12px;color:var(--muted)}
+.monq-w svg{flex:none}
 .monq{flex:1;min-width:0;font:inherit;font-size:1rem;color:var(--ink);background:transparent;border:0;padding:0;outline:none}
+.monf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:4px}
+.monf button{font:inherit;display:flex;align-items:center;justify-content:center;gap:5px;min-height:44px;padding:0 4px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);font-size:.8rem;font-weight:700;white-space:nowrap;cursor:pointer;min-width:0}
+.monf button i{width:8px;height:8px;border-radius:50%;background:var(--dot);flex:none}
+.monf button small{font-family:var(--font-num);font-size:.68rem;font-weight:600;color:var(--muted)}
+.monf button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--card)}
+.monf button[aria-pressed="true"] small{color:var(--card);opacity:.8}
+.monsec{display:flex;align-items:center;gap:6px;margin:16px 0 8px;font-size:.78rem;font-weight:800;letter-spacing:.02em;color:var(--ink)}
+.monsec i{width:8px;height:8px;border-radius:50%;background:var(--dot);flex:none}
+.monsec span{font-family:var(--font-num);font-weight:600;color:var(--muted)}
 .mongrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
 .mongrid button{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;min-width:0}
 .mongrid img{width:56px;height:56px;object-fit:contain}
 .mongrid span{font-size:.75rem;font-weight:700;line-height:1.3;text-align:center}
 .mongrid small{font-size:.62rem;font-weight:600;color:var(--muted);line-height:1.2;text-align:center}
-.mongrid small[class^="t-"]{margin-top:2px;padding:1px 8px;border-radius:999px;font-weight:700;color:#fff}
-.mongrid .t-berry{background:#2C6BAE}.mongrid .t-ingredient{background:#3A7F37}.mongrid .t-skill{background:#7443B8}
 .mongrid button[aria-pressed="true"]{border:2px solid var(--psy);background:var(--psy-soft)}
 
 /* 記録のダイアログ。 */
@@ -398,3 +408,43 @@ dialog.sheet::backdrop{background:var(--scrim)}
 /* 狭い画面では、受け取りとチケットの切り替えを1行ずつにする（「なし（いつ育）」が折り返さないように）。 */
 @media (max-width:440px){.prow2{grid-template-columns:1fr}}
 .login input:focus-visible{outline-color:var(--ink)}
+/* ポケモンを選ぶダイアログの見出しは、ダイアログ共通の見出しの色（金）にしない。検索欄のフォーカスは枠全体に出す。 */
+.dlg-in h3.monsec{color:var(--ink);letter-spacing:.02em;margin:16px 0 8px}
+.monq:focus-visible{outline:none}
+.monq-w:focus-within{outline:3px solid var(--psy);outline-offset:1px}
+/* 記録の一覧。ポケモンごとの見出し（画像・タイプの点・名前・件数）と、今と違うレベルで評価した記録の印。 */
+.log li.lgrp{display:flex;align-items:center;gap:8px;padding:10px 0 0;border:0;border-radius:0;cursor:default;background:none;font-size:.85rem;font-weight:800}
+.log li.lgrp:first-child{border-top:0}
+.log li.lgrp:hover{background:none}
+.log li.lgrp img{width:36px;height:36px;object-fit:contain;flex:none}
+.log li.lgrp span{flex:1;display:flex;align-items:center;gap:6px;min-width:0}
+.log li.lgrp span small{font-size:.68rem;font-weight:700;color:var(--muted)}
+.log li.lgrp i{width:8px;height:8px;border-radius:50%;background:var(--dot);flex:none}
+.log li.lgrp>small{font-family:var(--font-num);font-size:.72rem;font-weight:600;color:var(--muted)}
+.lvtag{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-family:var(--font-num);font-size:.62rem;font-weight:700;vertical-align:1px}
+/* 条件の欄。レベルは数字だけの丸ボタン、受け取りとチケットは見出しを左・小さめの切り替えを右の1行にする。 */
+.lvrow,.prow2>div{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap}
+.lvrow>span,.prow2>div>span{font-size:.78rem;font-weight:700;color:var(--ink);margin:0;white-space:nowrap}
+.lvseg{display:flex;gap:8px}
+.lvseg button{font:inherit;font-family:var(--font-num);font-size:.95rem;font-weight:600;width:44px;height:44px;padding:0;border-radius:50%;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.lvseg button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--card)}
+.prow2{display:flex;flex-direction:column;gap:10px}
+.prow2>div[hidden]{display:none}
+.prow2 .seg{grid-auto-columns:max-content;padding:3px;gap:2px;border-radius:10px}
+.prow2 .seg button{min-height:36px;padding:0 12px;font-size:.75rem;border-radius:8px}
+/* 条件の詳細。切り替えと数値は、見出しを左・小さめの部品を右の1行にする（入りきらないときは折り返す）。 */
+#paramDlg .params{gap:10px;margin-bottom:6px}
+#paramDlg .prow{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;padding:8px 0;border-top:1px solid var(--line-soft)}
+#paramDlg .params .prow:first-child{border-top:0}
+#paramDlg .prow>span{font-size:.82rem;font-weight:700;color:var(--ink);white-space:nowrap}
+#paramDlg .prow>span.fav{flex:1 1 10em;white-space:normal;font-weight:700}
+#paramDlg .seg{grid-auto-columns:max-content;padding:3px;gap:2px;border-radius:10px}
+#paramDlg .seg button{min-height:36px;padding:0 12px;font-size:.75rem;border-radius:8px}
+#paramDlg h3{margin:12px 0 4px;padding-top:12px;border-top:1px solid var(--line);font-size:.78rem}
+#paramDlg .nums{gap:0}
+#paramDlg .num{padding:6px 0;font-size:.82rem;flex-wrap:wrap;gap:6px 12px}
+#paramDlg .num>label{display:flex;flex-direction:column;line-height:1.3}
+#paramDlg .num>label small{font-size:.66rem;font-weight:500;color:var(--muted)}
+#paramDlg .step{gap:4px}
+#paramDlg .step button{width:36px;height:36px;border-radius:10px;font-size:1.05rem}
+#paramDlg .step input,#paramDlg .num input{width:4.2em;height:36px;padding:0 8px;text-align:center;border-radius:10px}

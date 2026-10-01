@@ -74,7 +74,7 @@
     <section class="cnd">
       <div class="sec-head"><h2>条件</h2><button class="more" id="paramBtn" type="button" aria-haspopup="dialog">詳細<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
       <div class="params" id="params">
-        <div class="seg lvseg" role="group" aria-label="レベル" id="lvSeg"><button data-v="50">Lv.50</button><button data-v="60">Lv.60</button><button data-v="70">Lv.70</button><button data-v="80">Lv.80</button></div>
+        <div class="lvrow"><span>レベル</span><div class="lvseg" role="group" aria-label="レベル" id="lvSeg"><button data-v="50" aria-label="Lv.50">50</button><button data-v="60" aria-label="Lv.60">60</button><button data-v="70" aria-label="Lv.70">70</button><button data-v="80" aria-label="Lv.80">80</button></div></div>
         <div class="prow2">
           <div data-for="berry"><span>日中の受け取り</span><div class="seg" role="group" aria-label="日中の受け取り" id="tapSeg"><button data-v="none">なし（いつ育）</button><button data-v="3h">3時間ごと</button></div></div>
           <div data-for="ingredient skill"><span>日中の受け取り</span><div class="seg" role="group" aria-label="日中の受け取り" id="ingTapSeg"><button data-v="always">常にタップ</button><button data-v="3h">3時間ごと</button></div></div>
@@ -140,7 +140,8 @@
 <dialog class="sheet" id="logDlg" aria-labelledby="logTitle">
   <div class="dlg-in">
     <div class="dlg-head"><h2 id="logTitle" tabindex="-1" autofocus>記録</h2><span class="subcount" id="logNum"></span></div>
-    <p class="note" style="margin:0 0 10px">タップすると、その入力に戻ります</p>
+    <div class="monf" id="logFilter" role="group" aria-label="タイプで切り替える"></div>
+    <p class="note" style="margin:8px 0 6px">タップすると、その入力に戻ります。評価は今のレベルと条件で出します。</p>
     <ul class="log" id="log"></ul>
     <div class="dlg-foot"><span></span><button class="primary" id="logClose">閉じる</button></div>
   </div>
@@ -159,8 +160,9 @@
 <dialog class="sheet" id="monDlg" aria-labelledby="monTitle">
   <div class="dlg-in">
     <h2 id="monTitle" tabindex="-1" autofocus>ポケモンを選ぶ</h2>
-    <div class="monq-w"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" class="monq" id="monQ" placeholder="名前で探す（3タイプから・例: ふしばな）" aria-label="ポケモンの名前で探す" autocomplete="off" enterkeyhint="done"></div>
-    <div class="mongrid" id="monGrid"></div>
+    <div class="monq-w"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" class="monq" id="monQ" placeholder="名前で探す（例: ふしばな）" aria-label="ポケモンの名前で探す" autocomplete="off" enterkeyhint="done"></div>
+    <div class="monf" id="monFilter" role="group" aria-label="タイプで絞り込む"></div>
+    <div class="monlist" id="monGrid"></div>
     <p class="note" id="monNone" hidden>見つかりませんでした</p>
     <div class="dlg-foot"><span></span><button class="primary" id="monClose">閉じる</button></div>
   </div>
@@ -185,8 +187,8 @@
     <div data-for="berry ingredient skill">
       <h3>ヒーラー（げんきオールS）</h3>
       <div class="nums">
-        <label class="num"><span>1回の回復量</span><input type="number" id="healAmt" min="1" max="150" step="1" inputmode="numeric"></label>
-        <label class="num"><span>1日の発動回数（小数第2位まで）</span><input type="number" id="healTimes" min="0" max="20" step="0.01" inputmode="decimal"></label>
+        <div class="num"><label for="healAmt">1回の回復量</label><div class="step"><button type="button" id="healAmtDown" aria-label="回復量を1下げる">−</button><input type="number" id="healAmt" min="1" max="150" step="1" inputmode="numeric"><button type="button" id="healAmtUp" aria-label="回復量を1上げる">＋</button></div></div>
+        <div class="num"><label for="healTimes">1日の発動回数<small>小数第2位まで</small></label><div class="step"><button type="button" id="healTimesDown" aria-label="発動回数を1下げる">−</button><input type="number" id="healTimes" min="0" max="20" step="0.01" inputmode="decimal"><button type="button" id="healTimesUp" aria-label="発動回数を1上げる">＋</button></div></div>
       </div>
     </div>
     <!-- きのみのエナジーの補正。無補正比・確率には影響せず、エナジーの値だけが変わる。 -->
