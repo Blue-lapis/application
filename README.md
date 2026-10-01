@@ -15,7 +15,6 @@ https://blue-lapis.github.io/application/checker/
 ## 構成
 
 - `checker/` — アプリ本体（画面・状態管理・タイプごとの計算エンジンとポケモンのデータ）
-- `checker/img/pokeball.webp` — 判定のゲージの点（モンスターボール）。ニコニ・コモンズの素材 [nc115768](https://commons.nicovideo.jp/works/nc115768) のサムネイルから背景を除いて切り抜き、72×72 にしたもの
 - `checker/img/mon/` — ポケモンの画像（ゲーム内のメニュー画像を切り詰めた WebP）。ファイル名は `mons.js` のキー
 - `checker/img/ing/` — 食材アイコン（ゲーム内のスクリーンショットから切り抜き、56×56 に縮めた WebP）。食材名との対応は `checker/js/ingicons.js`
 - `js/constants.js` — サブスキル・性格・げんきなどのゲームデータ（3タイプ共通）

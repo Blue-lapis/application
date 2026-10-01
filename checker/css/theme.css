@@ -182,9 +182,10 @@ section.verdict{background:var(--night);border-color:transparent;color:var(--nig
 .g-track{position:absolute;left:0;right:0;top:8px;height:8px;border-radius:999px;background:var(--night-line)}
 .g-tick{position:absolute;top:4px;width:1px;height:16px;background:var(--off)}
 .g-lbl{position:absolute;top:28px;transform:translateX(-50%);font-size:.62rem;color:var(--night-faint)}
-/* ゲージの点はモンスターボール。画像はニコニ・コモンズの素材 nc115768（【透過素材】モンスターボール【ポケモン】）のサムネイルから、
-   背景の市松模様を除いて円で切り抜き、72×72（24px の3倍）にしたもの（../img/pokeball.webp）。 */
-.g-dot{position:absolute;top:0;width:24px;height:24px;margin-left:-12px;border-radius:50%;background:url(../img/pokeball.webp) center/contain no-repeat;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+/* ゲージの点はモンスターボール。画像は使わず、上の赤・下の白・黒い帯・中央のボタンを CSS で描く（小さくてもくっきり出る）。 */
+.g-dot{position:absolute;top:0;width:24px;height:24px;margin-left:-12px;border-radius:50%;box-sizing:border-box;border:2px solid #111;
+  background:radial-gradient(circle,#fff 0 2.6px,#111 2.6px 4.6px,transparent 4.6px),linear-gradient(#EE4B4B 0 calc(50% - 1px),#111 calc(50% - 1px) calc(50% + 1px),#fff calc(50% + 1px));
+  box-shadow:0 1px 4px rgba(0,0,0,.35)}
 .gauge.wait .g-track{animation:pulse 1.2s ease-in-out infinite alternate}
 @keyframes pulse{to{opacity:.45}}
 .g-ends{display:flex;justify-content:space-between;font-size:.68rem;font-weight:700;color:var(--night-faint)}
