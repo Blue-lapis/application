@@ -190,6 +190,20 @@ export function setNature(name) {
   syncNature();
 }
 
+// 「消す」の前の入力。「元に戻す」で restoreSelection に渡す。食材配列は同じポケモンのときだけ戻す。
+export const snapshotSelection = () => ({ mon: state.mon, subs: [...state.subs], nat: state.nat, up: state.up, down: state.down, arr: [...state.arr] });
+export function restoreSelection(x) {
+  state.subs = [...x.subs];
+  if (natByName(x.nat)) {
+    setNature(x.nat);
+  } else {
+    state.nat = null;
+    state.up = x.up;
+    state.down = x.down;
+  }
+  if (state.type === 'ingredient' && x.mon === state.mon) state.arr = [...x.arr];
+}
+
 export function resetSelection() {
   if (state.type === 'ingredient') state.arr = emptyArr(state.mon);
   state.subs = UNLOCK.map(() => null);
@@ -236,8 +250,12 @@ export const loadLog = () => loadRawLog(state.type).filter((x) => x && x.mon ===
     return { ...x, up: c(n[1]), down: c(n[2]) };
   });
 export function appendLog(entry) { save(LOG_KEYS[state.type], [...loadRawLog(state.type), entry]); }
+// 消した記録を返す（「元に戻す」で appendLog に渡す）。
 export function removeLogEntry(t) {
-  save(LOG_KEYS[state.type], loadRawLog(state.type).filter((x) => String(x && x.t) !== String(t)));
+  const all = loadRawLog(state.type);
+  const gone = all.find((x) => String(x && x.t) === String(t)) || null;
+  if (gone) save(LOG_KEYS[state.type], all.filter((x) => x !== gone));
+  return gone;
 }
 
 // 記録の個体を入力欄に戻す。サブスキルは記録の枠の数だけ入れ、後ろの枠は空にする。
