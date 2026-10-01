@@ -70,7 +70,7 @@
   </div>
 
   <div class="col-out">
-    <!-- 判定を変える条件は、判定のすぐ上に置く。よく変えるものだけをここで切り替え、ほかは「詳細」のダイアログで変える。data-for はその要素を出すタイプ（空白区切り）。 -->
+    <!-- 結果を変える条件は、結果のすぐ上に置く。よく変えるものだけをここで切り替え、ほかは「詳細」のダイアログで変える。data-for はその要素を出すタイプ（空白区切り）。 -->
     <section class="cnd">
       <div class="sec-head"><h2>条件</h2><button class="more" id="paramBtn" type="button" aria-haspopup="dialog">詳細<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>
       <div class="params" id="params">
@@ -84,11 +84,6 @@
       </div>
     </section>
 
-    <!-- 判定。中身は ui.js の renderVerdict が状態（未入力・計算中・結果・評価できない）に合わせて作る。 -->
-    <section class="verdict" id="verdict" aria-live="polite">
-      <div class="v-top"><span>判定</span><span id="vMeta"></span></div>
-      <div id="vBody"></div>
-    </section>
 
     <section class="out">
       <small class="o-label" id="hLabel">—</small>
@@ -125,10 +120,10 @@
   </div>
 </main>
 
-<!-- 下の帯。判定のカードが画面に見えている間は隠す。 -->
+<!-- 下の帯。何の確率か（帯の上の1行）と、確率・無補正比・何匹に1匹をいつも出す。 -->
 <div class="bar" id="bar" role="status" aria-live="polite">
   <div class="bar-in">
-    <p class="bar-cap" id="bWait">入力がそろうと判定が出ます</p>
+    <p class="bar-cap" id="bWait"></p>
     <div class="bcol"><small>同等以上の確率</small><b id="bRank" class="dim">—</b></div>
     <div class="bcol"><small>無補正比</small><b id="bRatio" class="dim">—</b></div>
     <div class="bcol"><small>平均何匹に1匹</small><b id="bOdds" class="dim">—</b></div>
