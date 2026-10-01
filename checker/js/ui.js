@@ -119,8 +119,10 @@ export function initUI(engines) {
     next.click();
     next.focus();
   });
+  // カードから開いたときは今のタイプに、虫めがねから開いたときは「すべて」に絞り込んでおく。
   const openMon = (search) => {
     $('monQ').value = '';
+    monFilter = search ? 'all' : state.type;
     renderMonDlg();
     $('monDlg').showModal();
     $('monGrid').querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: 'center' });
@@ -140,15 +142,22 @@ export function initUI(engines) {
   };
   $('monQ').addEventListener('input', renderMonDlg);
   // Enter で一番上の候補を選ぶ。
+  // Enter で一番よく一致する候補を選ぶ（名前を入れていないときは一番上）。
   $('monQ').addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' || e.isComposing) return;
-    const b = $('monGrid').querySelector('button');
+    const b = $('monGrid').querySelector('button[data-best]') || $('monGrid').querySelector('button');
     if (b) { e.preventDefault(); pickMon(b.dataset.v); }
   });
   $('monGrid').addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (!b) return;
     pickMon(b.dataset.v);
+  });
+  $('monFilter').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    monFilter = b.dataset.f;
+    renderMonDlg();
   });
 
   initParams(engines);
@@ -344,23 +353,37 @@ function initDialogs(engines) {
   });
 }
 
-// ポケモンの一覧は今のタイプのものだけにする。
-// 名前を入れたら3タイプすべてから探し、一致の度合いの順に並べる。ほかのタイプのポケモンにはタイプ名を添える。
+// ポケモンの一覧。タイプの絞り込み（すべて・きのみ・食材・スキル）と名前で探し、タイプごとの見出しの下に並べる。
+// 名前を入れたら一致の度合いの順に並べ、絞り込みのボタンにはそれぞれの件数を出す。
+let monFilter = 'all';
 function renderMonDlg() {
   const q = $('monQ').value.trim();
-  let list = Object.entries(def().MONS).map(([k, m]) => [k, m, state.type]);
-  if (q) {
-    list = Object.entries(TYPES).flatMap(([t, d]) => Object.entries(d.MONS).map(([k, m]) => [k, m, t]))
-      .map((x, i) => [...x, matchRank(q, x[1].name, x[0]), i]).filter((x) => x[3] !== null)
-      .sort((a, b) => a[3] - b[3] || (a[2] !== state.type) - (b[2] !== state.type) || a[4] - b[4]);
-  }
-  $('monNone').hidden = list.length > 0;
-  $('monGrid').innerHTML = list.map(([k, m, t]) => {
-    const [base, form] = splitName(m.name);
-    return `<button data-v="${k}" aria-pressed="${k === state.mon}"><img src="${monSrc(k)}" alt="" width="56" height="56" loading="lazy">`
-      + `<span>${esc(base)}</span>${form ? `<small>${esc(form)}</small>` : ''}`
-      + `${t !== state.type ? `<small class="t-${t}">${TYPES[t].short}</small>` : ''}</button>`;
-  }).join('');
+  const found = Object.fromEntries(Object.entries(TYPES).map(([t, d]) => {
+    let list = Object.entries(d.MONS).map(([k, m], i) => ({ k, m, i, rank: 0 }));
+    if (q) {
+      list = list.map((x) => ({ ...x, rank: matchRank(q, x.m.name, x.k) })).filter((x) => x.rank !== null)
+        .sort((a, b) => a.rank - b.rank || a.i - b.i);
+    }
+    return [t, list];
+  }));
+  const count = (t) => (t === 'all' ? Object.values(found).reduce((n, l) => n + l.length, 0) : found[t].length);
+  $('monFilter').innerHTML = ['all', ...Object.keys(TYPES)].map((t) => `<button type="button" data-f="${t}" aria-pressed="${t === monFilter}">`
+    + `${t === 'all' ? 'すべて' : `<i class="d-${t}"></i>${TYPES[t].short}`}${q ? `<small>${count(t)}</small>` : ''}</button>`).join('');
+  const shown = (monFilter === 'all' ? Object.keys(TYPES) : [monFilter]).filter((t) => found[t].length);
+  // Enter で選ぶ候補は、表示している中で一番よく一致するもの。
+  const best = q ? shown.flatMap((t) => found[t]).reduce((a, x) => (!a || x.rank < a.rank ? x : a), null) : null;
+  $('monGrid').innerHTML = shown.map((t) => `<h3 class="monsec"><i class="d-${t}"></i>${TYPES[t].label}<span>${found[t].length}</span></h3>`
+    + `<div class="mongrid">${found[t].map(({ k, m }) => {
+      const [base, form] = splitName(m.name);
+      return `<button data-v="${k}" aria-pressed="${k === state.mon}"${best && best.k === k ? ' data-best' : ''}><img src="${monSrc(k)}" alt="" width="56" height="56" loading="lazy">`
+        + `<span>${esc(base)}</span>${form ? `<small>${esc(form)}</small>` : ''}</button>`;
+    }).join('')}</div>`).join('');
+  // 絞り込んだタイプにいなくても、ほかのタイプにいればそう伝える。
+  const others = count('all');
+  $('monNone').hidden = shown.length > 0;
+  $('monNone').textContent = monFilter !== 'all' && others
+    ? `${TYPES[monFilter].label}には見つかりませんでした（「すべて」で${others}匹）`
+    : '見つかりませんでした';
 }
 
 function openSub(i) {

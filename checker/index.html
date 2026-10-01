@@ -159,8 +159,9 @@
 <dialog class="sheet" id="monDlg" aria-labelledby="monTitle">
   <div class="dlg-in">
     <h2 id="monTitle" tabindex="-1" autofocus>ポケモンを選ぶ</h2>
-    <div class="monq-w"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" class="monq" id="monQ" placeholder="名前で探す（3タイプから・例: ふしばな）" aria-label="ポケモンの名前で探す" autocomplete="off" enterkeyhint="done"></div>
-    <div class="mongrid" id="monGrid"></div>
+    <div class="monq-w"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" class="monq" id="monQ" placeholder="名前で探す（例: ふしばな）" aria-label="ポケモンの名前で探す" autocomplete="off" enterkeyhint="done"></div>
+    <div class="monf" id="monFilter" role="group" aria-label="タイプで絞り込む"></div>
+    <div class="monlist" id="monGrid"></div>
     <p class="note" id="monNone" hidden>見つかりませんでした</p>
     <div class="dlg-foot"><span></span><button class="primary" id="monClose">閉じる</button></div>
   </div>

@@ -319,14 +319,22 @@ dialog.sheet::backdrop{background:var(--scrim)}
 
 /* ポケモンを選ぶダイアログ。 */
 .monq-w{display:flex;align-items:center;gap:8px;height:48px;border-radius:14px;background:var(--bg);padding:0 14px;margin-bottom:12px;color:var(--muted)}
+.monq-w svg{flex:none}
 .monq{flex:1;min-width:0;font:inherit;font-size:1rem;color:var(--ink);background:transparent;border:0;padding:0;outline:none}
+.monf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:4px}
+.monf button{font:inherit;display:flex;align-items:center;justify-content:center;gap:5px;min-height:44px;padding:0 4px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);font-size:.8rem;font-weight:700;white-space:nowrap;cursor:pointer;min-width:0}
+.monf button i{width:8px;height:8px;border-radius:50%;background:var(--dot);flex:none}
+.monf button small{font-family:var(--font-num);font-size:.68rem;font-weight:600;color:var(--muted)}
+.monf button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--card)}
+.monf button[aria-pressed="true"] small{color:var(--card);opacity:.8}
+.monsec{display:flex;align-items:center;gap:6px;margin:16px 0 8px;font-size:.78rem;font-weight:800;letter-spacing:.02em;color:var(--ink)}
+.monsec i{width:8px;height:8px;border-radius:50%;background:var(--dot);flex:none}
+.monsec span{font-family:var(--font-num);font-weight:600;color:var(--muted)}
 .mongrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
 .mongrid button{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;min-width:0}
 .mongrid img{width:56px;height:56px;object-fit:contain}
 .mongrid span{font-size:.75rem;font-weight:700;line-height:1.3;text-align:center}
 .mongrid small{font-size:.62rem;font-weight:600;color:var(--muted);line-height:1.2;text-align:center}
-.mongrid small[class^="t-"]{margin-top:2px;padding:1px 8px;border-radius:999px;font-weight:700;color:#fff}
-.mongrid .t-berry{background:#2C6BAE}.mongrid .t-ingredient{background:#3A7F37}.mongrid .t-skill{background:#7443B8}
 .mongrid button[aria-pressed="true"]{border:2px solid var(--psy);background:var(--psy-soft)}
 
 /* 記録のダイアログ。 */
@@ -398,3 +406,7 @@ dialog.sheet::backdrop{background:var(--scrim)}
 /* 狭い画面では、受け取りとチケットの切り替えを1行ずつにする（「なし（いつ育）」が折り返さないように）。 */
 @media (max-width:440px){.prow2{grid-template-columns:1fr}}
 .login input:focus-visible{outline-color:var(--ink)}
+/* ポケモンを選ぶダイアログの見出しは、ダイアログ共通の見出しの色（金）にしない。検索欄のフォーカスは枠全体に出す。 */
+.dlg-in h3.monsec{color:var(--ink);letter-spacing:.02em;margin:16px 0 8px}
+.monq:focus-visible{outline:none}
+.monq-w:focus-within{outline:3px solid var(--psy);outline-offset:1px}
