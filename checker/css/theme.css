@@ -33,6 +33,8 @@
 /* タイプの色。--psy は塗り（白文字が乗る）、--psy-soft は淡い地、--psy-ink は淡い地の上の文字、
    --psy-hi は夜空色の地の上の差し色（記録ボタン・ゲージの点）。 */
 :root{--psy:#3A7F37;--psy-soft:#E3EFDF;--psy-ink:#2C6329;--psy-hi:#8CCB7F}
+/* 土台（style.css）のダークモードの --psy（紫）より強くするため、食材タイプも data-type で指定する。 */
+:root[data-type="ingredient"]{--psy:#3A7F37;--psy-hi:#8CCB7F}
 :root[data-type="berry"]{--psy:#2C6BAE;--psy-soft:#E4EEF8;--psy-ink:#1F4F83;--psy-hi:#86BCE3}
 :root[data-type="skill"]{--psy:#7443B8;--psy-soft:#EEE6F8;--psy-ink:#57308F;--psy-hi:#B98AF0}
 @media (prefers-color-scheme:dark){
@@ -420,3 +422,13 @@ dialog.sheet::backdrop{background:var(--scrim)}
 .log li.lgrp i{width:8px;height:8px;border-radius:50%;background:var(--dot);flex:none}
 .log li.lgrp>small{font-family:var(--font-num);font-size:.72rem;font-weight:600;color:var(--muted)}
 .lvtag{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-family:var(--font-num);font-size:.62rem;font-weight:700;vertical-align:1px}
+/* 条件の欄。レベルは数字だけの丸ボタン、受け取りとチケットは見出しを左・小さめの切り替えを右の1行にする。 */
+.lvrow,.prow2>div{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap}
+.lvrow>span,.prow2>div>span{font-size:.78rem;font-weight:700;color:var(--ink);margin:0;white-space:nowrap}
+.lvseg{display:flex;gap:8px}
+.lvseg button{font:inherit;font-family:var(--font-num);font-size:.95rem;font-weight:600;width:44px;height:44px;padding:0;border-radius:50%;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.lvseg button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--card)}
+.prow2{display:flex;flex-direction:column;gap:10px}
+.prow2>div[hidden]{display:none}
+.prow2 .seg{grid-auto-columns:max-content;padding:3px;gap:2px;border-radius:10px}
+.prow2 .seg button{min-height:36px;padding:0 12px;font-size:.75rem;border-radius:8px}
