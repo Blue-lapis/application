@@ -40,3 +40,17 @@ details.plan ol{margin:4px 0 0;padding-left:1.4em;line-height:1.8}
 details.plan .m-nap{color:var(--blue-ink)}
 details.plan .m-sleep{color:var(--gold-ink)}
 .back{font-size:.75rem;font-weight:700;color:var(--psy-ink)}
+
+/* グッドスリープデーの日程。1行に1回ぶん（3日間）。直した行は色を付ける。 */
+details.gsd{margin-top:12px;border-top:1px solid var(--line-soft);padding-top:4px}
+details.gsd summary{cursor:pointer;font-size:.82rem;font-weight:700;min-height:44px;display:flex;align-items:center;gap:8px}
+details.gsd summary small{font-size:.7rem;font-weight:600;color:var(--muted)}
+#gsdList{list-style:none;margin:8px 0 0;padding:0}
+#gsdList li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px dashed var(--line)}
+#gsdList li>span{font-size:.8rem;font-weight:700;line-height:1.4}
+#gsdList li>span small{display:block;font-size:.68rem;font-weight:500;color:var(--muted)}
+#gsdList li.chg>span{color:var(--psy-ink)}
+#gsdList li.off>span{color:var(--muted);text-decoration:line-through}
+.gsd-act{display:flex;gap:4px;flex:none}
+.gsd-act button{font:inherit;font-size:.72rem;font-weight:700;min-width:44px;min-height:36px;padding:0 6px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.gsd-act button:disabled{opacity:.4;cursor:default}

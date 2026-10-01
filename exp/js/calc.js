@@ -36,20 +36,54 @@ export function useCandy({ cum, th, target, nature, candy, shardCap = null }) {
   return { cum, level: lv, used, shards, passed };
 }
 
-// ---- 月齢とグッドスリープデー（近似） ----
-// 月齢は 2000-01-06 18:14 UTC の新月から数える。満月は月齢の割合が 0.48〜0.52 の日（UTC 0 時で判定）、
-// グッドスリープデーは満月の日の前後の日。実際の日程は公式のお知らせで決まり、1日ずれることがある。
-const LUNAR = 29.530588;
-const NEW_MOON = Date.UTC(2000, 0, 6, 18, 14);
-const moonRatio = (day) => {
-  const age = (((day * 864e5 - NEW_MOON) / 864e5) % LUNAR + LUNAR) % LUNAR;
-  return age / LUNAR;
-};
-const isFull = (day) => { const r = moonRatio(day); return r > 0.48 && r < 0.52; };
-export function dayKind(day) {
-  if (isFull(day)) return 'full';
-  if (isFull(day - 1) || isFull(day + 1)) return 'gsd';
-  return 'normal';
+// ---- グッドスリープデー ----
+// グッドスリープデーは満月の日を中心にした3日間。前後の日は睡眠EXPが2倍、まん中の満月の日は3倍。
+// 満月の日は、満月の時刻（Meeus『Astronomical Algorithms』49章の式、誤差は数分）を日本時間にした日付。
+// 実際の日程は公式のお知らせで決まるので、日程ごとに手で前後にずらしたり、なしにしたりできる（plan の gsd）。
+const rad = (d) => (d * Math.PI) / 180;
+// k 番目（2000年1月の朔から数える）の満月の時刻（Unix ms、UTC）。
+export function fullMoonMs(k) {
+  k += 0.5;
+  const T = k / 1236.85;
+  let jde = 2451550.09766 + 29.530588861 * k + 0.00015437 * T * T - 0.00000015 * T ** 3 + 0.00000000073 * T ** 4;
+  const E = 1 - 0.002516 * T - 0.0000074 * T * T;
+  const M = rad(2.5534 + 29.1053567 * k - 0.0000014 * T * T - 0.00000011 * T ** 3);
+  const Mp = rad(201.5643 + 385.81693528 * k + 0.0107582 * T * T + 0.00001238 * T ** 3 - 0.000000058 * T ** 4);
+  const F = rad(160.7108 + 390.67050284 * k - 0.0016118 * T * T - 0.00000227 * T ** 3 + 0.000000011 * T ** 4);
+  const O = rad(124.7746 - 1.56375588 * k + 0.0020672 * T * T + 0.00000215 * T ** 3);
+  jde += -0.40614 * Math.sin(Mp) + 0.17302 * E * Math.sin(M) + 0.01614 * Math.sin(2 * Mp) + 0.01043 * Math.sin(2 * F)
+    + 0.00734 * E * Math.sin(Mp - M) - 0.00515 * E * Math.sin(Mp + M) + 0.00209 * E * E * Math.sin(2 * M)
+    - 0.00111 * Math.sin(Mp - 2 * F) - 0.00057 * Math.sin(Mp + 2 * F) + 0.00056 * E * Math.sin(2 * Mp + M)
+    - 0.00042 * Math.sin(3 * Mp) + 0.00042 * E * Math.sin(M + 2 * F) + 0.00038 * E * Math.sin(M - 2 * F)
+    - 0.00024 * E * Math.sin(2 * Mp - M) - 0.00017 * Math.sin(O);
+  return (jde - 2440587.5) * 864e5 - 69e3; // 力学時から UTC へ（ΔT は約69秒）
+}
+const JST = 9 * 3600e3;
+// 満月の日（日本時間の日付の番号）の見込み。2000年〜2120年ぶんを最初に一度だけ作る。
+let FULL_DAYS = null;
+const fullDays = () => (FULL_DAYS ??= Array.from({ length: 1500 }, (_, k) => Math.floor((fullMoonMs(k) + JST) / 864e5)));
+
+// 手での直し（{ 見込みの満月の日: ずらす日数 | 'off' }）を当てた、満月の日の集まりと、日の種類を返す関数。
+export function gsdCalendar(gsd = {}) {
+  const set = new Set(fullDays());
+  for (const [est, v] of Object.entries(gsd)) {
+    const d = Number(est);
+    if (!set.has(d)) continue;
+    set.delete(d);
+    if (v !== 'off') set.add(d + Number(v));
+  }
+  return (day) => (set.has(day) ? 'full' : set.has(day - 1) || set.has(day + 1) ? 'gsd' : 'normal');
+}
+const DEFAULT_KIND = gsdCalendar();
+export const dayKind = (day) => DEFAULT_KIND(day);
+
+// from〜to にかかるグッドスリープデーの一覧（見込みの満月の日、直した後の満月の日、ずらした日数、なしにしたか）。
+export function gsdSchedule(from, to, gsd = {}) {
+  return fullDays().filter((d) => d >= from - 4 && d <= to + 4).map((est) => {
+    const v = gsd[est];
+    const off = v === 'off', shift = off || v == null ? 0 : Number(v);
+    return { est, full: off ? null : est + shift, shift, off };
+  }).filter((g) => g.off || (g.full + 1 >= from && g.full - 1 <= to));
 }
 
 // ---- 睡眠EXP ----
@@ -70,8 +104,8 @@ function dayRate(kind, incense) {
 
 // 1日の睡眠EXP。基本EXP = round(スコア × (1 + 0.14 × ボーナスの数))、その日のEXP = floor(基本 × 日の倍率 × 性格)。
 export const sleepBase = (score, bonus) => Math.round(score * (1 + SLEEP_BONUS * bonus));
-export function sleepDay(day, { score, bonus, incense, nature }) {
-  const kind = dayKind(day);
+export function sleepDay(day, { score, bonus, incense, nature, kindOf = dayKind }) {
+  const kind = kindOf(day);
   const [rate, used] = dayRate(kind, incense);
   return { exp: floor(sleepBase(score, bonus) * rate * NATURE_RATE[nature]), kind, incense: used };
 }
@@ -124,7 +158,8 @@ function routeSleep(cum, th, goal, o) {
 function routeNap(cum, goal, o) {
   const r = napMinutes(goal - cum, o.nature, o.tickets);
   if (!r) return null;
-  return { days: r.minutes / DAY_MIN, half: r.half, tickets: ticketsOf(Math.min(r.minutes, o.tickets * NAP.ticketDays * DAY_MIN)), passed: [] };
+  const tk = Math.min(r.minutes, o.tickets * NAP.ticketDays * DAY_MIN), raw = napExp(r.minutes, o.nature, tk);
+  return { days: r.minutes / DAY_MIN, half: r.half, raw, exp: r.half ? Math.floor(raw / 2) : raw, tickets: ticketsOf(tk), passed: [] };
 }
 
 // C. 最適な組み合わせ。日ごとに「その夜はチームで寝る」か「島に k 日（7〜13日）預けて引き取る」かを選び、
@@ -187,11 +222,12 @@ function routeMix(cum0, th, goal, o) {
       levelUps(a.d + 1);
       if (last()?.mode === 'sleep') { last().days++; last().exp += x.exp; } else blocks.push({ mode: 'sleep', from: a.d, days: 1, exp: x.exp });
     } else if (a.kind === 'final') {
-      const used = Math.min(a.nap.minutes, a.t * DAY_MIN), days = a.nap.minutes / DAY_MIN, exp = goal - cum;
-      cum = goal;
+      const used = Math.min(a.nap.minutes, a.t * DAY_MIN), days = a.nap.minutes / DAY_MIN;
+      const raw = napExp(a.nap.minutes, o.nature, used), exp = a.nap.half ? Math.floor(raw / 2) : raw;
+      cum += exp;
       ticketMin += used;
       levelUps(a.d + days);
-      if (last()?.mode === 'nap' && !a.nap.half) { last().days += days; last().exp += exp; last().ticketDays += used / DAY_MIN; } else blocks.push({ mode: 'nap', from: a.d, days, exp, ticketDays: used / DAY_MIN, half: a.nap.half });
+      if (last()?.mode === 'nap' && !a.nap.half) { last().days += days; last().exp += exp; last().ticketDays += used / DAY_MIN; } else blocks.push({ mode: 'nap', from: a.d, days, exp, raw, ticketDays: used / DAY_MIN, half: a.nap.half });
     } else {
       const used = Math.min(a.t, a.kind), exp = dayNap(a.kind, used);
       cum += exp;
@@ -215,7 +251,7 @@ export function plan(input) {
   const candy = useCandy({ cum: start, th, target, nature: input.nature, candy: input.candy, shardCap: input.shardCap });
   const out = { goal, need: goal - start, candy, routes: null };
   if (candy.cum >= goal) return out;
-  const o = { ...input };
+  const o = { ...input, kindOf: gsdCalendar(input.gsd) };
   const rest = (r) => (r ? { ...r, need: goal - candy.cum } : null);
   out.routes = {
     sleep: rest(routeSleep(candy.cum, th, goal, o)),
@@ -223,11 +259,4 @@ export function plan(input) {
     mix: rest(routeMix(candy.cum, th, goal, o)),
   };
   return out;
-}
-
-// これから先の満月・グッドスリープデー（表示用）。
-export function upcomingMoon(startDay, days = 40) {
-  const res = [];
-  for (let d = startDay + 1; d <= startDay + days; d++) { const k = dayKind(d); if (k !== 'normal') res.push({ day: d, kind: k }); }
-  return res;
 }

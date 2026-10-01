@@ -4,7 +4,7 @@ import { MONS as BERRY } from '../../checker/js/berry/mons.js';
 import { MONS as ING } from '../../checker/js/ingredient/mons.js';
 import { MONS as SKILL } from '../../checker/js/skill/mons.js';
 import { EXP_TYPE_OF, EXP_TYPES, MAX_LEVEL } from './data.js';
-import { plan, thresholds, upcomingMoon } from './calc.js';
+import { plan, thresholds, gsdSchedule } from './calc.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Math.round(n).toLocaleString('ja-JP');
@@ -12,9 +12,10 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 // ---- 状態と保存 ----
 const KEY = 'expsim';
-const DEFAULTS = { mon: '', expType: 600, nature: 'none', level: 10, toNext: null, target: 50, candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, start: '' };
-let st = { ...DEFAULTS };
+const DEFAULTS = { mon: '', expType: 600, nature: 'none', level: 10, toNext: null, target: 50, candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, start: '', gsd: {} };
+let st = { ...DEFAULTS, gsd: {} };
 try { Object.assign(st, JSON.parse(localStorage.getItem(KEY)) || {}); } catch { /* storage unavailable */ }
+if (!st.gsd || typeof st.gsd !== 'object' || Array.isArray(st.gsd)) st.gsd = {};
 // 始める日は開くたびに今日にする（前の日付が残らないように）。
 st.start = '';
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch { /* storage unavailable */ } };
@@ -91,12 +92,14 @@ function show(writeInputs) {
     $('candyOut').innerHTML = '<p class="na">目標のレベルを今のレベルより上（70まで）にしてください。</p>';
     $('routes').innerHTML = '';
     $('resHint').textContent = '';
-    $('moonNote').textContent = '';
     return;
   }
 
   const startDay = dayOf(st.start || todayStr());
   const p = plan({ ...st, toNext: st.toNext ?? span, startDay });
+  // グッドスリープデーの日程は、一番遅いルートが届くまで（最低60日）を出す。
+  const reach = p.routes ? Object.values(p.routes).filter(Boolean).map((r) => Math.ceil(r.days)) : [];
+  renderGsd(startDay, Math.max(60, ...reach));
   $('needHint').innerHTML = `必要EXP <b>${fmt(p.need)}</b>`;
 
   const c = p.candy;
@@ -104,7 +107,6 @@ function show(writeInputs) {
     $('candyOut').innerHTML = `<div class="candy done">アメだけで Lv.${st.target} に届きます。<br>アメ <b>${fmt(c.used)}</b>個・ゆめのかけら <b>${fmt(c.shards)}</b>（あまるアメ ${fmt(st.candy - c.used)}個）</div>`;
     $('routes').innerHTML = '';
     $('resHint').textContent = '';
-    $('moonNote').textContent = '';
     return;
   }
   $('candyOut').innerHTML = c.used
@@ -130,20 +132,55 @@ function show(writeInputs) {
   const incenseNote = (r) => (st.incense !== 'none' && r.incense ? `<p class="when">せいちょうのおこう 約${Math.ceil(r.incense)}個</p>` : '');
   $('routes').innerHTML = [
     card('睡眠のみ', R.sleep, (r) => incenseNote(r) + milestones(r)),
-    card('おひるね島のみ', R.nap, (r) => `<p class="when">${r.half ? '7日未満で引き取る（EXPは半分）' : r.days === 7 ? '7日満喫してから引き取る' : '届いたら引き取る'}${r.tickets ? `・チケット${r.tickets}枚` : ''}</p>`),
+    card('おひるね島のみ', R.nap, (r) => `<p class="when">${r.half ? `7日未満で引き取る（貯まる ${fmt(r.raw)} EXP → 半分の ${fmt(r.exp)} EXP）` : r.days === 7 ? '7日満喫してから引き取る' : '届いたら引き取る'}${r.tickets ? `・チケット${r.tickets}枚` : ''}</p>`),
     card('組み合わせ（最短の予定）', R.mix, (r) => incenseNote(r) + milestones(r) + planList(r, startDay)),
   ].join('');
 
-  const moons = upcomingMoon(startDay, 31).filter((m) => m.kind === 'full').map((m) => dateLabel(m.day));
-  $('moonNote').textContent = moons.length ? `満月（睡眠EXP 3倍）の見込み: ${moons.join('、')}。その前後の日がグッドスリープデー（2倍）。` : '';
+}
+
+// グッドスリープデーの日程の一覧。見込みから前後に MAX_SHIFT 日までずらすか、なしにできる。
+const MAX_SHIFT = 3;
+function renderGsd(startDay, days) {
+  const list = gsdSchedule(startDay, startDay + days, st.gsd);
+  const changed = list.filter((g) => g.off || g.shift).length;
+  $('gsdSum').textContent = `${list.filter((g) => !g.off).length}回・${changed ? `${changed}回を直した` : 'すべて見込み'}`;
+  const range = (f) => `${dateLabel(f - 1)}〜${dateLabel(f + 1)}`;
+  $('gsdList').innerHTML = list.map((g) => {
+    const cls = g.off ? 'off' : g.shift ? 'chg' : '';
+    const label = g.off
+      ? `${range(g.est)}<small>なし（見込みの満月の日 ${dateLabel(g.est)}）</small>`
+      : `${range(g.full)}<small>満月の日 ${dateLabel(g.full)}${g.shift ? `（見込みから${g.shift > 0 ? '＋' : '−'}${Math.abs(g.shift)}日）` : ''}</small>`;
+    const btns = g.off
+      ? `<button type="button" data-est="${g.est}" data-a="on">戻す</button>`
+      : `<button type="button" data-est="${g.est}" data-a="-1" aria-label="1日前にずらす"${g.shift <= -MAX_SHIFT ? ' disabled' : ''}>−1日</button>`
+        + `<button type="button" data-est="${g.est}" data-a="1" aria-label="1日後にずらす"${g.shift >= MAX_SHIFT ? ' disabled' : ''}>＋1日</button>`
+        + `<button type="button" data-est="${g.est}" data-a="off">なし</button>`;
+    return `<li class="${cls}"><span>${label}</span><div class="gsd-act">${btns}</div></li>`;
+  }).join('');
+}
+function initGsd() {
+  $('gsdList').onclick = (e) => {
+    const b = e.target.closest('button[data-est]');
+    if (!b) return;
+    const est = b.dataset.est, a = b.dataset.a;
+    if (a === 'off') st.gsd[est] = 'off';
+    else if (a === 'on') delete st.gsd[est];
+    else {
+      const v = (typeof st.gsd[est] === 'number' ? st.gsd[est] : 0) + Number(a);
+      if (v === 0) delete st.gsd[est]; else st.gsd[est] = v;
+    }
+    update();
+  };
+  $('gsdReset').onclick = () => { st.gsd = {}; update(); };
 }
 
 function planList(r, startDay) {
   const items = r.blocks.map((b) => {
     const from = dateLabel(startDay + b.from), len = dur(b.days).replace(/<[^>]+>/g, '');
     if (b.mode === 'sleep') return `<li><span class="m-sleep">チームで寝る</span> ${from}の夜から${len}（${fmt(b.exp)} EXP）</li>`;
-    const extra = `${b.ticketDays ? `・チケット${Math.ceil(b.ticketDays)}日分` : ''}${b.half ? '・7日未満で引き取る（半分）' : ''}`;
-    return `<li><span class="m-nap">島に預ける</span> ${from}から${len}（${fmt(b.exp)} EXP）${extra}</li>`;
+    const tk = b.ticketDays ? `・チケット${Math.ceil(b.ticketDays)}日分` : '';
+    if (b.half) return `<li><span class="m-nap">島に預ける</span> ${from}から${len}${tk}・7日未満で引き取る（貯まる ${fmt(b.raw)} EXP → 半分の ${fmt(b.exp)} EXP）</li>`;
+    return `<li><span class="m-nap">島に預ける</span> ${from}から${len}（${fmt(b.exp)} EXP）${tk}</li>`;
   });
   return `<details class="plan"><summary>予定（${r.blocks.length}つの期間）</summary><ol>${items.join('')}</ol></details>`;
 }
@@ -182,6 +219,7 @@ function initTheme() {
 requireLogin().then(() => {
   initTheme();
   initMon();
+  initGsd();
   seg('typeSeg', 'expType', Number);
   seg('natSeg', 'nature');
   seg('bonusSeg', 'bonus', Number);
