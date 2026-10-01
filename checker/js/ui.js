@@ -887,7 +887,6 @@ function renderBar(engines) {
   const ok = canRate();
   ['bRatio', 'bRank', 'bOdds'].forEach((id) => $(id).classList.toggle('dim', !ok));
   $('save').disabled = !ok;
-  $('bVals').hidden = !ok;
   $('bWait').hidden = ok;
   // 結果の行（同等以上の確率・平均何匹に1匹・性能値の順位）。
   const setRows = (ge, odds, pos) => {
