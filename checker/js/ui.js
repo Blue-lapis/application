@@ -179,11 +179,6 @@ export function initUI(engines) {
     toast('記録しました', '記録を見る', openLog);
   };
   $('save').onclick = saveEntry;
-  $('verdict').addEventListener('click', (e) => {
-    if (e.target.closest('#vSave')) saveEntry();
-    const lv = e.target.closest('[data-lv]');
-    if (lv) { setLevel(+lv.dataset.lv); refresh(engines); }
-  });
 
   // 消した入力は、しばらく「元に戻す」で戻せる。
   $('reset').onclick = () => {
@@ -214,7 +209,6 @@ export function initUI(engines) {
   $('toastAct').onclick = () => { const f = toastFn; hideToast(); if (f) f(); };
 
   initTheme();
-  watchVerdict();
 
   refresh(engines);
 }
@@ -792,41 +786,20 @@ function renderLvList(engines) {
   });
 }
 
-// 判定のカード。状態は、評価できない（狙い食材がまだ出ない）・未入力・計算中・結果の4つ。
-// ゲージは同等以上の確率を 0.1%〜100% の対数の目盛りに置く（小さな確率の差が見えるように）。左ほどめずらしい。
-const GAUGE = [[0.01, '1%'], [0.05, '5%'], [0.1, '10%'], [0.25, '25%'], [0.5, '50%']];
-const gaugePos = (p) => Math.max(0, Math.min(100, ((Math.log10(Math.max(p, 1e-3)) + 3) / 3) * 100)).toFixed(1);
-
-function renderVerdict(engines) {
-  const d = def(), N = slotCount(), mm = monData();
-  $('vMeta').textContent = `Lv.${state.lv}・サブスキル${N}枠・${d.short}`;
+// 帯の上の1行。何の確率かと、確率を出すのに足りない入力。
+function barCaption() {
+  const N = slotCount();
+  // 狙い食材がまだ開いていない枠にしか出ないときは、入力をそろえても確率は出ないので先に伝える。
   if (targetClosed()) {
-    const tl = targetLevel(mm, state.target);
-    $('vBody').innerHTML = `<p class="v-msg">${esc(mm.short[state.target])}は Lv.${tl} から出る食材です</p>`
-      + '<p class="v-sub">レベルを上げるか、ほかの狙い食材を選んでください</p>'
-      + (LEVELS.includes(tl) ? `<button type="button" class="v-act" data-lv="${tl}">Lv.${tl} にする</button>` : '');
-    return;
+    const mm = monData();
+    return `Lv.${state.lv}では${mm.short[state.target]}は出ません（Lv.${targetLevel(mm, state.target)}の枠で開きます）`;
   }
-  if (!isComplete()) {
-    const have = currentSubs().filter(Boolean).length;
-    const need = [`サブスキル ${have}/${N}`, `性格 ${state.up && state.down ? '✓' : '—'}`];
-    if (state.type === 'ingredient') need.push(`食材配列 ${currentArr().includes(null) ? '—' : '✓'}`);
-    $('vBody').innerHTML = `<p class="v-msg">${state.type === 'ingredient' ? '食材配列・' : ''}サブスキルと性格を選ぶと、ここに判定が出ます</p>`
-      + `<div class="v-need">${need.map((x) => `<span>${x}</span>`).join('')}</div>`;
-    return;
-  }
-  const e = env(), engine = engines[state.type];
-  const r = scoreOf(engine, { subs: currentSubs(), up: state.up, down: state.down, arr: state.arr }, e);
-  const ready = engine.ready(e);
-  const ge = ready && r > 0 ? engine.atLeast(r, e) : null;
-  const pct = !ready ? `<span class="v-wait">${pendingText()}</span>` : ge == null ? '—' : withUnit(fmtPct(ge).slice(0, -1), '%');
-  const ticks = GAUGE.map(([p, l]) => `<i class="g-tick" style="left:${gaugePos(p)}%"></i><span class="g-lbl" style="left:${gaugePos(p)}%">${l}</span>`).join('');
-  const foot = !ready ? '分布を計算しています…' : ge == null ? '無補正比が0のため確率は出ません' : `平均 <b>${fmtOdds(1 / ge)}</b>に1匹`;
-  $('vBody').innerHTML = `<div class="v-main"><div><small>同等以上の確率</small><b class="v-ge">${pct}</b></div>`
-    + `<div class="v-r"><small>無補正比</small><b>${withUnit(r.toFixed(2), '倍')}</b></div></div>`
-    + `<div class="gauge${ready ? '' : ' wait'}" aria-hidden="true"><i class="g-track"></i>${ticks}${ge == null ? '' : `<i class="g-dot" style="left:${gaugePos(ge)}%"></i>`}</div>`
-    + '<div class="g-ends" aria-hidden="true"><span>めずらしい</span><span>よくいる</span></div>'
-    + `<div class="v-foot"><span>${foot}</span><button type="button" class="v-save" id="vSave">記録する</button></div>`;
+  const missing = [
+    currentSubs().every(Boolean) ? '' : `サブスキル${N}枠`,
+    state.up && state.down ? '' : '性格',
+    currentArr().includes(null) ? '食材配列' : '',
+  ].filter(Boolean);
+  return missing.length ? `Lv.${state.lv}の確率は、${missing.join('・')}がそろうと出ます` : `Lv.${state.lv}・サブスキル${N}枠での確率`;
 }
 
 // 下に出る短いお知らせ。「元に戻す」などの操作を1つだけ持ち、5秒で消える。
@@ -875,19 +848,13 @@ function initTheme() {
   show();
 }
 
-// 判定のカードが画面に見えている間は、下の帯を隠す（同じ数字を2か所に出さない）。
-function watchVerdict() {
-  if (!('IntersectionObserver' in window)) return;
-  new IntersectionObserver(([en]) => { $('bar').classList.toggle('away', en.isIntersecting); }).observe($('verdict'));
-}
 
 function renderBar(engines) {
   renderLvList(engines);
-  renderVerdict(engines);
   const ok = canRate();
   ['bRatio', 'bRank', 'bOdds'].forEach((id) => $(id).classList.toggle('dim', !ok));
   $('save').disabled = !ok;
-  $('bWait').hidden = ok;
+  $('bWait').textContent = barCaption();
   // 結果の行（同等以上の確率・平均何匹に1匹・性能値の順位）。
   const setRows = (ge, odds, pos) => {
     if (!$('rPos')) return;
