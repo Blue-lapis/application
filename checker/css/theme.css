@@ -432,3 +432,19 @@ dialog.sheet::backdrop{background:var(--scrim)}
 .prow2>div[hidden]{display:none}
 .prow2 .seg{grid-auto-columns:max-content;padding:3px;gap:2px;border-radius:10px}
 .prow2 .seg button{min-height:36px;padding:0 12px;font-size:.75rem;border-radius:8px}
+/* 条件の詳細。切り替えと数値は、見出しを左・小さめの部品を右の1行にする（入りきらないときは折り返す）。 */
+#paramDlg .params{gap:10px;margin-bottom:6px}
+#paramDlg .prow{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;padding:8px 0;border-top:1px solid var(--line-soft)}
+#paramDlg .params .prow:first-child{border-top:0}
+#paramDlg .prow>span{font-size:.82rem;font-weight:700;color:var(--ink);white-space:nowrap}
+#paramDlg .prow>span.fav{flex:1 1 10em;white-space:normal;font-weight:700}
+#paramDlg .seg{grid-auto-columns:max-content;padding:3px;gap:2px;border-radius:10px}
+#paramDlg .seg button{min-height:36px;padding:0 12px;font-size:.75rem;border-radius:8px}
+#paramDlg h3{margin:12px 0 4px;padding-top:12px;border-top:1px solid var(--line);font-size:.78rem}
+#paramDlg .nums{gap:0}
+#paramDlg .num{padding:6px 0;font-size:.82rem;flex-wrap:wrap;gap:6px 12px}
+#paramDlg .num>label{display:flex;flex-direction:column;line-height:1.3}
+#paramDlg .num>label small{font-size:.66rem;font-weight:500;color:var(--muted)}
+#paramDlg .step{gap:4px}
+#paramDlg .step button{width:36px;height:36px;border-radius:10px;font-size:1.05rem}
+#paramDlg .step input,#paramDlg .num input{width:4.2em;height:36px;padding:0 8px;text-align:center;border-radius:10px}

@@ -187,8 +187,8 @@
     <div data-for="berry ingredient skill">
       <h3>ヒーラー（げんきオールS）</h3>
       <div class="nums">
-        <label class="num"><span>1回の回復量</span><input type="number" id="healAmt" min="1" max="150" step="1" inputmode="numeric"></label>
-        <label class="num"><span>1日の発動回数（小数第2位まで）</span><input type="number" id="healTimes" min="0" max="20" step="0.01" inputmode="decimal"></label>
+        <div class="num"><label for="healAmt">1回の回復量</label><div class="step"><button type="button" id="healAmtDown" aria-label="回復量を1下げる">−</button><input type="number" id="healAmt" min="1" max="150" step="1" inputmode="numeric"><button type="button" id="healAmtUp" aria-label="回復量を1上げる">＋</button></div></div>
+        <div class="num"><label for="healTimes">1日の発動回数<small>小数第2位まで</small></label><div class="step"><button type="button" id="healTimesDown" aria-label="発動回数を1下げる">−</button><input type="number" id="healTimes" min="0" max="20" step="0.01" inputmode="decimal"><button type="button" id="healTimesUp" aria-label="発動回数を1上げる">＋</button></div></div>
       </div>
     </div>
     <!-- きのみのエナジーの補正。無補正比・確率には影響せず、エナジーの値だけが変わる。 -->

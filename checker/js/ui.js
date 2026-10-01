@@ -483,6 +483,16 @@ function initParams(engines) {
     setFav(false);
     refresh(engines);
   };
+  // 回復量と発動回数の −／＋ は1ずつ動かす（発動回数の小数はそのまま残す）。範囲の端で止める。
+  ['healAmt', 'healTimes'].forEach((k) => {
+    const [lo, hi] = PARAM_LIMITS[k];
+    [['Down', -1], ['Up', 1]].forEach(([id, d]) => {
+      $(k + id).onclick = () => {
+        setParam(k, Math.min(hi, Math.max(lo, Math.round((state[k] + d) * 100) / 100)));
+        refresh(engines);
+      };
+    });
+  });
   // フィールドボーナスは手入力なら整数で1%単位。−／＋ は5の倍数に揃えながら5%ずつ動かす（33 なら＋で35、−で30）。範囲の端で止める。
   const [bMin, bMax] = PARAM_LIMITS.fieldBonus;
   [['bonusDown', -5], ['bonusUp', 5]].forEach(([id, d]) => {
@@ -511,6 +521,10 @@ function renderParams() {
 function renderParamDlg() {
   ['healAmt', 'healTimes', 'fieldBonus'].forEach((k) => {
     if (document.activeElement !== $(k)) $(k).value = state[k];
+  });
+  ['healAmt', 'healTimes'].forEach((k) => {
+    $(k + 'Down').disabled = state[k] <= PARAM_LIMITS[k][0];
+    $(k + 'Up').disabled = state[k] >= PARAM_LIMITS[k][1];
   });
   const e = env();
   if (state.type === 'berry') {
