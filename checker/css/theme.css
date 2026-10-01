@@ -450,3 +450,10 @@ dialog.sheet::backdrop{background:var(--scrim)}
 #paramDlg .step input,#paramDlg .num input{width:4.2em;height:36px;padding:0 8px;text-align:center;border-radius:10px}
 /* 記録の一覧のレベル。 */
 .loglv{margin:12px 0 2px;padding:10px 0;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}
+/* 下の帯は、旧版と同じく何の数字かのラベルを上に付けた3項目にする。入力が足りないときは上に一言出す。 */
+.bar-in{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr) minmax(0,1fr) auto;gap:4px 10px;align-items:center}
+.bar-cap{grid-column:1/-1;margin:0;font-size:.66rem;font-weight:700;color:var(--night-muted)}
+.bcol{min-width:0}
+.bcol small{display:block;font-size:.62rem;font-weight:700;color:var(--night-muted);white-space:nowrap}
+.bcol b{display:block;font-size:clamp(1.05rem,5vw,1.35rem);font-weight:700;white-space:nowrap}
+.bcol b.dim{color:var(--night-faint)}
