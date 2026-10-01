@@ -196,6 +196,13 @@ export function initUI(engines) {
 
   const openLog = () => { $('logDlg').showModal(); renderLog(engines); };
   $('logBtn').onclick = openLog;
+  // 記録の一覧のレベル。メイン画面のレベル（条件の欄）と同じものを切り替える。
+  $('logLvSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    setLevel(+b.dataset.v);
+    refresh(engines);
+  });
   $('logFilter').addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (!b) return;
@@ -954,6 +961,8 @@ function renderLog(engines) {
   const n = (t) => all.filter((x) => t === 'all' || x.type === t).length;
   $('logFilter').innerHTML = ['all', ...Object.keys(TYPES)].map((t) => `<button type="button" data-f="${t}" aria-pressed="${t === logFilter}">`
     + `${t === 'all' ? 'すべて' : `<i class="d-${t}"></i>${TYPES[t].short}`}<small>${n(t)}</small></button>`).join('');
+
+  $('logLvSeg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.v === state.lv)));
 
   // ポケモンごとにまとめる。
   const groups = new Map();

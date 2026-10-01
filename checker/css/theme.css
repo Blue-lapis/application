@@ -448,3 +448,5 @@ dialog.sheet::backdrop{background:var(--scrim)}
 #paramDlg .step{gap:4px}
 #paramDlg .step button{width:36px;height:36px;border-radius:10px;font-size:1.05rem}
 #paramDlg .step input,#paramDlg .num input{width:4.2em;height:36px;padding:0 8px;text-align:center;border-radius:10px}
+/* 記録の一覧のレベル。 */
+.loglv{margin:12px 0 2px;padding:10px 0;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft)}

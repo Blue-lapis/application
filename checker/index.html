@@ -141,7 +141,8 @@
   <div class="dlg-in">
     <div class="dlg-head"><h2 id="logTitle" tabindex="-1" autofocus>記録</h2><span class="subcount" id="logNum"></span></div>
     <div class="monf" id="logFilter" role="group" aria-label="タイプで切り替える"></div>
-    <p class="note" style="margin:8px 0 6px">タップすると、その入力に戻ります。評価は今のレベルと条件で出します。</p>
+    <div class="lvrow loglv"><span>評価するレベル</span><div class="lvseg" role="group" aria-label="評価するレベル" id="logLvSeg"><button data-v="50" aria-label="Lv.50">50</button><button data-v="60" aria-label="Lv.60">60</button><button data-v="70" aria-label="Lv.70">70</button><button data-v="80" aria-label="Lv.80">80</button></div></div>
+    <p class="note" style="margin:8px 0 6px">タップすると、その入力に戻ります。レベルを変えると、メイン画面のレベルも変わります。</p>
     <ul class="log" id="log"></ul>
     <div class="dlg-foot"><span></span><button class="primary" id="logClose">閉じる</button></div>
   </div>
