@@ -1,0 +1,87 @@
+// 育成日数シミュレーター（exp/）の計算のテスト。node tests/check-exp.mjs
+// 期待値は Pokémon Sleep 攻略・検証 Wiki の表と、表から手で計算した値。
+import assert from 'node:assert/strict';
+import { thresholds, useCandy, sleepDay, napMinutes, plan, dayKind } from '../exp/js/calc.js';
+import { TOTAL_EXP, SHARDS_PER_CANDY } from '../exp/js/data.js';
+
+let n = 0;
+const ok = (name, fn) => { fn(); n++; console.log('ok', name); };
+
+ok('表の長さ', () => {
+  assert.equal(TOTAL_EXP.length, 71);
+  assert.equal(SHARDS_PER_CANDY.length, 71);
+});
+
+// wiki「経験値タイプ」：レベルごとの必要EXP（600タイプ）と、Lv.10→41 の合計。
+ok('必要EXP', () => {
+  const th = thresholds(600);
+  assert.deepEqual([th[25] - th[24], th[50] - th[49], th[70] - th[69]], [600, 1066, 3255]);
+  assert.equal(th[41] - th[10], 19458);
+  // 900タイプは wiki が 29,197 だが、累計に1.5を掛けて丸めると 29,187（requirements §7）。
+  assert.equal(thresholds(900)[41] - thresholds(900)[10], 29187);
+});
+
+// wiki「ゆめのかけら」：Lv.10 から目標までのゆめのかけらとアメ（600タイプ、性格なし）。
+ok('アメとゆめのかけら（wiki の表）', () => {
+  const th = thresholds(600);
+  for (const [target, shards, candy] of [[25, 12623, 178], [30, 22688, 273], [50, 166155, 993], [60, 537974, 1853], [70, 1679761, 3080]]) {
+    const r = useCandy({ cum: th[10], th, target, nature: 'none', candy: 99999 });
+    assert.deepEqual([r.shards, r.used, r.level], [shards, candy, target], `Lv.${target}`);
+  }
+});
+
+ok('アメが足りないとき・ゆめのかけらの上限', () => {
+  const th = thresholds(600);
+  const r = useCandy({ cum: th[10], th, target: 30, nature: 'none', candy: 100 });
+  assert.equal(r.used, 100);
+  assert.ok(r.level < 30);
+  const s = useCandy({ cum: th[10], th, target: 30, nature: 'none', candy: 9999, shardCap: 5000 });
+  assert.ok(s.shards <= 5000 && s.shards > 5000 - 100);
+});
+
+// wiki「ゴンベのおひるね島」の考察：毎日スコア100、グッドスリープデーが3日（前後と満月）ある週の睡眠EXPは 1,100、
+// EXPダウンの性格は 902。睡眠EXPボーナス1つで1週間 +98（700 → 798）。
+ok('睡眠EXP', () => {
+  // 2026年の満月を1つ探して、その前日から3日と、前の4日の計7日を数える。
+  let full = Date.UTC(2026, 0, 1) / 864e5;
+  while (dayKind(full) !== 'full') full++;
+  const week = [-5, -4, -3, -2, -1, 0, 1].map((k) => full + k);
+  const sum = (o) => week.reduce((s, d) => s + sleepDay(d, { score: 100, bonus: 0, incense: 'none', ...o }).exp, 0);
+  assert.deepEqual(week.map(dayKind), ['normal', 'normal', 'normal', 'normal', 'gsd', 'full', 'gsd']);
+  assert.equal(sum({ nature: 'none' }), 1100);
+  assert.equal(sum({ nature: 'down' }), 902);
+  const normal = week.slice(0, 4);
+  assert.equal(normal.reduce((s, d) => s + sleepDay(d, { score: 100, bonus: 1, incense: 'none', nature: 'none' }).exp, 0), 4 * 114);
+});
+
+ok('おひるね島', () => {
+  // 1日150、7日で1,050。7日未満は半分なので、1,000 は「半分では 13日以上かかる」→ 7日待つ。
+  assert.deepEqual(napMinutes(1050, 'none', 0), { minutes: 7 * 1440, half: false });
+  assert.deepEqual(napMinutes(1000, 'none', 0), { minutes: 7 * 1440, half: false });
+  // 少ないEXPは半分で引き取るほうが早い（150 は半分なら2日）。
+  assert.deepEqual(napMinutes(150, 'none', 0), { minutes: 2 * 1440, half: true });
+  // 性格の上昇は1.18倍、下降は効かない。チケットは1日600。
+  assert.equal(napMinutes(177 * 8, 'up', 0).minutes, 8 * 1440);
+  assert.equal(napMinutes(150 * 8, 'down', 0).minutes, 8 * 1440);
+  assert.equal(napMinutes(600 * 7, 'none', 1).minutes, 7 * 1440);
+  assert.equal(napMinutes(600 * 7 + 150, 'none', 1).minutes, 8 * 1440);
+});
+
+ok('plan', () => {
+  const startDay = Date.UTC(2026, 9, 1) / 864e5;
+  const base = { expType: 600, level: 30, target: 50, nature: 'none', candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, startDay };
+  const p = plan(base);
+  const th = thresholds(600);
+  assert.equal(p.need, th[50] - th[30]);
+  for (const r of Object.values(p.routes)) assert.ok(r && r.days > 0);
+  // 併用はどちらか単独より遅くならない。
+  assert.ok(p.routes.mix.days <= Math.min(p.routes.sleep.days, p.routes.nap.days) + 1e-9);
+  // アメだけで届くとき。
+  const c = plan({ ...base, candy: 9999 });
+  assert.equal(c.routes, null);
+  assert.equal(c.candy.level, 50);
+  // 次のレベルまでのEXP を入れると、そのぶん必要EXP が減る。
+  assert.equal(plan({ ...base, toNext: 1 }).need, th[50] - th[31] + 1);
+});
+
+console.log(`${n} 件すべて通った`);
