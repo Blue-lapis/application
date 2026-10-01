@@ -26,6 +26,7 @@ jobs:
       - run: node tests/check-segs.mjs
       - run: node tests/check-dist.mjs
       - run: node tests/check-boost.mjs
+      - run: node tests/check-exp.mjs
 
   deploy:
     needs: test
@@ -53,13 +54,14 @@ jobs:
         run: |
           v="${GITHUB_SHA::8}"
           sed -i -E "s#(href=\"(\.\./)?css/[a-z]+\.css)\"#\1?v=$v\"#g; s#(src=\"js/main\.js)\"#\1?v=$v\"#" checker/index.html
-          sed -i -E "s#(from '\.{1,2}/[^'?]*\.js)'#\1?v=$v'#g" js/*.js checker/js/*.js checker/js/*/*.js
-          grep -c "?v=$v" js/*.js checker/index.html checker/js/*.js checker/js/*/*.js
+          sed -i -E "s#(href=\"[^\"]*\.css)\"#\1?v=$v\"#g; s#(src=\"js/main\.js)\"#\1?v=$v\"#" exp/index.html
+          sed -i -E "s#(from '\.{1,2}/[^'?]*\.js)'#\1?v=$v'#g" js/*.js checker/js/*.js checker/js/*/*.js exp/js/*.js
+          grep -c "?v=$v" js/*.js checker/index.html checker/js/*.js checker/js/*/*.js exp/index.html exp/js/*.js
       # 公開するのはアプリのファイルだけ（tests/・docs/ などは含めない）。
       - name: Collect site files
         run: |
           mkdir _site
-          cp -r index.html berry ingredient checker css js _site/
+          cp -r index.html berry ingredient checker exp css js _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
