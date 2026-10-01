@@ -14,6 +14,7 @@ import {
   state, monData, loadSettings, setCamp, setLevel, setLvOpen, setMon, setType, setTarget, setNature, resetSelection,
   setHeal, setTap, setIngTap, setTeam, setFav, setParam,
   currentSubs, currentArr, filledSubs, slotCount, isComplete, canRate, targetClosed, env, loadLog, appendLog, removeLogEntry, restoreEntry, isCurrent,
+  snapshotSelection, restoreSelection,
 } from './state.js';
 
 const $ = (id) => document.getElementById(id);
@@ -103,10 +104,11 @@ export function initUI(engines) {
   const syncUrl = () => {
     try { history.replaceState(null, '', `?mon=${encodeURIComponent(state.mon)}`); } catch { /* history unavailable */ }
   };
+  // タブは色の点・短い名前・匹数。色だけに頼らないよう、名前は必ず出す。
   $('tabs').innerHTML = Object.entries(TYPES).map(([t, d]) =>
-    `<button role="tab" id="tab-${t}" data-type="${t}">${d.label}<small>${Object.keys(d.MONS).length}匹</small></button>`).join('');
+    `<button role="tab" id="tab-${t}" data-type="${t}" aria-label="${d.label}（${Object.keys(d.MONS).length}匹）"><span><i class="d-${t}"></i>${d.short}</span><small>${Object.keys(d.MONS).length}匹</small></button>`).join('');
   $('tabs').querySelectorAll('[role="tab"]').forEach((b) => {
-    b.onclick = () => { setType(b.dataset.type); syncUrl(); refresh(engines); window.scrollTo({ top: 0 }); };
+    b.onclick = () => { hideToast(); setType(b.dataset.type); syncUrl(); refresh(engines); window.scrollTo({ top: 0 }); };
   });
   // 左右キーでタブを移る。
   $('tabs').addEventListener('keydown', (e) => {
@@ -117,15 +119,20 @@ export function initUI(engines) {
     next.click();
     next.focus();
   });
-  $('monBtn').onclick = () => {
+  const openMon = (search) => {
     $('monQ').value = '';
     renderMonDlg();
     $('monDlg').showModal();
     $('monGrid').querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: 'center' });
+    // タブの横の虫めがねから開いたときは、すぐ名前を入れられるようにする（3タイプから探す）。
+    if (search) $('monQ').focus();
   };
+  $('monBtn').onclick = () => openMon(false);
+  $('searchBtn').onclick = () => openMon(true);
   $('monClose').onclick = () => $('monDlg').close();
   $('monDlg').addEventListener('click', (e) => { if (e.target === $('monDlg')) $('monDlg').close(); });
   const pickMon = (key) => {
+    hideToast();
     setMon(key);
     syncUrl();
     $('monDlg').close();
@@ -149,7 +156,8 @@ export function initUI(engines) {
 
   initDialogs(engines);
 
-  $('save').onclick = () => {
+  // 記録は、下の帯の「記録」と判定のカードの「記録する」のどちらからでもできる。
+  const saveEntry = () => {
     if (!canRate()) return;
     // サブスキルは今のレベルの枠より多く入れてあればその分も残し、ほかのレベルでも一覧に出せるようにする。
     const entry = { t: Date.now(), mon: state.mon, subs: filledSubs(), nat: state.nat, up: state.up, down: state.down };
@@ -157,13 +165,31 @@ export function initUI(engines) {
     renderLog(engines);
     $('save').textContent = '記録済';
     setTimeout(() => { $('save').textContent = '記録'; }, 1200);
+    toast('記録しました', '記録を見る', () => $('logDlg').showModal());
   };
+  $('save').onclick = saveEntry;
+  $('verdict').addEventListener('click', (e) => {
+    if (e.target.closest('#vSave')) saveEntry();
+    const lv = e.target.closest('[data-lv]');
+    if (lv) { setLevel(+lv.dataset.lv); refresh(engines); }
+  });
 
+  // 消した入力は、しばらく「元に戻す」で戻せる。
   $('reset').onclick = () => {
+    const snap = snapshotSelection();
     resetSelection();
     refresh(engines);
     window.scrollTo({ top: 0 });
+    toast('入力を消しました', '元に戻す', () => { restoreSelection(snap); refresh(engines); });
   };
+
+  $('logBtn').onclick = () => $('logDlg').showModal();
+  $('logClose').onclick = () => $('logDlg').close();
+  $('logDlg').addEventListener('click', (e) => { if (e.target === $('logDlg')) $('logDlg').close(); });
+  $('toastAct').onclick = () => { const f = toastFn; hideToast(); if (f) f(); };
+
+  initTheme();
+  watchVerdict();
 
   refresh(engines);
 }
@@ -182,12 +208,13 @@ function renderHeader() {
     b.setAttribute('aria-selected', String(on));
     b.tabIndex = on ? 0 : -1;
   });
-  // 姿の名前は2行目に小さく出す。
+  // ポケモンのカード。カード全体が選ぶボタン。姿の名前は2行目に小さく出す。
   const [base, form] = splitName(mm.name);
-  $('monName').innerHTML = esc(base) + (form ? `<span class="form">${esc(form)}</span>` : '');
-  $('monImg').src = monSrc(state.mon);
-  $('monBtn').innerHTML = `<img src="${monSrc(state.mon)}" alt="" width="40" height="40"><b>${esc(base)}${form ? `<small class="form">${esc(form)}</small>` : ''}</b><small>タップして選ぶ</small>`;
-  $('typeName').textContent = `${d.label} 厳選チェッカー`;
+  const note = state.type === 'berry' ? esc(mm.berry) : state.type === 'skill' ? `天井 ${d.ceilOf(mm)}回目` : '';
+  $('monBtn').innerHTML = `<img src="${monSrc(state.mon)}" alt="" width="92" height="92"><span class="mb">`
+    + `<small class="mt">${d.label}${note ? ` · ${note}` : ''}</small>`
+    + `<b>${esc(base)}${form ? `<small class="form">${esc(form)}</small>` : ''}</b>`
+    + '<span class="go">ポケモンを変える<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></span>';
   const fact = (label, value) => `<div><small>${label}</small><b>${value}</b></div>`;
   $('facts').innerHTML = fact('おてつだい', `${Math.floor(mm.time / 60)}:${String(mm.time % 60).padStart(2, '0')}`)
     + fact('食材確率', `${+(mm.ingP * 100).toFixed(1)}%`) + fact('最大所持数', mm.cap)
@@ -196,13 +223,18 @@ function renderHeader() {
   // 食材は名前の途中で折り返さないよう、アイコンの下に名前を置いて横に並べる。
   const ings = [...new Set(mm.slots.flat().map(([i]) => mm.ings[i]))]
     .map((n) => `<li>${ingIcon(n)}<span>${esc(n)}</span></li>`).join('');
-  const note = state.type === 'berry' ? esc(mm.berry) : state.type === 'skill' ? `スキル発動の天井 ${d.ceilOf(mm)}回目` : '';
-  $('monInfo').innerHTML = (note ? `<p>${note}</p>` : '') + `<div class="ingrow"><small>食材</small><ul>${ings}</ul></div>`;
+  $('monInfo').innerHTML = `<div class="ingrow"><small>食材</small><ul>${ings}</ul></div>`;
   $('arrSec').hidden = state.type !== 'ingredient';
   $('reset').textContent = state.type === 'ingredient' ? '食材配列・サブスキル・性格を消す' : 'サブスキル・性格を消す';
-  $('rows').innerHTML = ROWS[state.type].map(([id, label]) => (id === 'grp'
-    ? `<dt class="grp">${label}</dt><dd class="grp" style="display:none"></dd>`
-    : `<dt>${label}</dt><dd id="${id}">—</dd>`)).join('');
+  // くわしい数値は見出しごとに開閉する。最初の見出しだけ開いておく。
+  const groups = [];
+  ROWS[state.type].forEach(([id, label]) => {
+    if (id === 'grp') groups.push({ label, rows: [] });
+    else groups[groups.length - 1].rows.push(`<dt>${label}</dt><dd id="${id}">—</dd>`);
+  });
+  $('rows').innerHTML = groups.map((g, i) => `<details${i === 0 ? ' open' : ''}><summary>${g.label}`
+    + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'
+    + `</summary><dl class="rows">${g.rows.join('')}</dl></details>`).join('');
 }
 
 function renderIngs(engines) {
@@ -239,12 +271,14 @@ const firstEmpty = () => Math.max(0, state.subs.findIndex((v) => !v));
 
 // サブスキルの枠。タップすると、その枠を選ぶダイアログを開く。
 function renderSlots() {
+  // 今のレベルではまだ開いていない枠は「未解放」と添える（入れておくと、そのレベルを選んだときに使う）。
+  const N = slotCount();
   $('slots').innerHTML = UNLOCK.map((lv, i) => {
-    const id = state.subs[i];
-    return `<button class="subslot ${id ? rarityCls(id) : 'empty'}" data-i="${i}" aria-haspopup="dialog" ${reachable(i) ? '' : 'disabled'}><small>Lv.${lv}</small><span>${id ? SUB_FULL[id] || subShort(id) : '未選択'}</span></button>`;
+    const id = state.subs[i], off = i >= N;
+    return `<button class="subslot ${id ? rarityCls(id) : 'empty'}${off ? ' off' : ''}" data-i="${i}" aria-haspopup="dialog" ${reachable(i) ? '' : 'disabled'}><small>Lv.${lv}${off ? '<em>未解放</em>' : ''}</small><span>${id ? SUB_FULL[id] || subShort(id) : '未選択'}</span></button>`;
   }).join('');
   $('slots').querySelectorAll('.subslot').forEach((b) => { b.onclick = () => openSub(+b.dataset.i); });
-  $('subCount').textContent = `${filledSubs().length}/${UNLOCK.length}枠`;
+  $('subCount').textContent = `${filledSubs().length} / ${UNLOCK.length}枠`;
 }
 
 // 性格のボタン。名前と、上昇・下降の補正を出す。計算に効かない補正は薄くする。
@@ -667,22 +701,6 @@ function requestDist(engines) {
   worker.postMessage({ type, env: next });
 }
 
-// 帯の上の1行。何の確率かと、確率を出すのに足りない入力。
-function barCaption() {
-  const N = slotCount();
-  // 狙い食材がまだ開いていない枠にしか出ないときは、入力をそろえても確率は出ないので先に伝える。
-  if (targetClosed()) {
-    const mm = monData();
-    return `Lv.${state.lv}では${mm.short[state.target]}は出ません（Lv.${targetLevel(mm, state.target)}の枠で開きます）`;
-  }
-  const missing = [
-    currentSubs().every(Boolean) ? '' : `サブスキル${N}枠`,
-    state.up && state.down ? '' : '性格',
-    currentArr().includes(null) ? '食材配列' : '',
-  ].filter(Boolean);
-  return missing.length ? `Lv.${state.lv}の確率は、${missing.join('・')}がそろうと出ます` : `Lv.${state.lv}・サブスキル${N}枠での確率`;
-}
-
 // レベル別の一覧。各レベルの無補正比と同等以上の確率を並べ、閉じているときは一番良いレベル（確率が一番低い）を1行で出す。
 function renderLvList(engines) {
   const engine = engines[state.type], mm = monData();
@@ -713,12 +731,103 @@ function renderLvList(engines) {
   });
 }
 
+// 判定のカード。状態は、評価できない（狙い食材がまだ出ない）・未入力・計算中・結果の4つ。
+// ゲージは同等以上の確率を 0.1%〜100% の対数の目盛りに置く（小さな確率の差が見えるように）。左ほどめずらしい。
+const GAUGE = [[0.01, '1%'], [0.05, '5%'], [0.1, '10%'], [0.25, '25%'], [0.5, '50%']];
+const gaugePos = (p) => Math.max(0, Math.min(100, ((Math.log10(Math.max(p, 1e-3)) + 3) / 3) * 100)).toFixed(1);
+
+function renderVerdict(engines) {
+  const d = def(), N = slotCount(), mm = monData();
+  $('vMeta').textContent = `Lv.${state.lv}・サブスキル${N}枠・${d.short}`;
+  if (targetClosed()) {
+    const tl = targetLevel(mm, state.target);
+    $('vBody').innerHTML = `<p class="v-msg">${esc(mm.short[state.target])}は Lv.${tl} から出る食材です</p>`
+      + '<p class="v-sub">レベルを上げるか、ほかの狙い食材を選んでください</p>'
+      + (LEVELS.includes(tl) ? `<button type="button" class="v-act" data-lv="${tl}">Lv.${tl} にする</button>` : '');
+    return;
+  }
+  if (!isComplete()) {
+    const have = currentSubs().filter(Boolean).length;
+    const need = [`サブスキル ${have}/${N}`, `性格 ${state.up && state.down ? '✓' : '—'}`];
+    if (state.type === 'ingredient') need.push(`食材配列 ${currentArr().includes(null) ? '—' : '✓'}`);
+    $('vBody').innerHTML = `<p class="v-msg">${state.type === 'ingredient' ? '食材配列・' : ''}サブスキルと性格を選ぶと、ここに判定が出ます</p>`
+      + `<div class="v-need">${need.map((x) => `<span>${x}</span>`).join('')}</div>`;
+    return;
+  }
+  const e = env(), engine = engines[state.type];
+  const r = scoreOf(engine, { subs: currentSubs(), up: state.up, down: state.down, arr: state.arr }, e);
+  const ready = engine.ready(e);
+  const ge = ready && r > 0 ? engine.atLeast(r, e) : null;
+  const pct = !ready ? `<span class="v-wait">${pendingText()}</span>` : ge == null ? '—' : withUnit(fmtPct(ge).slice(0, -1), '%');
+  const ticks = GAUGE.map(([p, l]) => `<i class="g-tick" style="left:${gaugePos(p)}%"></i><span class="g-lbl" style="left:${gaugePos(p)}%">${l}</span>`).join('');
+  const foot = !ready ? '分布を計算しています…' : ge == null ? '無補正比が0のため確率は出ません' : `平均 <b>${fmtOdds(1 / ge)}</b>に1匹`;
+  $('vBody').innerHTML = `<div class="v-main"><div><small>同等以上の確率</small><b class="v-ge">${pct}</b></div>`
+    + `<div class="v-r"><small>無補正比</small><b>${withUnit(r.toFixed(2), '倍')}</b></div></div>`
+    + `<div class="gauge${ready ? '' : ' wait'}" aria-hidden="true"><i class="g-track"></i>${ticks}${ge == null ? '' : `<i class="g-dot" style="left:${gaugePos(ge)}%"></i>`}</div>`
+    + '<div class="g-ends" aria-hidden="true"><span>めずらしい</span><span>よくいる</span></div>'
+    + `<div class="v-foot"><span>${foot}</span><button type="button" class="v-save" id="vSave">記録する</button></div>`;
+}
+
+// 下に出る短いお知らせ。「元に戻す」などの操作を1つだけ持ち、5秒で消える。
+// 記録のダイアログを開いているときはダイアログの中に出す（ダイアログの背面に隠れないように）。
+let toastFn = null, toastTimer = 0;
+function toast(msg, act, fn) {
+  const t = $('toast');
+  ($('logDlg').open ? $('logDlg') : document.body).append(t);
+  $('toastMsg').textContent = msg;
+  $('toastAct').textContent = act;
+  toastFn = fn;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 5000);
+}
+function hideToast() {
+  $('toast').hidden = true;
+  toastFn = null;
+  clearTimeout(toastTimer);
+}
+
+// 表示テーマ。自動（端末の設定）→ライト→ダークの順に切り替え、cktheme に保存する。描画前の適用は index.html でする。
+const THEMES = ['auto', 'light', 'dark'];
+const THEME_LABEL = { auto: '自動', light: 'ライト', dark: 'ダーク' };
+const svg = (d) => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const THEME_ICON = {
+  auto: svg('<circle cx="12" cy="12" r="8"/><path d="M12 4v16" /><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/>'),
+  light: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
+  dark: svg('<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>'),
+};
+function initTheme() {
+  let cur = 'auto';
+  try { const t = JSON.parse(localStorage.getItem('cktheme')); if (THEMES.includes(t)) cur = t; } catch { /* storage unavailable */ }
+  const show = () => {
+    const root = document.documentElement;
+    if (cur === 'auto') delete root.dataset.theme; else root.dataset.theme = cur;
+    $('themeBtn').innerHTML = THEME_ICON[cur];
+    $('themeBtn').setAttribute('aria-label', `表示テーマ: ${THEME_LABEL[cur]}（押すと切り替え）`);
+    $('themeBtn').title = `表示テーマ: ${THEME_LABEL[cur]}`;
+  };
+  $('themeBtn').onclick = () => {
+    cur = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
+    try { localStorage.setItem('cktheme', JSON.stringify(cur)); } catch { /* storage unavailable */ }
+    show();
+  };
+  show();
+}
+
+// 判定のカードが画面に見えている間は、下の帯を隠す（同じ数字を2か所に出さない）。
+function watchVerdict() {
+  if (!('IntersectionObserver' in window)) return;
+  new IntersectionObserver(([en]) => { $('bar').classList.toggle('away', en.isIntersecting); }).observe($('verdict'));
+}
+
 function renderBar(engines) {
   renderLvList(engines);
+  renderVerdict(engines);
   const ok = canRate();
-  $('bCap').textContent = barCaption();
   ['bRatio', 'bRank', 'bOdds'].forEach((id) => $(id).classList.toggle('dim', !ok));
   $('save').disabled = !ok;
+  $('bVals').hidden = !ok;
+  $('bWait').hidden = ok;
   // 結果の行（同等以上の確率・平均何匹に1匹・性能値の順位）。
   const setRows = (ge, odds, pos) => {
     if (!$('rPos')) return;
@@ -772,22 +881,32 @@ function renderLog(engines) {
       // Entries saved before the memo prompt was removed keep their memo as the heading.
       const cur = isCurrent(x);
       const ge = rd && x.r > 0 ? engine.atLeast(x.r, e) : 0;
-      return `<li class="${cur ? 'cur' : ''}" data-t="${x.t}" tabindex="0" title="タップで入力に戻す" aria-current="${cur}"><div>${cur ? '<span class="now">表示中</span>' : ''}${x.memo ? `${esc(x.memo)}<div class="m">${detail}</div>` : detail}</div><div><b>${closed ? '—' : `${x.r.toFixed(2)}倍`}</b><div class="m">${closed ? '—' : rd ? (x.r > 0 ? `同等以上${fmtPct(ge)}<br>約${Math.round(1 / ge).toLocaleString()}匹に1匹` : '—') : pendingText()}</div></div><button class="del" data-t="${x.t}">削除</button></li>`;
+      return `<li class="${cur ? 'cur' : ''}" data-t="${x.t}" tabindex="0" title="タップで入力に戻す" aria-current="${cur}"><div>${cur ? '<span class="now">表示中</span>' : ''}${x.memo ? `${esc(x.memo)}<div class="m">${detail}</div>` : detail}</div><div><b>${closed ? '—' : `${x.r.toFixed(2)}倍`}</b><div class="m">${closed ? '—' : rd ? (x.r > 0 ? `同等以上${fmtPct(ge)}<br>約${Math.round(1 / ge).toLocaleString()}匹に1匹` : '—') : pendingText()}</div></div><button class="del" data-t="${x.t}" aria-label="この記録を削除"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></li>`;
     }).join('')
     : `<li class="empty">Lv.${state.lv}（サブスキル${N}枠）で見られる記録はまだありません</li>`;
 
   // 行をタップすると、その個体を入力に戻して今の入力と見比べられるようにする。削除ボタンは除く。
   const byT = Object.fromEntries(L.map((x) => [String(x.t), x]));
   $('log').querySelectorAll('li[data-t]').forEach((li) => {
-    const restore = () => { restoreEntry(byT[li.dataset.t]); refresh(engines); };
+    const restore = () => { restoreEntry(byT[li.dataset.t]); $('logDlg').close(); refresh(engines); };
     li.onclick = (ev) => { if (!ev.target.closest('.del')) restore(); };
     li.onkeydown = (ev) => {
       if (ev.target === li && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); restore(); }
     };
   });
   $('log').querySelectorAll('.del').forEach((b) => {
-    b.onclick = () => { removeLogEntry(b.dataset.t); renderLog(engines); };
+    b.onclick = () => {
+      const gone = removeLogEntry(b.dataset.t);
+      renderLog(engines);
+      if (gone) toast('記録を削除しました', '元に戻す', () => { appendLog(gone); renderLog(engines); });
+    };
   });
+  // アプリバーの記録ボタンに、このポケモンの記録の数を出す。
+  const n = loadLog().length;
+  $('logCount').hidden = n === 0;
+  $('logCount').textContent = n > 99 ? '99+' : String(n);
+  $('logBtn').setAttribute('aria-label', `記録を開く（${n}件）`);
+  $('logNum').textContent = `${L.length}件`;
 }
 
 // 同等以上の確率・平均何匹に1匹・性能値の順位の意味と、確率の前提（抽選条件）。
