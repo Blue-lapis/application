@@ -1,56 +1,103 @@
-/* 育成日数シミュレーターの見た目。色・文字・部品はチェッカーの theme.css を使い、ここではこのページだけの部品を足す。 */
-main{display:block}
-main>section,main>.foot{max-width:520px;margin-left:auto;margin-right:auto}
-.draft{font-size:.62rem;font-weight:800;color:var(--psy-ink);background:var(--psy-soft);border-radius:999px;padding:2px 8px;margin-left:2px;letter-spacing:.04em}
-section .prow{margin-top:12px}
-.nums+.lvseg{margin-top:12px}
-.num label{display:flex;flex-direction:column;line-height:1.35}
-.num label small{font-size:.66rem;font-weight:500;color:var(--muted)}
-.num input[type="date"]{width:auto;font-size:.9rem}
+/* 育成日数シミュレーターの見た目。色・文字・部品（カード・下の帯・ダイアログ）はチェッカーの theme.css を使い、
+   ここではこのページの配置だけを書く。スマートフォン1画面に入力と結果がほぼ収まるように詰める。 */
+main{padding-top:6px;padding-left:12px;padding-right:12px}
+main>section{padding:10px 12px;margin-bottom:10px;border-radius:18px}
+.brand{white-space:nowrap;font-size:.95rem}
+.n,#needHint,.lvrow input,.cond input,.stepper b,.rtabs small,.plan-list .x,.bar b,.dgrid input,.lvseg button{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+input[type="number"],input[type="date"]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;box-sizing:border-box;height:40px;font-size:1rem;font-weight:600;min-width:0}
+input:invalid{border-color:var(--tail)}
 
-/* ポケモンを選ぶ欄。 */
-section.mon{padding:16px}
-.monrow{display:flex;align-items:center;gap:12px}
-.monrow img{width:72px;height:72px;object-fit:contain;flex:none;background:var(--psy-soft);border-radius:16px}
-.field{display:flex;flex-direction:column;gap:6px;margin-top:12px}
-.monrow .field{margin-top:0}
-.grow{flex:1;min-width:0}
-.field label{font-size:.75rem;font-weight:700;color:var(--muted)}
-.field select{font:inherit;font-size:1rem;font-weight:700;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;min-height:48px;padding:0 12px;width:100%}
+/* ポケモン。カード全体がボタンで、透明な select を重ねて端末の一覧で選ぶ。 */
+section.mon{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.monbtn{position:relative;display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:12px;background:var(--psy-soft)}
+.monbtn img{width:44px;height:44px;object-fit:contain;flex:none;background:var(--card);border-radius:10px}
+.monbtn .mb{flex:1;min-width:0;display:flex;flex-direction:column;gap:0}
+.monbtn b{font-size:1.05rem;font-weight:800;line-height:1.3}
+.monbtn small{font-size:.7rem;font-weight:700;color:var(--psy-ink)}
+.monbtn .go{font-size:.7rem;font-weight:700;color:var(--muted)}
+.monbtn select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px}
+.monbtn:has(select:focus-visible){outline:3px solid var(--psy);outline-offset:2px}
+section.mon .seg{padding:3px}
+section.mon .seg button{min-height:36px;font-size:.75rem}
 
-/* 結果。 */
-.res .hint b{font-family:var(--font-num)}
-.candy{background:var(--bg);border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:.82rem;font-weight:700;line-height:1.7}
-.candy b{font-family:var(--font-num);font-size:1rem}
-.candy.done{background:var(--psy-soft);color:var(--psy-ink)}
-.route{border:1.5px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
-.route.best{border-color:var(--psy);background:var(--psy-soft)}
-.route-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.route-head h3{margin:0;font-size:.92rem;font-weight:800}
-.route-head .tag{font-size:.66rem;font-weight:800;color:#fff;background:var(--psy);border-radius:999px;padding:2px 8px}
-.days{font-family:var(--font-num);font-size:2rem;font-weight:700;line-height:1.2;margin:4px 0 0}
-.days .u{font-family:var(--font-jp)}
-.when{font-size:.78rem;font-weight:700;color:var(--muted)}
-.route dl.rows{margin:8px 0 0}
-.route dl.rows dt,.route dl.rows dd{font-size:.78rem;padding:6px 0}
-.route .na{font-size:.85rem;font-weight:700;color:var(--muted);margin:6px 0 0}
-details.plan{margin-top:8px;font-size:.78rem}
-details.plan summary{cursor:pointer;font-weight:700;color:var(--psy-ink);min-height:36px;display:flex;align-items:center}
-details.plan ol{margin:4px 0 0;padding-left:1.4em;line-height:1.8}
-details.plan .m-nap{color:var(--blue-ink)}
-details.plan .m-sleep{color:var(--gold-ink)}
-.back{font-size:.75rem;font-weight:700;color:var(--psy-ink)}
+/* レベル。今・目標・次のレベルまでを1行に。 */
+section.lv{display:flex;flex-direction:column;gap:8px}
+.lvrow{display:flex;align-items:flex-end;gap:8px}
+.lvrow label,.cond label,.dgrid label{display:flex;flex-direction:column;gap:2px;font-size:.68rem;font-weight:700;color:var(--muted)}
+.lvrow input{width:64px;text-align:center;font-size:1.05rem}
+.lvrow input.goal{border:1.5px solid var(--psy);background:var(--card);font-weight:700}
+.lvrow .grow{flex:1;min-width:0}
+.lvrow .grow input{width:100%}
+.lvrow .arrow{padding-bottom:10px;font-weight:800;color:var(--muted)}
+.qrow{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.qrow>span:first-child{font-size:.68rem;font-weight:700;color:var(--muted)}
+.qrow .lvseg{gap:6px}
+.qrow .lvseg button{width:36px;height:36px;font-size:.8rem}
+#needHint{font-size:.68rem;font-weight:700;color:var(--muted);white-space:nowrap}
 
-/* グッドスリープデーの日程。1行に1回ぶん（3日間）。直した行は色を付ける。 */
-details.gsd{margin-top:12px;border-top:1px solid var(--line-soft);padding-top:4px}
-details.gsd summary{cursor:pointer;font-size:.82rem;font-weight:700;min-height:44px;display:flex;align-items:center;gap:8px}
-details.gsd summary small{font-size:.7rem;font-weight:600;color:var(--muted)}
-#gsdList{list-style:none;margin:8px 0 0;padding:0}
-#gsdList li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px dashed var(--line)}
-#gsdList li>span{font-size:.8rem;font-weight:700;line-height:1.4}
-#gsdList li>span small{display:block;font-size:.68rem;font-weight:500;color:var(--muted)}
+/* 条件。2列で、最後の行が「詳細」の要約。 */
+section.cond{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+.cond label{flex-direction:row;align-items:center;justify-content:space-between;font-size:.75rem;color:var(--ink)}
+.cond input{width:72px;height:36px;text-align:right;padding:0 8px;font-size:.95rem}
+.stepper{display:flex;align-items:center;justify-content:space-between;font-size:.75rem;font-weight:700}
+.stepper div{display:flex;align-items:center;gap:2px}
+.stepper button{font:inherit;width:30px;height:36px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);cursor:pointer;padding:0}
+.stepper button:disabled{opacity:.4;cursor:default}
+.stepper b{width:22px;text-align:center;font-size:.95rem;font-weight:600}
+.sum{grid-column:1/-1;font:inherit;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:36px;padding:6px 0 0;border:0;border-top:1px dashed var(--line);background:none;color:var(--muted);font-size:.7rem;font-weight:600;text-align:left;cursor:pointer}
+.sum b{flex:none;color:var(--psy-ink);font-weight:800}
+
+/* 結果。育て方はタブで1つずつ見る。 */
+section.res{display:flex;flex-direction:column;gap:8px;padding-bottom:12px}
+.rtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.rtabs button{font:inherit;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;min-height:48px;padding:2px;font-size:.7rem;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.rtabs button small{font-size:.82rem;font-weight:600;color:var(--muted)}
+.rtabs button[aria-selected="true"]{background:var(--psy);border-color:var(--psy);color:#fff}
+.rtabs button[aria-selected="true"] small{color:#fff}
+.rtabs button.best::after{content:"最短";position:absolute;top:-7px;right:4px;font-size:.55rem;font-weight:800;color:var(--psy-ink);background:var(--psy-soft);border:1px solid var(--psy);border-radius:999px;padding:0 5px;line-height:1.5}
+.candy{font-size:.72rem;font-weight:700;color:var(--muted);margin:0;line-height:1.6}
+.candy.done{background:var(--psy-soft);color:var(--psy-ink);border-radius:12px;padding:10px 12px;font-size:.82rem}
+.rnote{font-size:.72rem;font-weight:700;color:var(--muted);margin:0;line-height:1.6}
+.na{font-size:.85rem;font-weight:700;color:var(--muted);margin:0}
+.plan-list{list-style:none;margin:0;padding:0}
+.plan-list li{display:grid;grid-template-columns:78px 1fr auto;gap:6px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.75rem;font-weight:600;line-height:1.4}
+.plan-list li:last-child{border-bottom:0}
+.plan-list .m{font-weight:800}
+.plan-list .m-nap{color:var(--blue-ink)}
+.plan-list .m-sleep{color:var(--gold-ink)}
+.plan-list .x{color:var(--muted);text-align:right}
+.plan-list .more{grid-template-columns:1fr}
+.plan-list .more button{font:inherit;border:0;background:none;color:var(--psy-ink);font-weight:800;font-size:.75rem;text-align:left;padding:0;min-height:32px;cursor:pointer}
+.ms{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.7rem;font-weight:700;color:var(--muted);margin:0}
+.ms b{color:var(--ink);font-family:var(--font-num)}
+
+/* 下の帯。最短で届く日と、使うアメ・ゆめのかけら。 */
+.bar-in{display:flex;align-items:center;gap:12px}
+.bmain{flex:1;min-width:0;display:flex;flex-direction:column}
+.bmain small{font-size:.62rem;font-weight:700;color:var(--night-muted)}
+.bmain b{font-size:1.3rem;white-space:normal;line-height:1.25}
+.bmain b small{display:inline;font-family:var(--font-jp);font-size:.6em;font-weight:700;color:var(--night-muted)}
+.bmain b em{font-style:normal;font-size:.8rem;margin-left:8px;color:var(--night-muted)}
+.bside{flex:none;display:flex;flex-direction:column;align-items:flex-end;font-size:.62rem;font-weight:700;color:var(--night-muted);padding-right:6px}
+.bside b{font-size:.82rem;color:var(--night-ink)}
+
+/* 詳細のダイアログ。 */
+.dgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+.dgrid input{width:100%;padding:0 10px}
+#moreDlg h3{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+#moreDlg h3 small{font-size:.66rem;font-weight:600;letter-spacing:0;color:var(--muted)}
+.chips3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.chips3 button{font:inherit;min-height:40px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:.72rem;font-weight:700;cursor:pointer}
+.chips3 button[aria-pressed="true"]{background:var(--psy);border-color:var(--psy);color:#fff}
+#moreDlg .seg button{min-height:36px}
+#gsdList{list-style:none;margin:6px 0 0;padding:0}
+#gsdList li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px dashed var(--line)}
+#gsdList li>span{font-size:.78rem;font-weight:700;line-height:1.4}
+#gsdList li>span small{display:block;font-size:.66rem;font-weight:500;color:var(--muted)}
 #gsdList li.chg>span{color:var(--psy-ink)}
 #gsdList li.off>span{color:var(--muted);text-decoration:line-through}
 .gsd-act{display:flex;gap:4px;flex:none}
-.gsd-act button{font:inherit;font-size:.72rem;font-weight:700;min-width:44px;min-height:36px;padding:0 6px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.gsd-act button{font:inherit;font-size:.7rem;font-weight:700;min-width:44px;min-height:36px;padding:0 6px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
 .gsd-act button:disabled{opacity:.4;cursor:default}
+.back{font-size:.75rem;font-weight:700;color:var(--psy-ink)}
+@media (max-width:360px){.lvrow input{width:54px}.cond input{width:60px}.plan-list li{grid-template-columns:70px 1fr auto}}
