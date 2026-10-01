@@ -410,3 +410,13 @@ dialog.sheet::backdrop{background:var(--scrim)}
 .dlg-in h3.monsec{color:var(--ink);letter-spacing:.02em;margin:16px 0 8px}
 .monq:focus-visible{outline:none}
 .monq-w:focus-within{outline:3px solid var(--psy);outline-offset:1px}
+/* 記録の一覧。ポケモンごとの見出し（画像・タイプの点・名前・件数）と、今と違うレベルで評価した記録の印。 */
+.log li.lgrp{display:flex;align-items:center;gap:8px;padding:10px 0 0;border:0;border-radius:0;cursor:default;background:none;font-size:.85rem;font-weight:800}
+.log li.lgrp:first-child{border-top:0}
+.log li.lgrp:hover{background:none}
+.log li.lgrp img{width:36px;height:36px;object-fit:contain;flex:none}
+.log li.lgrp span{flex:1;display:flex;align-items:center;gap:6px;min-width:0}
+.log li.lgrp span small{font-size:.68rem;font-weight:700;color:var(--muted)}
+.log li.lgrp i{width:8px;height:8px;border-radius:50%;background:var(--dot);flex:none}
+.log li.lgrp>small{font-family:var(--font-num);font-size:.72rem;font-weight:600;color:var(--muted)}
+.lvtag{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-family:var(--font-num);font-size:.62rem;font-weight:700;vertical-align:1px}

@@ -227,12 +227,21 @@ export const filledSubs = () => {
   const i = state.subs.findIndex((v) => !v);
   return state.subs.slice(0, i < 0 ? state.subs.length : i);
 };
-export const env = (lv = state.lv) => {
-  const { camp, mon, heal, tap, ingTap, team, healAmt, healTimes } = state;
+// タイプ type・ポケモン mon・レベル lv の計算条件。共通の設定（チケット・ヒーラー・受け取りなど）は今のものを使う。
+// 食材タイプは狙い食材 target も条件に入る。
+export const envFor = (type, mon, lv, target) => {
+  const { camp, heal, tap, ingTap, team, healAmt, healTimes } = state;
   const N = slotCount(lv);
-  if (state.type === 'berry') return { lv, N, camp, mon, heal, tap, team, healAmt, healTimes };
-  if (state.type === 'ingredient') return { lv, N, camp, mon, target: state.target, heal, tap: ingTap, team, healAmt, healTimes };
+  if (type === 'berry') return { lv, N, camp, mon, heal, tap, team, healAmt, healTimes };
+  if (type === 'ingredient') return { lv, N, camp, mon, target, heal, tap: ingTap, team, healAmt, healTimes };
   return { lv, N, camp, mon, heal, tap: ingTap, team, healAmt, healTimes };
+};
+export const env = (lv = state.lv) => envFor(state.type, state.mon, lv, state.target);
+// 食材タイプのポケモンで前に選んだ狙い食材（なければ A）。
+export const targetOf = (mon) => {
+  const t = load(KEYS.target, {});
+  const ings = TYPES.ingredient.MONS[mon].ings;
+  return t && typeof t === 'object' && Object.hasOwn(ings, t[mon]) ? t[mon] : 'A';
 };
 
 // 記録はタイプごとのキーに保存する（食材・きのみは統合前と同じキー）。食材タイプの記録は食材配列のあるものだけ使う。
@@ -240,21 +249,27 @@ const loadRawLog = (type) => {
   const v = load(LOG_KEYS[type], []);
   return Array.isArray(v) ? v : [];
 };
+// 性格の名前がある記録は、上昇・下降の補正をそのタイプの分類で決め直す（分類が増えたときも古い記録を正しく計算するため）。
+const withNature = (x, type) => {
+  const n = natByName(x.nat);
+  if (!n) return x;
+  const c = TYPES[type].natCat;
+  return { ...x, up: c(n[1]), down: c(n[2]) };
+};
+// 3タイプ・すべてのポケモンの記録。type を付けて返す。今は選べないポケモンの記録は除く。
+export const loadAllLogs = () => Object.keys(LOG_KEYS).flatMap((type) => loadRawLog(type)
+  .filter((x) => x && typeof x.mon === 'string' && Object.hasOwn(TYPES[type].MONS, x.mon) && Array.isArray(x.subs)
+    && (type !== 'ingredient' || Array.isArray(x.arr)))
+  .map((x) => ({ ...withNature(x, type), type })));
 // 性格の名前がある記録は、上昇・下降の補正を今のタイプの分類で決め直す（分類が増えたときも古い記録を正しく計算するため）。
-export const loadLog = () => loadRawLog(state.type).filter((x) => x && x.mon === state.mon && Array.isArray(x.subs)
-  && (state.type !== 'ingredient' || Array.isArray(x.arr)))
-  .map((x) => {
-    const n = natByName(x.nat);
-    if (!n) return x;
-    const c = TYPES[state.type].natCat;
-    return { ...x, up: c(n[1]), down: c(n[2]) };
-  });
-export function appendLog(entry) { save(LOG_KEYS[state.type], [...loadRawLog(state.type), entry]); }
+export const loadLog = () => loadAllLogs().filter((x) => x.type === state.type && x.mon === state.mon);
+// type を省くと今のタイプの記録に足す。
+export function appendLog(entry, type = state.type) { save(LOG_KEYS[type], [...loadRawLog(type), entry]); }
 // 消した記録を返す（「元に戻す」で appendLog に渡す）。
-export function removeLogEntry(t) {
-  const all = loadRawLog(state.type);
+export function removeLogEntry(t, type = state.type) {
+  const all = loadRawLog(type);
   const gone = all.find((x) => String(x && x.t) === String(t)) || null;
-  if (gone) save(LOG_KEYS[state.type], all.filter((x) => x !== gone));
+  if (gone) save(LOG_KEYS[type], all.filter((x) => x !== gone));
   return gone;
 }
 

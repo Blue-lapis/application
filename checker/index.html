@@ -140,7 +140,8 @@
 <dialog class="sheet" id="logDlg" aria-labelledby="logTitle">
   <div class="dlg-in">
     <div class="dlg-head"><h2 id="logTitle" tabindex="-1" autofocus>記録</h2><span class="subcount" id="logNum"></span></div>
-    <p class="note" style="margin:0 0 10px">タップすると、その入力に戻ります</p>
+    <div class="monf" id="logFilter" role="group" aria-label="タイプで切り替える"></div>
+    <p class="note" style="margin:8px 0 6px">タップすると、その入力に戻ります。評価は今のレベルと条件で出します。</p>
     <ul class="log" id="log"></ul>
     <div class="dlg-foot"><span></span><button class="primary" id="logClose">閉じる</button></div>
   </div>
