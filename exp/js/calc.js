@@ -77,11 +77,11 @@ export function sleepDay(day, { score, bonus, incense, nature }) {
 }
 
 // ---- ゴンベのおひるね島 ----
-// 預けて t 分で貯まるEXP。チケットの分（1日600）を先に、そのあと1日150。性格は上昇だけ効く。
-function napExp(t, nature, tickets) {
+// 預けて t 分で貯まるEXP。チケットの分（1日600、tk 分まで）を先に、そのあと1日150。性格は上昇だけ効く。
+function napExp(t, nature, tk) {
   const rate = Math.max(NATURE_RATE[nature], 1);
-  const tk = Math.min(t, tickets * NAP.ticketDays * DAY_MIN);
-  return floor((rate * (NAP.ticketPerDay * tk + NAP.perDay * (t - tk))) / DAY_MIN);
+  const u = Math.min(t, tk);
+  return floor((rate * (NAP.ticketPerDay * u + NAP.perDay * (t - u))) / DAY_MIN);
 }
 // f(t) >= need となる最小の t（分）。hi までに届かなければ null。
 function firstMinute(f, need, hi) {
@@ -90,16 +90,18 @@ function firstMinute(f, need, hi) {
   while (lo < hi) { const mid = (lo + hi) >> 1; if (f(mid) >= need) hi = mid; else lo = mid + 1; }
   return lo;
 }
-// need のEXP を島で貯めるのに要る分。7日未満で引き取ると半分なので、「半分で引き取る」と「7日待つ」の早いほう。
-export function napMinutes(need, nature, tickets) {
-  const full = NAP.fullDays * DAY_MIN;
-  const t = firstMinute((m) => napExp(m, nature, tickets), need, NAP.maxDays * DAY_MIN);
+// need のEXP を島で貯めるのに要る分（ticketDays はチケットの残り日数）。
+// 7日未満で引き取ると半分なので、「半分で引き取る」と「7日待つ」の早いほう。
+function napFinish(need, nature, ticketDays) {
+  const full = NAP.fullDays * DAY_MIN, tk = ticketDays * DAY_MIN;
+  const t = firstMinute((m) => napExp(m, nature, tk), need, NAP.maxDays * DAY_MIN);
   if (t == null) return null;
   if (t >= full) return { minutes: t, half: false };
-  const h = firstMinute((m) => Math.floor(napExp(m, nature, tickets) / 2), need, full - 1);
+  const h = firstMinute((m) => Math.floor(napExp(m, nature, tk) / 2), need, full - 1);
   return h == null ? { minutes: full, half: false } : { minutes: h, half: true };
 }
-const ticketsUsed = (minutes, tickets) => Math.min(tickets, Math.ceil(minutes / (NAP.ticketDays * DAY_MIN)));
+export const napMinutes = (need, nature, tickets) => napFinish(need, nature, tickets * NAP.ticketDays);
+const ticketsOf = (ticketMinutes) => Math.ceil(ticketMinutes / (NAP.ticketDays * DAY_MIN) - 1e-9);
 
 // ---- ルート ----
 const MAX_SLEEP_DAYS = 3650;
@@ -122,49 +124,83 @@ function routeSleep(cum, th, goal, o) {
 function routeNap(cum, goal, o) {
   const r = napMinutes(goal - cum, o.nature, o.tickets);
   if (!r) return null;
-  return { days: r.minutes / DAY_MIN, half: r.half, tickets: ticketsUsed(r.minutes, o.tickets), passed: [] };
+  return { days: r.minutes / DAY_MIN, half: r.half, tickets: ticketsOf(Math.min(r.minutes, o.tickets * NAP.ticketDays * DAY_MIN)), passed: [] };
 }
 
-// C. 併用。7日ごとに、睡眠とおひるね島のどちらが多く稼げるかを比べて多いほうにする（島は7日預けて引き取る）。
-// その7日の中で届くときは、睡眠で届く日と、島で届く時刻（半分で引き取るか7日待つか）の早いほう。
-function routeMix(cum, th, goal, o) {
-  let lv = levelOf(cum, th), day = 0, tickets = o.tickets, incense = 0, ticketsSpent = 0;
+// C. 最適な組み合わせ。日ごとに「その夜はチームで寝る」か「島に k 日（7〜13日）預けて引き取る」かを選び、
+// 日ごと・チケットの残り日数ごとに、得られる最大のEXP を持つ（動的計画法）。14日以上の預けは 7〜13日をつないで表す
+// （1日あたりのEXP は整数なので、つないでも切り捨てで減らない）。最後は、どの日から預けても届く時刻（半分で引き取るか
+// 7日待つか）を候補にし、睡眠で届く日とあわせて最も早いものを選ぶ。グッドスリープデー・満月が週をまたいでも取りこぼさない。
+const NAP_SEG = [7, 8, 9, 10, 11, 12, 13];
+function routeMix(cum0, th, goal, o) {
+  const need = goal - cum0, TD = o.tickets * NAP.ticketDays, W = TD + 1;
+  const val = [], par = [];
+  const ensure = (d) => { while (val.length <= d) { val.push(new Float64Array(W).fill(-1)); par.push(new Int32Array(W)); } };
+  const sleepCache = [];
+  const sd = (d) => (sleepCache[d] ??= sleepDay(o.startDay + d, o));
+  const dayNap = (k, used) => napExp(k * DAY_MIN, o.nature, used * DAY_MIN);
+  let best = Infinity, end = null;
+  const reach = (d, t, e, p) => {
+    if (e >= need) { if (d < best) { best = d; end = { d, t, prev: p, nap: null }; } return; }
+    if (e > val[d][t]) { val[d][t] = e; par[d][t] = p; }
+  };
+  ensure(0);
+  val[0][TD] = 0;
+  for (let d = 0; d < MAX_SLEEP_DAYS && d < best; d++) {
+    ensure(d + 13);
+    for (let t = 0; t <= TD; t++) {
+      const e = val[d][t];
+      if (e < 0) continue;
+      const r = napFinish(need - e, o.nature, t);
+      if (r && d + r.minutes / DAY_MIN < best) { best = d + r.minutes / DAY_MIN; end = { d, t, nap: r }; }
+      const s = sd(d + 1).exp;
+      if (s > 0) reach(d + 1, t, e + s, t * 16);
+      for (const k of NAP_SEG) { const used = Math.min(t, k); reach(d + k, t - used, e + dayNap(k, used), t * 16 + k); }
+    }
+  }
+  if (!end) return null;
+
+  // 選んだ行動を後ろからたどる。
+  const acts = [];
+  let d = end.d, t = end.t, p = end.prev;
+  if (end.nap) acts.push({ kind: 'final', d, t, nap: end.nap });
+  else { acts.push({ kind: (p & 15) || 'sleep', d: d - ((p & 15) || 1), t: p >> 4 }); d -= (p & 15) || 1; t = p >> 4; }
+  while (d > 0 || t !== TD) {
+    p = par[d][t];
+    const k = p & 15, pt = p >> 4, pd = d - (k || 1);
+    acts.push({ kind: k || 'sleep', d: pd, t: pt });
+    d = pd;
+    t = pt;
+  }
+  acts.reverse();
+
+  // 前から並べ直して、予定・レベルの区切り・おこう・チケットを数える。
+  let cum = cum0, lv = levelOf(cum, th), incense = 0, ticketMin = 0;
   const passed = [], blocks = [];
   const levelUps = (days) => { while (lv < MAX_LEVEL && cum >= th[lv + 1]) passed.push({ level: ++lv, days }); };
-  while (day < MAX_SLEEP_DAYS) {
-    const need = goal - cum;
-    const week = Array.from({ length: 7 }, (_, i) => sleepDay(o.startDay + day + i + 1, o));
-    let acc = 0, sleepEnd = null;
-    for (let i = 0; i < 7 && sleepEnd == null; i++) { acc += week[i].exp; if (acc >= need) sleepEnd = i + 1; }
-    const tk = tickets > 0 ? 1 : 0;
-    const nap = napMinutes(need, o.nature, tk);
-    const napEnd = nap && nap.minutes <= 7 * DAY_MIN ? nap.minutes / DAY_MIN : null;
-    if (sleepEnd != null || napEnd != null) {
-      if (napEnd != null && (sleepEnd == null || napEnd < sleepEnd)) {
-        cum = goal;
-        ticketsSpent += tk;
-        blocks.push({ mode: 'nap', from: day, days: napEnd, ticket: tk > 0, half: nap.half });
-        levelUps(day + napEnd);
-        return { days: day + napEnd, passed, blocks, incense, tickets: ticketsSpent };
-      }
-      for (let i = 0; i < sleepEnd; i++) { cum += week[i].exp; incense += week[i].incense; levelUps(day + i + 1); }
-      blocks.push({ mode: 'sleep', from: day, days: sleepEnd, exp: acc });
-      return { days: day + sleepEnd, passed, blocks, incense, tickets: ticketsSpent };
-    }
-    const sleep7 = acc, nap7 = napExp(7 * DAY_MIN, o.nature, tk);
-    if (nap7 > sleep7) {
-      cum += nap7;
-      tickets -= tk;
-      ticketsSpent += tk;
-      blocks.push({ mode: 'nap', from: day, days: 7, exp: nap7, ticket: tk > 0 });
-      levelUps(day + 7);
+  const last = () => blocks[blocks.length - 1];
+  for (const a of acts) {
+    if (a.kind === 'sleep') {
+      const x = sd(a.d + 1);
+      cum += x.exp;
+      incense += x.incense;
+      levelUps(a.d + 1);
+      if (last()?.mode === 'sleep') { last().days++; last().exp += x.exp; } else blocks.push({ mode: 'sleep', from: a.d, days: 1, exp: x.exp });
+    } else if (a.kind === 'final') {
+      const used = Math.min(a.nap.minutes, a.t * DAY_MIN), days = a.nap.minutes / DAY_MIN, exp = goal - cum;
+      cum = goal;
+      ticketMin += used;
+      levelUps(a.d + days);
+      if (last()?.mode === 'nap' && !a.nap.half) { last().days += days; last().exp += exp; last().ticketDays += used / DAY_MIN; } else blocks.push({ mode: 'nap', from: a.d, days, exp, ticketDays: used / DAY_MIN, half: a.nap.half });
     } else {
-      week.forEach((w, i) => { cum += w.exp; incense += w.incense; levelUps(day + i + 1); });
-      blocks.push({ mode: 'sleep', from: day, days: 7, exp: sleep7, kinds: week.map((w) => w.kind) });
+      const used = Math.min(a.t, a.kind), exp = dayNap(a.kind, used);
+      cum += exp;
+      ticketMin += used * DAY_MIN;
+      levelUps(a.d + a.kind);
+      if (last()?.mode === 'nap') { last().days += a.kind; last().exp += exp; last().ticketDays += used; } else blocks.push({ mode: 'nap', from: a.d, days: a.kind, exp, ticketDays: used });
     }
-    day += 7;
   }
-  return null;
+  return { days: best, passed, blocks, incense, tickets: ticketsOf(ticketMin) };
 }
 
 // 入力から、アメの使い方と3つのルートの結果を出す。

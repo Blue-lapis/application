@@ -2,6 +2,7 @@
 // 期待値は Pokémon Sleep 攻略・検証 Wiki の表と、表から手で計算した値。
 import assert from 'node:assert/strict';
 import { thresholds, useCandy, sleepDay, napMinutes, plan, dayKind } from '../exp/js/calc.js';
+import { NAP, NATURE_RATE } from '../exp/js/data.js';
 import { TOTAL_EXP, SHARDS_PER_CANDY } from '../exp/js/data.js';
 
 let n = 0;
@@ -82,6 +83,56 @@ ok('plan', () => {
   assert.equal(c.candy.level, 50);
   // 次のレベルまでのEXP を入れると、そのぶん必要EXP が減る。
   assert.equal(plan({ ...base, toNext: 1 }).need, th[50] - th[31] + 1);
+});
+
+// 併用（動的計画法）は、すべての予定を試した最短と一致する。総当たりは島を 7〜30日のどの長さでも預けられ、
+// 最後は「半分で引き取る」「7日待つ」「満喫して届いた時刻」を試す。グッドスリープデー・満月が週をまたぐ開始日も含む。
+function brute(need, o) {
+  const rate = Math.max(NATURE_RATE[o.nature], 1);
+  const napE = (min, tkMin) => { const u = Math.min(min, tkMin); return Math.floor(rate * (NAP.ticketPerDay * u + NAP.perDay * (min - u)) / 1440 + 1e-9); };
+  let best = Infinity;
+  const go = (d, t, e) => {
+    if (d >= best) return;
+    if (e >= need) { best = d; return; }
+    // ここから預けて届く時刻（分単位）。
+    for (let m = 1; m <= 40 * 1440 && d + m / 1440 < best; m++) {
+      const full = napE(m, t * 1440), got = m < 7 * 1440 ? Math.floor(full / 2) : full;
+      if (e + got >= need) { best = d + m / 1440; break; }
+    }
+    go(d + 1, t, e + sleepDay(o.startDay + d + 1, o).exp);
+    for (let k = 7; k <= 30; k++) { const u = Math.min(t, k); go(d + k, t - u, e + napE(k * 1440, u * 1440)); }
+  };
+  go(0, o.tickets * 7, 0);
+  return best;
+}
+ok('併用 = 総当たりの最短', () => {
+  const s0 = Date.UTC(2026, 9, 1) / 864e5;
+  const cases = [
+    { target: 34, tickets: 0, incense: 'none', bonus: 0 },
+    { target: 34, tickets: 0, incense: 'fullMoon', bonus: 2 },
+    { target: 35, tickets: 1, incense: 'gsd', bonus: 1 },
+  ];
+  for (const c of cases) {
+    for (let k = 0; k < 30; k += 3) {
+      const o = { expType: 600, level: 30, nature: 'none', candy: 0, shardCap: null, score: 100, startDay: s0 + k, ...c };
+      const p = plan(o);
+      const want = brute(p.need, o);
+      assert.ok(Math.abs(p.routes.mix.days - want) < 1e-9, `${JSON.stringify(c)} +${k}日: ${p.routes.mix.days} != ${want}`);
+    }
+  }
+});
+
+ok('併用は単独のルートより遅くならない', () => {
+  const s0 = Date.UTC(2026, 9, 1) / 864e5;
+  for (let k = 0; k < 60; k++) {
+    for (const extra of [{}, { tickets: 2 }, { incense: 'gsd', bonus: 3 }, { nature: 'up' }]) {
+      const p = plan({ expType: 900, level: 25, target: 50, nature: 'none', candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, startDay: s0 + k, ...extra });
+      const { sleep, nap, mix } = p.routes;
+      assert.ok(mix.days <= Math.min(sleep.days, nap.days) + 1e-9, `+${k}日 ${JSON.stringify(extra)}`);
+      // 予定の日数の合計が到達日数と合う。
+      assert.ok(Math.abs(mix.blocks.reduce((s, b) => s + b.days, 0) - mix.days) < 1e-9);
+    }
+  }
 });
 
 console.log(`${n} 件すべて通った`);

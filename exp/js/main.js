@@ -131,7 +131,7 @@ function show(writeInputs) {
   $('routes').innerHTML = [
     card('睡眠のみ', R.sleep, (r) => incenseNote(r) + milestones(r)),
     card('おひるね島のみ', R.nap, (r) => `<p class="when">${r.half ? '7日未満で引き取る（EXPは半分）' : r.days === 7 ? '7日満喫してから引き取る' : '届いたら引き取る'}${r.tickets ? `・チケット${r.tickets}枚` : ''}</p>`),
-    card('併用（週ごとに速いほう）', R.mix, (r) => incenseNote(r) + milestones(r) + planList(r, startDay)),
+    card('組み合わせ（最短の予定）', R.mix, (r) => incenseNote(r) + milestones(r) + planList(r, startDay)),
   ].join('');
 
   const moons = upcomingMoon(startDay, 31).filter((m) => m.kind === 'full').map((m) => dateLabel(m.day));
@@ -140,12 +140,12 @@ function show(writeInputs) {
 
 function planList(r, startDay) {
   const items = r.blocks.map((b) => {
-    const from = dateLabel(startDay + b.from), mode = b.mode === 'nap' ? '島' : '睡眠';
-    const len = dur(b.days).replace(/<[^>]+>/g, '');
-    const extra = b.mode === 'nap' ? `${b.ticket ? '・チケット' : ''}${b.half ? '・半分で引き取る' : ''}` : '';
-    return `<li><span class="m-${b.mode}">${mode}</span> ${from}から${len}${b.exp ? `（${fmt(b.exp)} EXP）` : ''}${extra}</li>`;
+    const from = dateLabel(startDay + b.from), len = dur(b.days).replace(/<[^>]+>/g, '');
+    if (b.mode === 'sleep') return `<li><span class="m-sleep">チームで寝る</span> ${from}の夜から${len}（${fmt(b.exp)} EXP）</li>`;
+    const extra = `${b.ticketDays ? `・チケット${Math.ceil(b.ticketDays)}日分` : ''}${b.half ? '・7日未満で引き取る（半分）' : ''}`;
+    return `<li><span class="m-nap">島に預ける</span> ${from}から${len}（${fmt(b.exp)} EXP）${extra}</li>`;
   });
-  return `<details class="plan"><summary>週ごとの予定（${r.blocks.length}週）</summary><ol>${items.join('')}</ol></details>`;
+  return `<details class="plan"><summary>予定（${r.blocks.length}つの期間）</summary><ol>${items.join('')}</ol></details>`;
 }
 
 function update(writeInputs = true) {
