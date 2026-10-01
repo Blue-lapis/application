@@ -36,20 +36,54 @@ export function useCandy({ cum, th, target, nature, candy, shardCap = null }) {
   return { cum, level: lv, used, shards, passed };
 }
 
-// ---- 月齢とグッドスリープデー（近似） ----
-// 月齢は 2000-01-06 18:14 UTC の新月から数える。満月は月齢の割合が 0.48〜0.52 の日（UTC 0 時で判定）、
-// グッドスリープデーは満月の日の前後の日。実際の日程は公式のお知らせで決まり、1日ずれることがある。
-const LUNAR = 29.530588;
-const NEW_MOON = Date.UTC(2000, 0, 6, 18, 14);
-const moonRatio = (day) => {
-  const age = (((day * 864e5 - NEW_MOON) / 864e5) % LUNAR + LUNAR) % LUNAR;
-  return age / LUNAR;
-};
-const isFull = (day) => { const r = moonRatio(day); return r > 0.48 && r < 0.52; };
-export function dayKind(day) {
-  if (isFull(day)) return 'full';
-  if (isFull(day - 1) || isFull(day + 1)) return 'gsd';
-  return 'normal';
+// ---- グッドスリープデー ----
+// グッドスリープデーは満月の日を中心にした3日間。前後の日は睡眠EXPが2倍、まん中の満月の日は3倍。
+// 満月の日は、満月の時刻（Meeus『Astronomical Algorithms』49章の式、誤差は数分）を日本時間にした日付。
+// 実際の日程は公式のお知らせで決まるので、日程ごとに手で前後にずらしたり、なしにしたりできる（plan の gsd）。
+const rad = (d) => (d * Math.PI) / 180;
+// k 番目（2000年1月の朔から数える）の満月の時刻（Unix ms、UTC）。
+export function fullMoonMs(k) {
+  k += 0.5;
+  const T = k / 1236.85;
+  let jde = 2451550.09766 + 29.530588861 * k + 0.00015437 * T * T - 0.00000015 * T ** 3 + 0.00000000073 * T ** 4;
+  const E = 1 - 0.002516 * T - 0.0000074 * T * T;
+  const M = rad(2.5534 + 29.1053567 * k - 0.0000014 * T * T - 0.00000011 * T ** 3);
+  const Mp = rad(201.5643 + 385.81693528 * k + 0.0107582 * T * T + 0.00001238 * T ** 3 - 0.000000058 * T ** 4);
+  const F = rad(160.7108 + 390.67050284 * k - 0.0016118 * T * T - 0.00000227 * T ** 3 + 0.000000011 * T ** 4);
+  const O = rad(124.7746 - 1.56375588 * k + 0.0020672 * T * T + 0.00000215 * T ** 3);
+  jde += -0.40614 * Math.sin(Mp) + 0.17302 * E * Math.sin(M) + 0.01614 * Math.sin(2 * Mp) + 0.01043 * Math.sin(2 * F)
+    + 0.00734 * E * Math.sin(Mp - M) - 0.00515 * E * Math.sin(Mp + M) + 0.00209 * E * E * Math.sin(2 * M)
+    - 0.00111 * Math.sin(Mp - 2 * F) - 0.00057 * Math.sin(Mp + 2 * F) + 0.00056 * E * Math.sin(2 * Mp + M)
+    - 0.00042 * Math.sin(3 * Mp) + 0.00042 * E * Math.sin(M + 2 * F) + 0.00038 * E * Math.sin(M - 2 * F)
+    - 0.00024 * E * Math.sin(2 * Mp - M) - 0.00017 * Math.sin(O);
+  return (jde - 2440587.5) * 864e5 - 69e3; // 力学時から UTC へ（ΔT は約69秒）
+}
+const JST = 9 * 3600e3;
+// 満月の日（日本時間の日付の番号）の見込み。2000年〜2120年ぶんを最初に一度だけ作る。
+let FULL_DAYS = null;
+const fullDays = () => (FULL_DAYS ??= Array.from({ length: 1500 }, (_, k) => Math.floor((fullMoonMs(k) + JST) / 864e5)));
+
+// 手での直し（{ 見込みの満月の日: ずらす日数 | 'off' }）を当てた、満月の日の集まりと、日の種類を返す関数。
+export function gsdCalendar(gsd = {}) {
+  const set = new Set(fullDays());
+  for (const [est, v] of Object.entries(gsd)) {
+    const d = Number(est);
+    if (!set.has(d)) continue;
+    set.delete(d);
+    if (v !== 'off') set.add(d + Number(v));
+  }
+  return (day) => (set.has(day) ? 'full' : set.has(day - 1) || set.has(day + 1) ? 'gsd' : 'normal');
+}
+const DEFAULT_KIND = gsdCalendar();
+export const dayKind = (day) => DEFAULT_KIND(day);
+
+// from〜to にかかるグッドスリープデーの一覧（見込みの満月の日、直した後の満月の日、ずらした日数、なしにしたか）。
+export function gsdSchedule(from, to, gsd = {}) {
+  return fullDays().filter((d) => d >= from - 4 && d <= to + 4).map((est) => {
+    const v = gsd[est];
+    const off = v === 'off', shift = off || v == null ? 0 : Number(v);
+    return { est, full: off ? null : est + shift, shift, off };
+  }).filter((g) => g.off || (g.full + 1 >= from && g.full - 1 <= to));
 }
 
 // ---- 睡眠EXP ----
@@ -70,18 +104,18 @@ function dayRate(kind, incense) {
 
 // 1日の睡眠EXP。基本EXP = round(スコア × (1 + 0.14 × ボーナスの数))、その日のEXP = floor(基本 × 日の倍率 × 性格)。
 export const sleepBase = (score, bonus) => Math.round(score * (1 + SLEEP_BONUS * bonus));
-export function sleepDay(day, { score, bonus, incense, nature }) {
-  const kind = dayKind(day);
+export function sleepDay(day, { score, bonus, incense, nature, kindOf = dayKind }) {
+  const kind = kindOf(day);
   const [rate, used] = dayRate(kind, incense);
   return { exp: floor(sleepBase(score, bonus) * rate * NATURE_RATE[nature]), kind, incense: used };
 }
 
 // ---- ゴンベのおひるね島 ----
-// 預けて t 分で貯まるEXP。チケットの分（1日600）を先に、そのあと1日150。性格は上昇だけ効く。
-function napExp(t, nature, tickets) {
+// 預けて t 分で貯まるEXP。チケットの分（1日600、tk 分まで）を先に、そのあと1日150。性格は上昇だけ効く。
+function napExp(t, nature, tk) {
   const rate = Math.max(NATURE_RATE[nature], 1);
-  const tk = Math.min(t, tickets * NAP.ticketDays * DAY_MIN);
-  return floor((rate * (NAP.ticketPerDay * tk + NAP.perDay * (t - tk))) / DAY_MIN);
+  const u = Math.min(t, tk);
+  return floor((rate * (NAP.ticketPerDay * u + NAP.perDay * (t - u))) / DAY_MIN);
 }
 // f(t) >= need となる最小の t（分）。hi までに届かなければ null。
 function firstMinute(f, need, hi) {
@@ -90,16 +124,18 @@ function firstMinute(f, need, hi) {
   while (lo < hi) { const mid = (lo + hi) >> 1; if (f(mid) >= need) hi = mid; else lo = mid + 1; }
   return lo;
 }
-// need のEXP を島で貯めるのに要る分。7日未満で引き取ると半分なので、「半分で引き取る」と「7日待つ」の早いほう。
-export function napMinutes(need, nature, tickets) {
-  const full = NAP.fullDays * DAY_MIN;
-  const t = firstMinute((m) => napExp(m, nature, tickets), need, NAP.maxDays * DAY_MIN);
+// need のEXP を島で貯めるのに要る分（ticketDays はチケットの残り日数）。
+// 7日未満で引き取ると半分なので、「半分で引き取る」と「7日待つ」の早いほう。
+function napFinish(need, nature, ticketDays) {
+  const full = NAP.fullDays * DAY_MIN, tk = ticketDays * DAY_MIN;
+  const t = firstMinute((m) => napExp(m, nature, tk), need, NAP.maxDays * DAY_MIN);
   if (t == null) return null;
   if (t >= full) return { minutes: t, half: false };
-  const h = firstMinute((m) => Math.floor(napExp(m, nature, tickets) / 2), need, full - 1);
+  const h = firstMinute((m) => Math.floor(napExp(m, nature, tk) / 2), need, full - 1);
   return h == null ? { minutes: full, half: false } : { minutes: h, half: true };
 }
-const ticketsUsed = (minutes, tickets) => Math.min(tickets, Math.ceil(minutes / (NAP.ticketDays * DAY_MIN)));
+export const napMinutes = (need, nature, tickets) => napFinish(need, nature, tickets * NAP.ticketDays);
+const ticketsOf = (ticketMinutes) => Math.ceil(ticketMinutes / (NAP.ticketDays * DAY_MIN) - 1e-9);
 
 // ---- ルート ----
 const MAX_SLEEP_DAYS = 3650;
@@ -122,49 +158,85 @@ function routeSleep(cum, th, goal, o) {
 function routeNap(cum, goal, o) {
   const r = napMinutes(goal - cum, o.nature, o.tickets);
   if (!r) return null;
-  return { days: r.minutes / DAY_MIN, half: r.half, tickets: ticketsUsed(r.minutes, o.tickets), passed: [] };
+  const tk = Math.min(r.minutes, o.tickets * NAP.ticketDays * DAY_MIN), raw = napExp(r.minutes, o.nature, tk);
+  return { days: r.minutes / DAY_MIN, half: r.half, raw, exp: r.half ? Math.floor(raw / 2) : raw, tickets: ticketsOf(tk), passed: [] };
 }
 
-// C. 併用。7日ごとに、睡眠とおひるね島のどちらが多く稼げるかを比べて多いほうにする（島は7日預けて引き取る）。
-// その7日の中で届くときは、睡眠で届く日と、島で届く時刻（半分で引き取るか7日待つか）の早いほう。
-function routeMix(cum, th, goal, o) {
-  let lv = levelOf(cum, th), day = 0, tickets = o.tickets, incense = 0, ticketsSpent = 0;
+// C. 最適な組み合わせ。日ごとに「その夜はチームで寝る」か「島に k 日（7〜13日）預けて引き取る」かを選び、
+// 日ごと・チケットの残り日数ごとに、得られる最大のEXP を持つ（動的計画法）。14日以上の預けは 7〜13日をつないで表す
+// （1日あたりのEXP は整数なので、つないでも切り捨てで減らない）。最後は、どの日から預けても届く時刻（半分で引き取るか
+// 7日待つか）を候補にし、睡眠で届く日とあわせて最も早いものを選ぶ。グッドスリープデー・満月が週をまたいでも取りこぼさない。
+const NAP_SEG = [7, 8, 9, 10, 11, 12, 13];
+function routeMix(cum0, th, goal, o) {
+  const need = goal - cum0, TD = o.tickets * NAP.ticketDays, W = TD + 1;
+  const val = [], par = [];
+  const ensure = (d) => { while (val.length <= d) { val.push(new Float64Array(W).fill(-1)); par.push(new Int32Array(W)); } };
+  const sleepCache = [];
+  const sd = (d) => (sleepCache[d] ??= sleepDay(o.startDay + d, o));
+  const dayNap = (k, used) => napExp(k * DAY_MIN, o.nature, used * DAY_MIN);
+  let best = Infinity, end = null;
+  const reach = (d, t, e, p) => {
+    if (e >= need) { if (d < best) { best = d; end = { d, t, prev: p, nap: null }; } return; }
+    if (e > val[d][t]) { val[d][t] = e; par[d][t] = p; }
+  };
+  ensure(0);
+  val[0][TD] = 0;
+  for (let d = 0; d < MAX_SLEEP_DAYS && d < best; d++) {
+    ensure(d + 13);
+    for (let t = 0; t <= TD; t++) {
+      const e = val[d][t];
+      if (e < 0) continue;
+      const r = napFinish(need - e, o.nature, t);
+      if (r && d + r.minutes / DAY_MIN < best) { best = d + r.minutes / DAY_MIN; end = { d, t, nap: r }; }
+      const s = sd(d + 1).exp;
+      if (s > 0) reach(d + 1, t, e + s, t * 16);
+      for (const k of NAP_SEG) { const used = Math.min(t, k); reach(d + k, t - used, e + dayNap(k, used), t * 16 + k); }
+    }
+  }
+  if (!end) return null;
+
+  // 選んだ行動を後ろからたどる。
+  const acts = [];
+  let d = end.d, t = end.t, p = end.prev;
+  if (end.nap) acts.push({ kind: 'final', d, t, nap: end.nap });
+  else { acts.push({ kind: (p & 15) || 'sleep', d: d - ((p & 15) || 1), t: p >> 4 }); d -= (p & 15) || 1; t = p >> 4; }
+  while (d > 0 || t !== TD) {
+    p = par[d][t];
+    const k = p & 15, pt = p >> 4, pd = d - (k || 1);
+    acts.push({ kind: k || 'sleep', d: pd, t: pt });
+    d = pd;
+    t = pt;
+  }
+  acts.reverse();
+
+  // 前から並べ直して、予定・レベルの区切り・おこう・チケットを数える。
+  let cum = cum0, lv = levelOf(cum, th), incense = 0, ticketMin = 0;
   const passed = [], blocks = [];
   const levelUps = (days) => { while (lv < MAX_LEVEL && cum >= th[lv + 1]) passed.push({ level: ++lv, days }); };
-  while (day < MAX_SLEEP_DAYS) {
-    const need = goal - cum;
-    const week = Array.from({ length: 7 }, (_, i) => sleepDay(o.startDay + day + i + 1, o));
-    let acc = 0, sleepEnd = null;
-    for (let i = 0; i < 7 && sleepEnd == null; i++) { acc += week[i].exp; if (acc >= need) sleepEnd = i + 1; }
-    const tk = tickets > 0 ? 1 : 0;
-    const nap = napMinutes(need, o.nature, tk);
-    const napEnd = nap && nap.minutes <= 7 * DAY_MIN ? nap.minutes / DAY_MIN : null;
-    if (sleepEnd != null || napEnd != null) {
-      if (napEnd != null && (sleepEnd == null || napEnd < sleepEnd)) {
-        cum = goal;
-        ticketsSpent += tk;
-        blocks.push({ mode: 'nap', from: day, days: napEnd, ticket: tk > 0, half: nap.half });
-        levelUps(day + napEnd);
-        return { days: day + napEnd, passed, blocks, incense, tickets: ticketsSpent };
-      }
-      for (let i = 0; i < sleepEnd; i++) { cum += week[i].exp; incense += week[i].incense; levelUps(day + i + 1); }
-      blocks.push({ mode: 'sleep', from: day, days: sleepEnd, exp: acc });
-      return { days: day + sleepEnd, passed, blocks, incense, tickets: ticketsSpent };
-    }
-    const sleep7 = acc, nap7 = napExp(7 * DAY_MIN, o.nature, tk);
-    if (nap7 > sleep7) {
-      cum += nap7;
-      tickets -= tk;
-      ticketsSpent += tk;
-      blocks.push({ mode: 'nap', from: day, days: 7, exp: nap7, ticket: tk > 0 });
-      levelUps(day + 7);
+  const last = () => blocks[blocks.length - 1];
+  for (const a of acts) {
+    if (a.kind === 'sleep') {
+      const x = sd(a.d + 1);
+      cum += x.exp;
+      incense += x.incense;
+      levelUps(a.d + 1);
+      if (last()?.mode === 'sleep') { last().days++; last().exp += x.exp; } else blocks.push({ mode: 'sleep', from: a.d, days: 1, exp: x.exp });
+    } else if (a.kind === 'final') {
+      const used = Math.min(a.nap.minutes, a.t * DAY_MIN), days = a.nap.minutes / DAY_MIN;
+      const raw = napExp(a.nap.minutes, o.nature, used), exp = a.nap.half ? Math.floor(raw / 2) : raw;
+      cum += exp;
+      ticketMin += used;
+      levelUps(a.d + days);
+      if (last()?.mode === 'nap' && !a.nap.half) { last().days += days; last().exp += exp; last().ticketDays += used / DAY_MIN; } else blocks.push({ mode: 'nap', from: a.d, days, exp, raw, ticketDays: used / DAY_MIN, half: a.nap.half });
     } else {
-      week.forEach((w, i) => { cum += w.exp; incense += w.incense; levelUps(day + i + 1); });
-      blocks.push({ mode: 'sleep', from: day, days: 7, exp: sleep7, kinds: week.map((w) => w.kind) });
+      const used = Math.min(a.t, a.kind), exp = dayNap(a.kind, used);
+      cum += exp;
+      ticketMin += used * DAY_MIN;
+      levelUps(a.d + a.kind);
+      if (last()?.mode === 'nap') { last().days += a.kind; last().exp += exp; last().ticketDays += used; } else blocks.push({ mode: 'nap', from: a.d, days: a.kind, exp, ticketDays: used });
     }
-    day += 7;
   }
-  return null;
+  return { days: best, passed, blocks, incense, tickets: ticketsOf(ticketMin) };
 }
 
 // 入力から、アメの使い方と3つのルートの結果を出す。
@@ -179,7 +251,7 @@ export function plan(input) {
   const candy = useCandy({ cum: start, th, target, nature: input.nature, candy: input.candy, shardCap: input.shardCap });
   const out = { goal, need: goal - start, candy, routes: null };
   if (candy.cum >= goal) return out;
-  const o = { ...input };
+  const o = { ...input, kindOf: gsdCalendar(input.gsd) };
   const rest = (r) => (r ? { ...r, need: goal - candy.cum } : null);
   out.routes = {
     sleep: rest(routeSleep(candy.cum, th, goal, o)),
@@ -187,11 +259,4 @@ export function plan(input) {
     mix: rest(routeMix(candy.cum, th, goal, o)),
   };
   return out;
-}
-
-// これから先の満月・グッドスリープデー（表示用）。
-export function upcomingMoon(startDay, days = 40) {
-  const res = [];
-  for (let d = startDay + 1; d <= startDay + days; d++) { const k = dayKind(d); if (k !== 'normal') res.push({ day: d, kind: k }); }
-  return res;
 }

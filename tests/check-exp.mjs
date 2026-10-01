@@ -1,7 +1,8 @@
 // 育成日数シミュレーター（exp/）の計算のテスト。node tests/check-exp.mjs
 // 期待値は Pokémon Sleep 攻略・検証 Wiki の表と、表から手で計算した値。
 import assert from 'node:assert/strict';
-import { thresholds, useCandy, sleepDay, napMinutes, plan, dayKind } from '../exp/js/calc.js';
+import { thresholds, useCandy, sleepDay, napMinutes, plan, dayKind, fullMoonMs, gsdCalendar, gsdSchedule } from '../exp/js/calc.js';
+import { NAP, NATURE_RATE } from '../exp/js/data.js';
 import { TOTAL_EXP, SHARDS_PER_CANDY } from '../exp/js/data.js';
 
 let n = 0;
@@ -82,6 +83,95 @@ ok('plan', () => {
   assert.equal(c.candy.level, 50);
   // 次のレベルまでのEXP を入れると、そのぶん必要EXP が減る。
   assert.equal(plan({ ...base, toNext: 1 }).need, th[50] - th[31] + 1);
+});
+
+// 満月の時刻（暦に載っている値、UTC）と1分以内で一致する。
+ok('満月の時刻', () => {
+  for (const [k, want] of [[297, '2024-01-25T17:54'], [298, '2024-02-24T12:30'], [309, '2025-01-13T22:27'], [321, '2026-01-03T10:03'], [331, '2026-10-26T04:12']]) {
+    assert.ok(Math.abs(fullMoonMs(k) - Date.parse(want + 'Z')) <= 60e3, `${k}: ${new Date(fullMoonMs(k)).toISOString()}`);
+  }
+});
+
+ok('グッドスリープデーは満月の日を中心にした3日間で、手で直せる', () => {
+  const day = (s) => Date.UTC(...s.split('-').map((v, i) => (i === 1 ? v - 1 : +v))) / 864e5;
+  const full = day('2026-10-26'); // 2026-10-26 13:12（日本時間）が満月
+  assert.deepEqual([-2, -1, 0, 1, 2].map((k) => dayKind(full + k)), ['normal', 'gsd', 'full', 'gsd', 'normal']);
+  // 1年ぶん、満月の日はどれも前後が2倍の日で、4日以上続かない。
+  for (let d = day('2026-01-01'); d < day('2027-01-01'); d++) {
+    if (dayKind(d) === 'full') assert.ok(dayKind(d - 1) === 'gsd' && dayKind(d + 1) === 'gsd' && dayKind(d + 2) !== 'full');
+  }
+  const later = gsdCalendar({ [full]: 1 });
+  assert.deepEqual([-1, 0, 1, 2].map((k) => later(full + k)), ['normal', 'gsd', 'full', 'gsd']);
+  const off = gsdCalendar({ [full]: 'off' });
+  assert.deepEqual([-1, 0, 1].map((k) => off(full + k)), ['normal', 'normal', 'normal']);
+  const sch = gsdSchedule(full - 3, full + 3, { [full]: -1 });
+  assert.deepEqual(sch, [{ est: full, full: full - 1, shift: -1, off: false }]);
+  // 直した日程で計算が変わる（なしにすると睡眠だけのルートは遅くなる）。
+  const base = { expType: 600, level: 30, target: 40, nature: 'none', candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, startDay: full - 5 };
+  assert.ok(plan({ ...base, gsd: { [full]: 'off' } }).routes.sleep.days > plan(base).routes.sleep.days);
+});
+
+ok('7日未満で引き取ると、貯まったEXPの半分', () => {
+  const startDay = Date.UTC(2026, 9, 1) / 864e5;
+  // あと少し（Lv.30 で次まで 40 EXP）なら、島に預けて半分で引き取るのが早い。
+  const p = plan({ expType: 600, level: 30, toNext: 40, target: 31, nature: 'none', candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, startDay });
+  assert.equal(p.need, 40);
+  assert.equal(p.routes.nap.half, true);
+  assert.equal(p.routes.nap.exp, Math.floor(p.routes.nap.raw / 2));
+  assert.ok(p.routes.nap.exp >= 40 && Math.floor(p.routes.nap.raw / 2) >= 40);
+  assert.equal(p.routes.nap.days, (40 * 2) / 150); // 80 EXP 貯まる 12時間48分
+  const last = p.routes.mix.blocks.at(-1);
+  assert.ok(last.mode === 'nap' && last.half && last.exp === Math.floor(last.raw / 2));
+});
+
+// 併用（動的計画法）は、すべての予定を試した最短と一致する。総当たりは島を 7〜30日のどの長さでも預けられ、
+// 最後は「半分で引き取る」「7日待つ」「満喫して届いた時刻」を試す。グッドスリープデー・満月が週をまたぐ開始日も含む。
+function brute(need, o) {
+  const rate = Math.max(NATURE_RATE[o.nature], 1);
+  const napE = (min, tkMin) => { const u = Math.min(min, tkMin); return Math.floor(rate * (NAP.ticketPerDay * u + NAP.perDay * (min - u)) / 1440 + 1e-9); };
+  let best = Infinity;
+  const go = (d, t, e) => {
+    if (d >= best) return;
+    if (e >= need) { best = d; return; }
+    // ここから預けて届く時刻（分単位）。
+    for (let m = 1; m <= 40 * 1440 && d + m / 1440 < best; m++) {
+      const full = napE(m, t * 1440), got = m < 7 * 1440 ? Math.floor(full / 2) : full;
+      if (e + got >= need) { best = d + m / 1440; break; }
+    }
+    go(d + 1, t, e + sleepDay(o.startDay + d + 1, o).exp);
+    for (let k = 7; k <= 30; k++) { const u = Math.min(t, k); go(d + k, t - u, e + napE(k * 1440, u * 1440)); }
+  };
+  go(0, o.tickets * 7, 0);
+  return best;
+}
+ok('併用 = 総当たりの最短', () => {
+  const s0 = Date.UTC(2026, 9, 1) / 864e5;
+  const cases = [
+    { target: 34, tickets: 0, incense: 'none', bonus: 0 },
+    { target: 34, tickets: 0, incense: 'fullMoon', bonus: 2 },
+    { target: 35, tickets: 1, incense: 'gsd', bonus: 1 },
+  ];
+  for (const c of cases) {
+    for (let k = 0; k < 30; k += 3) {
+      const o = { expType: 600, level: 30, nature: 'none', candy: 0, shardCap: null, score: 100, startDay: s0 + k, ...c };
+      const p = plan(o);
+      const want = brute(p.need, o);
+      assert.ok(Math.abs(p.routes.mix.days - want) < 1e-9, `${JSON.stringify(c)} +${k}日: ${p.routes.mix.days} != ${want}`);
+    }
+  }
+});
+
+ok('併用は単独のルートより遅くならない', () => {
+  const s0 = Date.UTC(2026, 9, 1) / 864e5;
+  for (let k = 0; k < 60; k++) {
+    for (const extra of [{}, { tickets: 2 }, { incense: 'gsd', bonus: 3 }, { nature: 'up' }]) {
+      const p = plan({ expType: 900, level: 25, target: 50, nature: 'none', candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, startDay: s0 + k, ...extra });
+      const { sleep, nap, mix } = p.routes;
+      assert.ok(mix.days <= Math.min(sleep.days, nap.days) + 1e-9, `+${k}日 ${JSON.stringify(extra)}`);
+      // 予定の日数の合計が到達日数と合う。
+      assert.ok(Math.abs(mix.blocks.reduce((s, b) => s + b.days, 0) - mix.days) < 1e-9);
+    }
+  }
 });
 
 console.log(`${n} 件すべて通った`);
