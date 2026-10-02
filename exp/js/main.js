@@ -172,12 +172,12 @@ function show(writeInputs) {
   else setOut(`Lv.${st.target} に届く日`, '—', '届きません', c);
 }
 
-// 目標までのEXPと、アメだけで上げるときのアメ・ゆめのかけら（手持ちの数・かけらの上限は見ない。ブーストは設定どおり）。
+// 目標までのEXPと、アメだけで上げるときのアメ・ゆめのかけら（参考）。性格の補正は効かせ、手持ちの数・かけらの上限・アメブーストは見ない。
 function renderFacts(th, cum, need) {
-  const c = useCandy({ cum, th, target: st.target, nature: st.nature, candy: Infinity, boost: st.boost, boostLimit: st.boostLimit });
+  const c = useCandy({ cum, th, target: st.target, nature: st.nature, candy: Infinity });
   const cell = (label, value) => `<div><small>${label}</small><b>${value}</b></div>`;
   $('lvFacts').innerHTML = cell('必要EXP', fmt(need))
-    + cell(st.boost === 'none' ? 'アメなら' : 'ブーストなら', `${fmt(c.used)}<span class="u">個</span>`)
+    + cell('アメなら', `${fmt(c.used)}<span class="u">個</span>`)
     + cell('ゆめのかけら', fmt(c.shards));
   $('lvFacts').hidden = false;
 }
