@@ -5,7 +5,7 @@ import { MONS as ING } from '../../checker/js/ingredient/mons.js';
 import { MONS as SKILL } from '../../checker/js/skill/mons.js';
 import { initMonPicker, splitName, TYPE_LABELS } from '../../checker/js/monpick.js';
 import { EXP_TYPE_OF, EXP_TYPES, MAX_LEVEL, candyExp } from './data.js';
-import { plan, thresholds, gsdSchedule, sleepDay } from './calc.js';
+import { plan, thresholds, gsdSchedule, sleepDay, useCandy } from './calc.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Math.round(n).toLocaleString('ja-JP');
@@ -123,7 +123,7 @@ function show(writeInputs) {
   $('sleepHint').textContent = `1晩 ${fmt(sleepDay(-1e6, { score: st.score, bonus: st.bonus, incense: 'none', nature: st.nature, kindOf: () => 'normal' }).exp)} EXP`;
 
   if (!(st.level >= 1 && st.level < MAX_LEVEL && st.target > st.level && st.target <= MAX_LEVEL)) {
-    $('needHint').textContent = '';
+    $('lvFacts').hidden = true;
     $('rtabs').innerHTML = '';
     $('routeBody').innerHTML = '<p class="na">目標のレベルを今のレベルより上（70まで）にしてください。</p>';
     $('schedLine').textContent = `${dateLabel(startDay)}から`;
@@ -136,7 +136,7 @@ function show(writeInputs) {
   const reach = p.routes ? Object.values(p.routes).filter(Boolean).map((r) => Math.ceil(r.days)) : [];
   const g = renderGsd(startDay, Math.max(60, ...reach));
   $('schedLine').textContent = `${dateLabel(startDay)}から・GSD ${g.count}回（${g.changed ? `${g.changed}回を直した` : '見込み'}）`;
-  $('needHint').textContent = `あと ${fmt(p.need)} EXP`;
+  renderFacts(th, th[st.level] + span - (st.toNext ?? span), p.need);
 
   const c = p.candy;
   if (!p.routes) {
@@ -170,6 +170,16 @@ function show(writeInputs) {
   const bestKey = ok.find(([k]) => Math.abs(R[k].days - best) < 1e-9);
   if (bestKey) setOut(`Lv.${st.target} に届く日（最短は${bestKey[1]}）`, dateBig(startDay + Math.ceil(best)), `始める日から ${plain(best)}`, c);
   else setOut(`Lv.${st.target} に届く日`, '—', '届きません', c);
+}
+
+// 目標までのEXPと、アメだけで上げるときのアメ・ゆめのかけら（手持ちの数・かけらの上限は見ない。ブーストは設定どおり）。
+function renderFacts(th, cum, need) {
+  const c = useCandy({ cum, th, target: st.target, nature: st.nature, candy: Infinity, boost: st.boost, boostLimit: st.boostLimit });
+  const cell = (label, value) => `<div><small>${label}</small><b>${value}</b></div>`;
+  $('lvFacts').innerHTML = cell('必要EXP', fmt(need))
+    + cell(st.boost === 'none' ? 'アメなら' : 'ブーストなら', `${fmt(c.used)}<span class="u">個</span>`)
+    + cell('ゆめのかけら', fmt(c.shards));
+  $('lvFacts').hidden = false;
 }
 
 // 結果のカードと下の帯。アメを使うときは、使う数・ゆめのかけらと、アメで届くレベルを出す。
