@@ -185,6 +185,16 @@ ok('途中で7日未満で引き取る（半分）', () => {
   assert.equal(p.routes.mix.tickets, 1);
 });
 
+// チケット2枚（14日分）で1回の預けが11日まで: 11日目で引き取っても残り3日分は次の預けで使う（無駄にならない）。
+ok('チケットの残りは引き取りをまたいで使う', () => {
+  const o = { expType: 600, level: 30, target: 45, nature: 'none', candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 2, napMax: 11, startDay: Date.UTC(2026, 9, 1) / 864e5 };
+  const p = plan(o), nap = p.routes.nap;
+  const want = 14 + (p.need - 14 * 600) / 150; // チケット14日分のあと、1日150
+  assert.ok(Math.abs(nap.days - want) <= 1 / 1440, `${nap.days} != ${want}`);
+  assert.equal(nap.tickets, 2);
+  assert.equal(nap.blocks.reduce((s, b) => s + b.ticketDays, 0), 14);
+});
+
 ok('預ける日数の上限（引き取って預け直す）', () => {
   const s0 = Date.UTC(2026, 9, 1) / 864e5;
   for (const [cap, c] of [[14, { target: 36, tickets: 0 }], [10, { target: 35, tickets: 1 }], [7, { target: 35, tickets: 0 }]]) {
