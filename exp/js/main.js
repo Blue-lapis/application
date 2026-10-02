@@ -3,8 +3,9 @@ import { requireLogin } from '../../checker/js/auth.js';
 import { MONS as BERRY } from '../../checker/js/berry/mons.js';
 import { MONS as ING } from '../../checker/js/ingredient/mons.js';
 import { MONS as SKILL } from '../../checker/js/skill/mons.js';
-import { EXP_TYPE_OF, EXP_TYPES, MAX_LEVEL } from './data.js';
-import { plan, thresholds, gsdSchedule } from './calc.js';
+import { initMonPicker, splitName, TYPE_LABELS } from '../../checker/js/monpick.js';
+import { EXP_TYPE_OF, EXP_TYPES, MAX_LEVEL, candyExp } from './data.js';
+import { plan, thresholds, gsdSchedule, sleepDay } from './calc.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Math.round(n).toLocaleString('ja-JP');
@@ -31,20 +32,39 @@ const dur = (days) => {
   return h ? `${d}<span class="u">日</span>${h}<span class="u">時間</span>` : `${d}<span class="u">日</span>`;
 };
 
-// ---- ポケモンの一覧（チェッカーの3タイプの最終進化形） ----
-const MONLIST = Object.entries({ ...BERRY, ...ING, ...SKILL })
-  .map(([key, m]) => ({ key, name: m.name, exp: EXP_TYPE_OF[key] || 600 }))
-  .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+// ---- ポケモン（チェッカーの3タイプの最終進化形）。選ぶダイアログはチェッカーと共通 ----
+const GROUPS = { berry: { ...TYPE_LABELS.berry, MONS: BERRY }, ingredient: { ...TYPE_LABELS.ingredient, MONS: ING }, skill: { ...TYPE_LABELS.skill, MONS: SKILL } };
+const ALL_MONS = { ...BERRY, ...ING, ...SKILL };
+const expOf = (key) => EXP_TYPE_OF[key] || 600;
+const chev = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
 
 function initMon() {
-  $('mon').innerHTML = '<option value="">（選ばない）</option>'
-    + MONLIST.map((m) => `<option value="${m.key}">${esc(m.name)}${m.exp !== 600 ? `（${m.exp}）` : ''}</option>`).join('');
-  $('mon').onchange = () => {
-    st.mon = $('mon').value;
-    const m = MONLIST.find((x) => x.key === st.mon);
-    if (m) st.expType = m.exp;
-    update();
-  };
+  const open = initMonPicker({
+    groups: GROUPS,
+    imgBase: '../checker/img/mon/',
+    current: () => st.mon,
+    onPick: (key) => { st.mon = key; st.expType = expOf(key); update(); },
+  });
+  $('monBtn').onclick = () => open('all', false);
+  $('monClear').onclick = () => { $('monDlg').close(); st.mon = ''; update(); };
+}
+
+// ポケモンのカード（チェッカーと同じ形）。選んでいないときは経験値タイプだけ出す。
+// タイプの色（きのみ=青・食材=緑・スキル=紫）をアクセントにする（チェッカーと同じ <html data-type>）。選んでいなければ食材の緑。
+const groupOf = (key) => Object.keys(GROUPS).find((t) => Object.hasOwn(GROUPS[t].MONS, key)) || null;
+function renderMon() {
+  const m = ALL_MONS[st.mon];
+  document.documentElement.dataset.type = (m && groupOf(st.mon)) || 'ingredient';
+  $('typeRow').hidden = !!m;
+  if (!m) {
+    $('monBtn').innerHTML = `<span class="ph" aria-hidden="true">?</span><span class="mb"><small class="mt">経験値 ${st.expType}タイプ</small><b>ポケモンを選ぶ</b><span class="go">選ぶと経験値タイプが決まります${chev}</span></span>`;
+    return;
+  }
+  const [base, form] = splitName(m.name);
+  $('monBtn').innerHTML = `<img src="../checker/img/mon/${st.mon}.webp" alt="" width="92" height="92"><span class="mb">`
+    + `<small class="mt">経験値 ${st.expType}タイプ</small>`
+    + `<b>${esc(base)}${form ? `<small class="form">${esc(form)}</small>` : ''}</b>`
+    + `<span class="go">ポケモンを変える${chev}</span></span>`;
 }
 
 // ---- 部品 ----
@@ -56,6 +76,7 @@ function seg(id, key, parse = (v) => v) {
 }
 const showSeg = (id, v) => $(id).querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === String(v))));
 
+// 数の入力。範囲外や小数のときは状態を変えない（入力中の値はそのまま残す）。empty を渡すと空欄をその値にする。
 function num(id, key, { min = 0, max = Infinity, empty = undefined } = {}) {
   $(id).addEventListener('input', () => {
     const raw = $(id).value.trim();
@@ -69,9 +90,8 @@ function num(id, key, { min = 0, max = Infinity, empty = undefined } = {}) {
 
 // ---- 表示 ----
 const ROUTES = [['mix', '組み合わせ'], ['nap', '島のみ'], ['sleep', '睡眠のみ']];
-const BOOST_LABEL = { mini: 'ミニアメブースト', full: 'アメブースト' };
-const INC_LABEL = { none: 'おこうなし', fullMoon: 'おこう: 満月の日', gsd: 'おこう: GSDの3日間', every2Days: 'おこう: 2日に1回', everyDay: 'おこう: 毎日' };
 const plain = (days) => dur(days).replace(/<[^>]+>/g, '');
+const dateBig = (day) => dateLabel(day).replace(/（(.)）/, '<small>（$1）</small>');
 let route = 'mix', planOpen = false; // 見ているタブと、予定をすべて出すか（保存しない）
 
 function show(writeInputs) {
@@ -84,9 +104,9 @@ function show(writeInputs) {
     $('napMax').value = st.napMax ?? '';
     $('boostLimit').value = st.boostLimit ?? '';
     $('start').value = st.start || todayStr();
-    $('mon').value = st.mon;
   }
   $('toNext').max = span;
+  renderMon();
   showSeg('typeSeg', st.expType);
   showSeg('natSeg', st.nature);
   showSeg('targetSeg', st.target);
@@ -96,35 +116,35 @@ function show(writeInputs) {
   $('bonusVal').textContent = st.bonus;
   $('bonusDown').disabled = st.bonus <= 0;
   $('bonusUp').disabled = st.bonus >= 5;
-  const m = MONLIST.find((x) => x.key === st.mon);
-  $('monImg').hidden = !m;
-  if (m) $('monImg').src = `../checker/img/mon/${m.key}.webp`;
-  $('monName').textContent = m ? m.name : 'ポケモンを選ぶ';
-  $('monType').textContent = `経験値 ${st.expType}タイプ`;
+  const startDay = dayOf(st.start || todayStr());
+  // 見出しの横は、おひるね島の「1日150 EXP」と同じ形で、1個・1晩あたりのEXP。
+  // アメは今のレベルでの1個（ブーストなら2倍）、睡眠はふつうの日の1晩（おこう・GSD なし）。
+  $('candyHint').textContent = `1個 ${fmt(candyExp(st.level, st.nature) * (st.boost === 'none' ? 1 : 2))} EXP`;
+  $('sleepHint').textContent = `1晩 ${fmt(sleepDay(-1e6, { score: st.score, bonus: st.bonus, incense: 'none', nature: st.nature, kindOf: () => 'normal' }).exp)} EXP`;
 
   if (!(st.level >= 1 && st.level < MAX_LEVEL && st.target > st.level && st.target <= MAX_LEVEL)) {
     $('needHint').textContent = '';
     $('rtabs').innerHTML = '';
     $('routeBody').innerHTML = '<p class="na">目標のレベルを今のレベルより上（70まで）にしてください。</p>';
-    setBar('—', '', null);
+    $('schedLine').textContent = `${dateLabel(startDay)}から`;
+    setOut('目標のレベルを確かめてください', '—', '', null);
     return;
   }
 
-  const startDay = dayOf(st.start || todayStr());
   const p = plan({ ...st, toNext: st.toNext ?? span, startDay });
   // グッドスリープデーの日程は、一番遅いルートが届くまで（最低60日）を出す。
   const reach = p.routes ? Object.values(p.routes).filter(Boolean).map((r) => Math.ceil(r.days)) : [];
   const g = renderGsd(startDay, Math.max(60, ...reach));
-  $('sumLine').textContent = `${st.boost !== 'none' ? `${BOOST_LABEL[st.boost]} ・ ` : ''}${INC_LABEL[st.incense]} ・ 島は${st.napMax ? `${st.napMax}日ごと` : '続けて'} ・ ${dateLabel(startDay)}から ・ GSD ${g.count}回（${g.changed ? `${g.changed}回を直した` : '見込み'}）`;
-  $('needHint').textContent = `必要 ${fmt(p.need)}`;
+  $('schedLine').textContent = `${dateLabel(startDay)}から・GSD ${g.count}回（${g.changed ? `${g.changed}回を直した` : '見込み'}）`;
+  $('needHint').textContent = `あと ${fmt(p.need)} EXP`;
 
   const c = p.candy;
   if (!p.routes) {
-    $('rtabs').innerHTML = '';
-    $('routeBody').innerHTML = `<p class="candy done">アメ ${fmt(c.used)}個${boostNote(c)}で Lv.${st.target} に届きます（あまるアメ ${fmt(st.candy - c.used)}個）。</p>`;
-    setBar(`アメだけで Lv.${st.target} に届く`, '今日', c);
+    $('planSec').hidden = true;
+    setOut(`Lv.${st.target} に届く日`, '今日', `アメだけで届きます（あまるアメ ${fmt(st.candy - c.used)}個）`, c);
     return;
   }
+  $('planSec').hidden = false;
 
   const R = p.routes;
   const ok = ROUTES.filter(([k]) => R[k]);
@@ -135,29 +155,33 @@ function show(writeInputs) {
   }).join('');
 
   const r = R[route];
-  const candyLine = c.used ? `<p class="candy">先にアメを ${fmt(c.used)}個${boostNote(c)}使って Lv.${c.level} へ。残り ${fmt(p.goal - c.cum)} EXP を稼ぎます。</p>` : '';
   if (!r) {
-    $('routeBody').innerHTML = `${candyLine}<p class="na">${route === 'sleep' && !st.score ? '睡眠スコアが0なので、睡眠EXPが入りません。' : '届きません（10年を超えます）。'}</p>`;
+    $('routeBody').innerHTML = `<p class="na">${route === 'sleep' && !st.score ? '睡眠スコアが0なので、睡眠EXPが入りません。' : '届きません（10年を超えます）。'}</p>`;
   } else {
     const notes = [`${dateLabel(startDay + Math.ceil(r.days))} ごろ`];
     if (st.incense !== 'none' && r.incense) notes.push(`おこう 約${Math.ceil(r.incense)}個`);
     if (r.tickets) notes.push(`チケット${r.tickets}枚`);
     const want = new Set([25, 30, 50, 60]);
     const ms = r.passed.filter((x) => want.has(x.level) && x.level < st.target && x.level > c.level);
-    const blocks = r.blocks;
-    $('routeBody').innerHTML = candyLine
-      + `<p class="rnote">${notes.join(' ・ ')}</p>`
+    $('routeBody').innerHTML = `<p class="rnote">${notes.join(' ・ ')}</p>`
       + (ms.length ? `<p class="ms">${ms.map((x) => `<span>Lv.${x.level} <b>${dateLabel(startDay + Math.ceil(x.days))}</b></span>`).join('')}</p>` : '')
-      + planList(blocks, startDay);
+      + planList(r.blocks, startDay);
   }
   const bestKey = ok.find(([k]) => Math.abs(R[k].days - best) < 1e-9);
-  setBar(bestKey ? `Lv.${st.target} に届く日（最短: ${bestKey[1]}）` : '届きません', bestKey ? `${dateLabel(startDay + Math.ceil(best)).replace(/（(.)）/, '<small>（$1）</small>')}<em>${plain(best)}</em>` : '—', c);
+  if (bestKey) setOut(`Lv.${st.target} に届く日（最短は${bestKey[1]}）`, dateBig(startDay + Math.ceil(best)), `始める日から ${plain(best)}`, c);
+  else setOut(`Lv.${st.target} に届く日`, '—', '届きません', c);
 }
 
-// アメブーストで使った個数（全部がブーストなら「すべてブースト」）。
-const boostNote = (c) => (!c.boosted ? '' : c.boosted === c.used ? `（すべて${BOOST_LABEL[st.boost]}）` : `（うち${BOOST_LABEL[st.boost]} ${fmt(c.boosted)}個）`);
-
-function setBar(cap, date, c) {
+// 結果のカードと下の帯。アメを使うときは、使う数・ゆめのかけらと、アメで届くレベルを出す。
+function setOut(cap, date, sub, c) {
+  $('oCap').textContent = cap;
+  $('oDate').innerHTML = date;
+  $('oSub').textContent = sub;
+  $('oCandy').innerHTML = c && c.used
+    ? `<div><small>使うアメ</small><b>${fmt(c.used)}<span class="u">個</span></b>${c.boosted ? `<small>${c.boosted === c.used ? 'すべてブースト' : `うちブースト ${fmt(c.boosted)}`}</small>` : ''}</div>`
+      + `<div><small>ゆめのかけら</small><b>${fmt(c.shards)}</b></div><div><small>アメで</small><b>Lv.${c.level}</b></div>`
+    : '';
+  $('oCandy').hidden = !(c && c.used);
   $('bCap').textContent = cap;
   $('bDate').innerHTML = date;
   $('bCandy').textContent = c ? fmt(c.used) : '0';
@@ -174,14 +198,14 @@ function renderGsd(startDay, days) {
   $('gsdList').innerHTML = list.map((g) => {
     const cls = g.off ? 'off' : g.shift ? 'chg' : '';
     const label = g.off
-      ? `${range(g.est)}<small>なし（見込みの満月の日 ${dateLabel(g.est)}）</small>`
-      : `${range(g.full)}<small>満月の日 ${dateLabel(g.full)}${g.shift ? `（見込みから${g.shift > 0 ? '＋' : '−'}${Math.abs(g.shift)}日）` : ''}</small>`;
+      ? `<b>${range(g.est)}</b><small>なし（見込みの満月の日 ${dateLabel(g.est)}）</small>`
+      : `<b>${range(g.full)}</b><small>満月の日 ${dateLabel(g.full)}${g.shift ? `（見込みから${g.shift > 0 ? '＋' : '−'}${Math.abs(g.shift)}日）` : ''}</small>`;
     const btns = g.off
       ? `<button type="button" data-est="${g.est}" data-a="on">戻す</button>`
       : `<button type="button" data-est="${g.est}" data-a="-1" aria-label="1日前にずらす"${g.shift <= -MAX_SHIFT ? ' disabled' : ''}>−1日</button>`
         + `<button type="button" data-est="${g.est}" data-a="1" aria-label="1日後にずらす"${g.shift >= MAX_SHIFT ? ' disabled' : ''}>＋1日</button>`
         + `<button type="button" data-est="${g.est}" data-a="off">なし</button>`;
-    return `<li class="${cls}"><span>${label}</span><div class="gsd-act">${btns}</div></li>`;
+    return `<li class="${cls}"><span class="gd">${label}</span><span class="gsd-act">${btns}</span></li>`;
   }).join('');
   return { count: list.filter((g) => !g.off).length, changed };
 }
@@ -201,23 +225,26 @@ function initGsd() {
   $('gsdReset').onclick = () => { st.gsd = {}; update(); };
 }
 
-// 予定の一覧。島は1回の預けごとに「1回目」「2回目」と出す。長いときは最初の3つだけ出し、「ほか○つを見る」で残りを出す。
-const PLAN_SHOW = 3;
+// 予定の一覧（日付・何をするか・稼ぐEXP）。島は1回の預けごとに「1回目」「2回目」と出す。
+// 長いときは最初の PLAN_SHOW 個だけ出し、「ほか○つを見る」で残りを出す。
+const PLAN_SHOW = 4;
 function planList(blocks, startDay) {
   let nth = 0;
   const rows = blocks.map((b) => {
-    const from = dateLabel(startDay + b.from).replace(/（.）/, ''), len = plain(b.days);
-    if (b.mode === 'sleep') return `<li><span class="m m-sleep">チームで寝る</span><span>${from}の夜から ${len}</span><span class="x">${fmt(b.exp)}</span></li>`;
+    const d = dateLabel(startDay + b.from).replace(/（(.)）/, '<small>$1</small>'), len = plain(b.days);
+    if (b.mode === 'sleep') {
+      return `<li class="k-sleep"><span class="pd">${d}</span><span class="pm"><b>チームで寝る</b><small>その夜から ${b.days === 1 ? '1晩' : `${len}`}</small></span><span class="x">${fmt(b.exp)}</span></li>`;
+    }
     const tags = [];
-    if (b.ticketDays) tags.push(`チケット${plain(b.ticketDays)}`);
-    if (b.eve) tags.push(`${len}目の夕方に引き取り、その夜から寝る`);
-    if (b.half) tags.push(`7日未満で引き取る（貯まる ${fmt(b.raw)} → 半分）`);
-    return `<li><span class="m m-nap">島 ${++nth}回目</span><span>${from}から ${len}${tags.length ? `<br><small>${tags.join('・')}</small>` : ''}</span><span class="x">${fmt(b.exp)}</span></li>`;
+    if (b.ticketDays) tags.push(`<em class="t-tk">チケット${plain(b.ticketDays)}</em>`);
+    if (b.eve) tags.push('<em>夕方に引き取って寝る</em>');
+    if (b.half) tags.push(`<em class="t-half">7日未満で半分（${fmt(b.raw)}→）</em>`);
+    return `<li class="k-nap"><span class="pd">${d}</span><span class="pm"><b>島に預ける <i>${++nth}回目</i></b><small>${len}${tags.join('')}</small></span><span class="x">${fmt(b.exp)}</span></li>`;
   });
   const hidden = rows.length - PLAN_SHOW;
   const shown = planOpen || hidden <= 0 ? rows : rows.slice(0, PLAN_SHOW);
-  const more = hidden > 0 ? `<li class="more"><button type="button" id="planMore">${planOpen ? '最初の3つだけにする' : `ほか${hidden}つを見る ›`}</button></li>` : '';
-  return `<ol class="plan-list" aria-label="予定（右は稼ぐEXP）">${shown.join('')}${more}</ol>`;
+  const more = hidden > 0 ? `<button type="button" class="planmore" id="planMore">${planOpen ? '最初の4つだけにする' : `ほか${hidden}つを見る`}</button>` : '';
+  return `<ol class="plan-list" aria-label="予定（右は稼ぐEXP）">${shown.join('')}</ol>${more}`;
 }
 
 function update(writeInputs = true) {
@@ -259,27 +286,30 @@ requireLogin().then(() => {
   seg('natSeg', 'nature');
   seg('incSeg', 'incense');
   seg('boostSeg', 'boost');
+  seg('targetSeg', 'target', Number);
   $('bonusDown').onclick = () => { st.bonus = Math.max(0, st.bonus - 1); update(); };
   $('bonusUp').onclick = () => { st.bonus = Math.min(5, st.bonus + 1); update(); };
-  $('targetSeg').querySelectorAll('button').forEach((b) => { b.type = 'button'; b.onclick = () => { st.target = Number(b.dataset.v); update(); }; });
   // 今のレベルを変えたら「次のレベルまで」はそのレベルの必要量（貯まっていない）に戻す。
   $('level').addEventListener('input', () => { const v = Number($('level').value); if (Number.isInteger(v) && v >= 1 && v < MAX_LEVEL) { st.level = v; st.toNext = null; update(false); $('toNext').value = thresholds(st.expType)[v + 1] - thresholds(st.expType)[v]; } });
   num('toNext', 'toNext', { min: 1, empty: null });
   num('target', 'target', { min: 2, max: MAX_LEVEL });
   num('candy', 'candy', { max: 9999 });
   num('shardCap', 'shardCap', { empty: null });
-  num('napMax', 'napMax', { min: 7, max: 365, empty: null });
   num('boostLimit', 'boostLimit', { max: 99999, empty: null });
+  num('napMax', 'napMax', { min: 7, max: 365, empty: null });
   num('score', 'score', { max: 100 });
   num('tickets', 'tickets', { max: 99 });
   $('start').onchange = () => { st.start = $('start').value; update(); };
   $('rtabs').onclick = (e) => { const b = e.target.closest('button[data-r]'); if (b) { route = b.dataset.r; planOpen = false; show(false); } };
   $('routeBody').onclick = (e) => { if (e.target.closest('#planMore')) { planOpen = !planOpen; show(false); } };
-  const dlg = $('moreDlg');
-  $('moreTop').onclick = $('moreBtn').onclick = () => dlg.showModal();
-  $('moreClose').onclick = () => dlg.close();
+  const dlg = $('schedDlg');
+  $('schedTop').onclick = $('schedBtn').onclick = () => dlg.showModal();
+  $('schedClose').onclick = () => dlg.close();
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // 外側を押したら閉じる
+  // 下の帯は、結果のカードが画面の外にあるときだけ出す（チェッカーと同じ）。
+  new IntersectionObserver(([e]) => $('bar').classList.toggle('away', e.isIntersecting)).observe($('outSec'));
   if (!EXP_TYPES[st.expType]) st.expType = 600;
   if (!['none', 'mini', 'full'].includes(st.boost)) st.boost = 'none';
+  if (st.mon && !ALL_MONS[st.mon]) st.mon = '';
   update();
 });

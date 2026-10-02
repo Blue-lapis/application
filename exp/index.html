@@ -21,86 +21,122 @@
   <input type="password" id="loginPw" name="password" autocomplete="current-password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required>
   <p class="loginmsg" id="loginMsg" role="status"></p>
   <button type="submit">ログイン</button>
-  <p class="ver">試作版 v0.6</p>
+  <p class="ver">試作版 v0.7</p>
 </form>
 
 <div class="appbar">
   <div class="appbar-in">
     <span class="brand"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18M9 17l2-2 2 1 3-3"/></svg>育成日数シミュレーター</span>
-    <div class="appbar-act"><a class="icon" href="../checker/" aria-label="厳選チェッカーを開く" title="厳選チェッカー"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></a><button type="button" class="icon" id="moreTop" aria-haspopup="dialog" aria-label="詳細の設定を開く" title="詳細"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button><button type="button" class="icon" id="themeBtn"></button></div>
+    <div class="appbar-act"><a class="icon" href="../checker/" aria-label="厳選チェッカーを開く" title="厳選チェッカー"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></a><button type="button" class="icon" id="schedTop" aria-haspopup="dialog" aria-label="日程（始める日・グッドスリープデー）を開く" title="日程"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg></button><button type="button" class="icon" id="themeBtn"></button></div>
   </div>
 </div>
 
 <main>
-  <!-- よく変えるものだけを画面に出し、あまり変えないもの（かけらの上限・始める日・アメブースト・おこう・経験値タイプ・グッドスリープデー）は「詳細」に置く。 -->
-  <section class="mon">
-    <div class="monbtn">
-      <img id="monImg" alt="" width="44" height="44">
-      <div class="mb"><b id="monName"></b><small id="monType"></small></div>
-      <span class="go">変える ›</span>
-      <select id="mon" aria-label="ポケモン"></select>
-    </div>
-    <div class="seg" role="group" aria-label="性格のEXP補正" id="natSeg"><button data-v="up">▲ EXPアップ</button><button data-v="none">性格の補正なし</button><button data-v="down">▼ EXPダウン</button></div>
-  </section>
+  <!-- 入力はテーマごとのカード（ポケモン・レベル・アメ・睡眠・おひるね島・日程）。部品はチェッカーと同じ（theme.css）。
+       広い画面では入力を左、結果を右に並べる。 -->
+  <div class="col-in">
+    <section class="mon">
+      <button type="button" class="monbtn" id="monBtn" aria-haspopup="dialog"></button>
+      <div class="mon-opt">
+        <div class="prow" id="typeRow"><span>経験値タイプ</span><div class="seg" role="group" aria-label="経験値タイプ" id="typeSeg"><button data-v="600">600</button><button data-v="900">900</button><button data-v="1080">1080</button><button data-v="1320">1320</button></div></div>
+        <div class="prow"><span>性格のEXP補正</span><div class="seg" role="group" aria-label="性格のEXP補正" id="natSeg"><button data-v="up">▲ アップ</button><button data-v="none">なし</button><button data-v="down">▼ ダウン</button></div></div>
+      </div>
+    </section>
 
-  <section class="lv">
-    <div class="lvrow">
-      <label>今のLv<input type="number" id="level" min="1" max="69" step="1" inputmode="numeric"></label>
-      <span class="arrow" aria-hidden="true">→</span>
-      <label>目標Lv<input type="number" id="target" min="2" max="70" step="1" inputmode="numeric" class="goal"></label>
-      <label class="grow">次のLvまで（EXP）<input type="number" id="toNext" min="1" step="1" inputmode="numeric"></label>
-    </div>
-    <div class="qrow"><span>目標</span><div class="lvseg" role="group" aria-label="目標のレベル" id="targetSeg"><button data-v="25">25</button><button data-v="30">30</button><button data-v="50">50</button><button data-v="60">60</button><button data-v="70">70</button></div><span id="needHint"></span></div>
-  </section>
+    <section class="lv">
+      <div class="sec-head"><h2>レベル</h2><span class="hint" id="needHint"></span></div>
+      <div class="lvpair">
+        <label class="lvbox"><small>今</small><input type="number" id="level" min="1" max="69" step="1" inputmode="numeric" aria-label="今のレベル"></label>
+        <span class="arrow" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
+        <label class="lvbox goal"><small>目標</small><input type="number" id="target" min="2" max="70" step="1" inputmode="numeric" aria-label="目標のレベル"></label>
+      </div>
+      <div class="lvseg" role="group" aria-label="目標のレベルを選ぶ" id="targetSeg"><span>目標</span><button data-v="25">25</button><button data-v="30">30</button><button data-v="50">50</button><button data-v="60">60</button><button data-v="70">70</button></div>
+      <div class="nums">
+        <label class="num"><span>次のレベルまで<small>ゲームの「次のレベルまで」の数</small></span><span class="iu"><input type="number" id="toNext" min="1" step="1" inputmode="numeric"><i>EXP</i></span></label>
+      </div>
+    </section>
 
-  <section class="cond">
-    <label>アメ<input type="number" id="candy" min="0" max="9999" step="1" inputmode="numeric"></label>
-    <label>チケット<input type="number" id="tickets" min="0" max="99" step="1" inputmode="numeric"></label>
-    <label>睡眠スコア<input type="number" id="score" min="0" max="100" step="1" inputmode="numeric"></label>
-    <div class="stepper"><span>EXPボーナス</span><div><button type="button" id="bonusDown" aria-label="睡眠EXPボーナスを1減らす">−</button><b id="bonusVal"></b><button type="button" id="bonusUp" aria-label="睡眠EXPボーナスを1増やす">＋</button></div></div>
-    <button type="button" class="sum" id="moreBtn" aria-haspopup="dialog"><span id="sumLine"></span><b>詳細 ›</b></button>
-  </section>
+    <section class="candy-sec">
+      <div class="sec-head"><h2>アメ</h2><span class="hint" id="candyHint"></span></div>
+      <div class="nums">
+        <label class="num"><span>使えるアメ</span><span class="iu"><input type="number" id="candy" min="0" max="9999" step="1" inputmode="numeric"><i>個</i></span></label>
+        <label class="num"><span>ゆめのかけらの上限<small>空欄なら上限なし</small></span><span class="iu"><input type="number" id="shardCap" min="0" step="1000" inputmode="numeric" placeholder="なし"><i>&nbsp;</i></span></label>
+      </div>
+      <div class="prow"><span>アメブースト<small>イベントの期間だけ。アメのEXPが2倍</small></span><div class="seg" role="group" aria-label="アメブースト" id="boostSeg"><button data-v="none">なし</button><button data-v="mini">ミニ<small>かけら×4</small></button><button data-v="full">通常<small>かけら×5</small></button></div></div>
+      <div class="nums" id="boostLimitRow"><label class="num"><span>ブーストで使う数<small>空欄ならすべて。残りはふつうに使う</small></span><span class="iu"><input type="number" id="boostLimit" min="0" step="50" inputmode="numeric" placeholder="すべて"><i>個</i></span></label></div>
+    </section>
 
-  <section class="res">
-    <div class="rtabs" role="tablist" aria-label="育て方" id="rtabs"></div>
-    <div id="routeBody" aria-live="polite"></div>
-  </section>
+    <section class="sleep-sec">
+      <div class="sec-head"><h2>睡眠</h2><span class="hint" id="sleepHint"></span></div>
+      <div class="nums">
+        <label class="num"><span>睡眠スコア</span><span class="iu"><input type="number" id="score" min="0" max="100" step="1" inputmode="numeric"><i>点</i></span></label>
+        <div class="num"><span>睡眠EXPボーナス<small>チームの数</small></span><div class="step"><button type="button" id="bonusDown" aria-label="睡眠EXPボーナスを1減らす">−</button><b id="bonusVal"></b><button type="button" id="bonusUp" aria-label="睡眠EXPボーナスを1増やす">＋</button></div></div>
+      </div>
+      <div class="prow"><span>せいちょうのおこう</span><div class="chips inc" role="group" aria-label="せいちょうのおこう" id="incSeg"><button class="chip" data-v="none">使わない</button><button class="chip" data-v="fullMoon">満月の日</button><button class="chip" data-v="gsd">GSDの3日</button><button class="chip" data-v="every2Days">2日に1回</button><button class="chip" data-v="everyDay">毎日</button></div></div>
+    </section>
 
-  <footer class="foot">
-    <p class="note">数値はにとよんツールと Pokémon Sleep 攻略・検証 Wiki を参考にしています。グッドスリープデーは満月の日から出した見込みで、「詳細」で直せます。</p>
-    <div class="foot-row"><span class="ver">育成日数シミュレーター 試作版 v0.6</span><a class="back" href="../checker/">厳選チェッカーへ</a></div>
-  </footer>
+    <section class="nap-sec">
+      <div class="sec-head"><h2>おひるね島</h2><span class="hint">1日150 EXP・チケットで600</span></div>
+      <div class="nums">
+        <label class="num"><span>リラックスチケット<small>1枚7日。引き取っても残りは次に使う</small></span><span class="iu"><input type="number" id="tickets" min="0" max="99" step="1" inputmode="numeric"><i>枚</i></span></label>
+        <label class="num"><span>続けて預ける上限<small>ものひろいの箱があふれないように。空欄なら上限なし</small></span><span class="iu"><input type="number" id="napMax" min="7" max="365" step="1" inputmode="numeric" placeholder="なし"><i>日</i></span></label>
+      </div>
+    </section>
+
+    <section class="sched-sec">
+      <button type="button" class="rowbtn" id="schedBtn" aria-haspopup="dialog"><span><b>日程</b><small id="schedLine"></small></span><span class="go">変える<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+    </section>
+  </div>
+
+  <div class="col-in">
+    <section class="out" id="outSec">
+      <span class="o-label" id="oCap"></span>
+      <b class="o-all" id="oDate">—</b>
+      <span class="o-sub" id="oSub"></span>
+      <div class="o-candy" id="oCandy"></div>
+    </section>
+
+    <section class="plan-sec" id="planSec">
+      <div class="sec-head"><h2>育て方</h2><span class="hint">右は稼ぐEXP</span></div>
+      <div class="rtabs" role="tablist" aria-label="育て方" id="rtabs"></div>
+      <div id="routeBody" aria-live="polite"></div>
+    </section>
+
+    <footer class="foot">
+      <p class="credit">数値はにとよんツールと Pokémon Sleep 攻略・検証 Wiki を参考にしています。グッドスリープデーは満月の日から出した見込みで、「日程」で直せます。ゲーム画像の著作権は ©Pokémon. ©Nintendo/Creatures Inc./GAME FREAK inc. ©SELECT BUTTON inc. に帰属します。</p>
+      <div class="foot-row"><span class="ver">育成日数シミュレーター 試作版 v0.7</span><a class="back" href="../checker/">厳選チェッカーへ</a></div>
+    </footer>
+  </div>
 </main>
 
-<!-- 結果の要約。いつも画面の下に出す。 -->
-<div class="bar" id="bar" role="status" aria-live="polite">
+<!-- 結果の要約。結果のカードが画面の外にあるときだけ下に出す。 -->
+<div class="bar away" id="bar" role="status" aria-live="polite">
   <div class="bar-in">
     <div class="bmain"><small id="bCap"></small><b id="bDate">—</b></div>
     <div class="bside"><span>アメ <b id="bCandy">0</b></span><span>かけら <b id="bShards">0</b></span></div>
   </div>
 </div>
 
-<dialog class="sheet" id="moreDlg" aria-labelledby="moreTitle">
+<!-- ポケモンを選ぶダイアログ。チェッカーと同じもの（checker/js/monpick.js）。 -->
+<dialog class="sheet" id="monDlg" aria-labelledby="monTitle">
   <div class="dlg-in">
-    <h2 id="moreTitle" tabindex="-1" autofocus>詳細</h2>
-    <div class="dgrid">
-      <label>ゆめのかけらの上限<input type="number" id="shardCap" min="0" step="1000" inputmode="numeric" placeholder="なし"></label>
-      <label>始める日<input type="date" id="start"></label>
-      <label>島に続けて預ける上限（日）<input type="number" id="napMax" min="7" max="365" step="1" inputmode="numeric" placeholder="なし"></label>
-    </div>
-    <p class="note">ものひろいの箱がいっぱいにならないよう、上限の日数で引き取ってすぐ預け直します（預け直すと7日の数えはやり直し）。空欄なら上限なしで続けて預けます。島から寝る生活に戻る日は、夕方まで預けて引き取ります（起きている15時間30分ぶん多く貯まる）。</p>
-    <h3>アメブースト<small>イベントの期間だけ</small></h3>
-    <div class="seg" role="group" aria-label="アメブースト" id="boostSeg"><button data-v="none">なし</button><button data-v="mini">ミニ（かけら4倍）</button><button data-v="full">通常（かけら5倍）</button></div>
-    <div class="dgrid" id="boostLimitRow"><label>ブーストで使える数（個）<input type="number" id="boostLimit" min="0" step="50" inputmode="numeric" placeholder="なし"></label></div>
-    <p class="note">アメ1個のEXPが2倍になります。上限の数まではブーストで使い、残りのアメはふつうに使います（イベントの残り日数×1日の上限を入れてください）。</p>
-    <h3>せいちょうのおこう</h3>
-    <div class="chips3" role="group" aria-label="せいちょうのおこう" id="incSeg"><button data-v="none">使わない</button><button data-v="fullMoon">満月の日だけ</button><button data-v="gsd">GSDの3日間</button><button data-v="every2Days">2日に1回</button><button data-v="everyDay">毎日</button></div>
-    <h3>経験値タイプ<small>ポケモンを選ぶと決まります</small></h3>
-    <div class="seg" role="group" aria-label="経験値タイプ" id="typeSeg"><button data-v="600">600</button><button data-v="900">900</button><button data-v="1080">1080</button><button data-v="1320">1320</button></div>
-    <h3>グッドスリープデーの日程<small id="gsdSum"></small></h3>
-    <p class="note">満月の日を中心にした3日間（GSD）。まん中の満月の日は睡眠EXPが3倍、前後の日は2倍です。公式のお知らせと違うときは、ずらすか、なしにしてください。</p>
+    <h2 id="monTitle" tabindex="-1" autofocus>ポケモンを選ぶ</h2>
+    <div class="monq-w"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" class="monq" id="monQ" placeholder="名前で探す" aria-label="ポケモンの名前で探す" autocomplete="off" enterkeyhint="done"></div>
+    <div class="monf" id="monFilter" role="group" aria-label="タイプで絞り込む"></div>
+    <div class="monlist" id="monGrid"></div>
+    <p class="note" id="monNone" hidden>見つかりませんでした</p>
+    <div class="dlg-foot"><button type="button" class="txt" id="monClear">選ばない</button><button type="button" class="primary" id="monClose">閉じる</button></div>
+  </div>
+</dialog>
+
+<dialog class="sheet" id="schedDlg" aria-labelledby="schedTitle">
+  <div class="dlg-in">
+    <h2 id="schedTitle" tabindex="-1" autofocus>日程</h2>
+    <div class="nums"><label class="num"><span>始める日<small>開くたびに今日に戻ります</small></span><input type="date" id="start"></label></div>
+    <h3>グッドスリープデー<small id="gsdSum"></small></h3>
+    <p class="note">満月の日を中心にした3日間（GSD）。満月の日は睡眠EXPが3倍、前後の日は2倍です。公式のお知らせと違うときは、ずらすか、なしにしてください。</p>
     <ul id="gsdList"></ul>
-    <div class="dlg-foot"><button type="button" class="txt" id="gsdReset">日程を見込みに戻す</button><button type="button" class="primary" id="moreClose">閉じる</button></div>
+    <div class="dlg-foot"><button type="button" class="txt" id="gsdReset">見込みに戻す</button><button type="button" class="primary" id="schedClose">閉じる</button></div>
   </div>
 </dialog>
 

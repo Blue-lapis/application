@@ -1,105 +1,130 @@
-/* 育成日数シミュレーターの見た目。色・文字・部品（カード・下の帯・ダイアログ）はチェッカーの theme.css を使い、
-   ここではこのページの配置だけを書く。スマートフォン1画面に入力と結果がほぼ収まるように詰める。 */
-main{padding-top:6px;padding-left:12px;padding-right:12px}
-main>section{padding:10px 12px;margin-bottom:10px;border-radius:18px}
+/* 育成日数シミュレーターの見た目。色・文字・部品（カード・見出し・.seg・.chip・.num・.step・結果のカード・下の帯・ダイアログ）は
+   チェッカーの theme.css をそのまま使い、ここではこのページだけの配置を書く。
+   どの幅でも横にスクロールしないよう、横に並ぶものには min-width:0 を付け、入りきらないときは折り返す。 */
+html,body{overflow-x:hidden}
+main{padding-left:12px;padding-right:12px}
 .brand{white-space:nowrap;font-size:.95rem}
-.n,#needHint,.lvrow input,.cond input,.stepper b,.rtabs small,.plan-list .x,.bar b,.dgrid input,.lvseg button{font-family:var(--font-num);font-variant-numeric:tabular-nums}
-input[type="number"],input[type="date"]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;box-sizing:border-box;height:40px;font-size:1rem;font-weight:600;min-width:0}
-input:invalid{border-color:var(--tail)}
+.col-in{min-width:0}
+section{padding:16px 14px}
+.sec-head{margin-bottom:10px}
+.sec-head .hint{font-family:var(--font-num)}
 
-/* ポケモン。カード全体がボタンで、透明な select を重ねて端末の一覧で選ぶ。 */
-section.mon{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
-.monbtn{position:relative;display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:12px;background:var(--psy-soft)}
-.monbtn img{width:44px;height:44px;object-fit:contain;flex:none;background:var(--card);border-radius:10px}
-.monbtn .mb{flex:1;min-width:0;display:flex;flex-direction:column;gap:0}
-.monbtn b{font-size:1.05rem;font-weight:800;line-height:1.3}
-.monbtn small{font-size:.7rem;font-weight:700;color:var(--psy-ink)}
-.monbtn .go{font-size:.7rem;font-weight:700;color:var(--muted)}
-.monbtn select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px}
-.monbtn:has(select:focus-visible){outline:3px solid var(--psy);outline-offset:2px}
-section.mon .seg{padding:3px}
-section.mon .seg button{min-height:36px;font-size:.75rem}
+/* 入力の行（チェッカーの詳細と同じ .num）。左に名前と補足、右に数と単位。 */
+.nums{display:flex;flex-direction:column;gap:10px}
+.nums+.prow,.prow+.nums,.nums+.nums{margin-top:12px}
+.num{min-width:0}
+.num>span:first-child{display:flex;flex-direction:column;gap:1px;min-width:0}
+.num small,.prow>span small{display:block;font-size:.66rem;font-weight:500;color:var(--muted);line-height:1.4}
+.num input{font-family:var(--font-num);font-weight:600;flex:none}
+.iu{display:flex;align-items:center;gap:6px;flex:none}
+.iu i{font-style:normal;font-size:.75rem;font-weight:700;color:var(--muted);min-width:1.6em}
+.num input[type="date"]{width:auto;max-width:11.5em;min-width:0;text-align:left;font-size:.95rem;padding:9px 10px}
+.prow{min-width:0}
+.prow>span{display:flex;flex-direction:column}
+.seg button{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.seg button small{display:block;font-size:.62rem;font-weight:600;line-height:1.1;color:var(--muted)}
+.seg button[aria-pressed="true"] small{color:var(--psy-ink)}
+.seg:has(button small) button{display:flex;flex-direction:column;align-items:center;justify-content:center}
+.step b{font-family:var(--font-num);font-size:1.1rem;width:1.6em;text-align:center}
 
-/* レベル。今・目標・次のレベルまでを1行に。 */
-section.lv{display:flex;flex-direction:column;gap:8px}
-.lvrow{display:flex;align-items:flex-end;gap:8px}
-.lvrow label,.cond label,.dgrid label{display:flex;flex-direction:column;gap:2px;font-size:.68rem;font-weight:700;color:var(--muted)}
-.lvrow input{width:64px;text-align:center;font-size:1.05rem}
-.lvrow input.goal{border:1.5px solid var(--psy);background:var(--card);font-weight:700}
-.lvrow .grow{flex:1;min-width:0}
-.lvrow .grow input{width:100%}
-.lvrow .arrow{padding-bottom:10px;font-weight:800;color:var(--muted)}
-.qrow{display:flex;align-items:center;justify-content:space-between;gap:6px}
-.qrow>span:first-child{font-size:.68rem;font-weight:700;color:var(--muted)}
-.qrow .lvseg{gap:6px}
-.qrow .lvseg button{width:36px;height:36px;font-size:.8rem}
-#needHint{font-size:.68rem;font-weight:700;color:var(--muted);white-space:nowrap}
+/* ポケモン。カードと選ぶダイアログはチェッカーと同じ。選んでいないときは画像の代わりに「?」。 */
+.monbtn .ph{width:92px;height:92px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--card);color:var(--muted);font-family:var(--font-num);font-size:2rem;font-weight:700}
+.mon-opt{display:flex;flex-direction:column;gap:12px;padding:14px 14px 16px;border-top:1px solid var(--line)}
 
-/* 条件。2列で、最後の行が「詳細」の要約。 */
-section.cond{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
-.cond label{flex-direction:row;align-items:center;justify-content:space-between;font-size:.75rem;color:var(--ink)}
-.cond input{width:72px;height:36px;text-align:right;padding:0 8px;font-size:.95rem}
-.stepper{display:flex;align-items:center;justify-content:space-between;font-size:.75rem;font-weight:700}
-.stepper div{display:flex;align-items:center;gap:2px}
-.stepper button{font:inherit;width:30px;height:36px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);cursor:pointer;padding:0}
-.stepper button:disabled{opacity:.4;cursor:default}
-.stepper b{width:22px;text-align:center;font-size:.95rem;font-weight:600}
-.sum{grid-column:1/-1;font:inherit;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:36px;padding:6px 0 0;border:0;border-top:1px dashed var(--line);background:none;color:var(--muted);font-size:.7rem;font-weight:600;text-align:left;cursor:pointer}
-.sum b{flex:none;color:var(--psy-ink);font-weight:800}
+/* レベル。今 → 目標 を大きく、その下に目標の早見と「次のレベルまで」。 */
+.lvpair{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px}
+.lvbox{display:flex;align-items:center;gap:8px;min-width:0;padding:6px 12px;border:1px solid var(--line);border-radius:14px;background:var(--bg)}
+.lvbox small{font-size:.75rem;font-weight:800;color:var(--muted);flex:none}
+.lvbox input{flex:1;min-width:0;width:100%;font:inherit;font-family:var(--font-num);font-size:1.6rem;font-weight:600;text-align:right;color:var(--ink);background:none;border:0;padding:2px 0;outline:none}
+.lvbox:focus-within{outline:3px solid var(--psy);outline-offset:1px}
+.lvbox.goal{background:var(--psy-soft);border-color:var(--psy)}
+.lvbox.goal small{color:var(--psy-ink)}
+.lvpair .arrow{color:var(--muted);display:flex}
+section.lv .lvseg{margin:12px 0 14px;align-items:center;justify-content:space-between}
+section.lv .lvseg>span{font-size:.75rem;font-weight:700;color:var(--muted);margin-right:auto}
+section.lv .lvseg button{width:44px;flex:none}
+@media (max-width:359px){section.lv .lvseg{gap:4px}section.lv .lvseg button{width:40px;height:40px}}
 
-/* 結果。育て方はタブで1つずつ見る。 */
-section.res{display:flex;flex-direction:column;gap:8px;padding-bottom:12px}
-.rtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
-.rtabs button{font:inherit;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;min-height:48px;padding:2px;font-size:.7rem;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative}
-.rtabs button small{font-size:.82rem;font-weight:600;color:var(--muted)}
+/* おこう。5つを3列で折り返す。 */
+.chips.inc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.chips.inc .chip{min-height:44px;font-size:.78rem;padding:0 2px;min-width:0}
+
+/* 日程。1行のボタンで、押すとダイアログ。 */
+section.sched-sec{padding:0;overflow:hidden}
+.rowbtn{font:inherit;color:var(--ink);background:none;border:0;cursor:pointer;width:100%;min-height:60px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;text-align:left}
+.rowbtn>span:first-child{display:flex;flex-direction:column;min-width:0}
+.rowbtn b{font-size:1rem;font-weight:800}
+.rowbtn small{font-size:.72rem;font-weight:600;color:var(--muted)}
+.rowbtn .go{flex:none;display:inline-flex;align-items:center;gap:2px;font-size:.82rem;font-weight:800;color:var(--psy-ink)}
+
+/* 結果。チェッカーの期待値のカードと同じ形で、届く日を大きく。下にアメの使い方。 */
+section.out{padding:18px 16px}
+.o-all{font-family:var(--font-num);font-size:2.4rem}
+.o-all small{font-size:.5em;font-weight:700}
+.o-sub{display:block;margin-top:2px;font-size:.8rem;font-weight:700;color:var(--psy-ink)}
+.o-candy{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.o-candy div{display:flex;flex-direction:column;gap:2px;padding:0 8px;border-left:1px solid var(--line);min-width:0}
+.o-candy div:first-child{border-left:none;padding-left:0}
+.o-candy small{font-size:.64rem;font-weight:700;color:var(--muted);line-height:1.3}
+.o-candy b{font-family:var(--font-num);font-size:1.05rem;font-weight:600}
+
+/* 育て方。3つのルートをタブで切り替え、予定を日付つきの一覧で出す。 */
+.rtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px}
+.rtabs button{font:inherit;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;min-height:54px;padding:4px 2px;font-size:.75rem;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;min-width:0}
+.rtabs button small{font-family:var(--font-num);font-size:.85rem;font-weight:600;color:var(--muted)}
 .rtabs button[aria-selected="true"]{background:var(--psy);border-color:var(--psy);color:#fff}
 .rtabs button[aria-selected="true"] small{color:#fff}
-.rtabs button.best::after{content:"最短";position:absolute;top:-7px;right:4px;font-size:.55rem;font-weight:800;color:var(--psy-ink);background:var(--psy-soft);border:1px solid var(--psy);border-radius:999px;padding:0 5px;line-height:1.5}
-.candy{font-size:.72rem;font-weight:700;color:var(--muted);margin:0;line-height:1.6}
-.candy.done{background:var(--psy-soft);color:var(--psy-ink);border-radius:12px;padding:10px 12px;font-size:.82rem}
-.rnote{font-size:.72rem;font-weight:700;color:var(--muted);margin:0;line-height:1.6}
-.na{font-size:.85rem;font-weight:700;color:var(--muted);margin:0}
+.rtabs button.best::after{content:"最短";position:absolute;top:-8px;right:6px;font-size:.58rem;font-weight:800;color:var(--psy-ink);background:var(--psy-soft);border:1px solid var(--psy);border-radius:999px;padding:0 6px;line-height:1.5}
+.rnote{font-size:.75rem;font-weight:700;color:var(--muted);margin:0 0 6px}
+.ms{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.ms span{font-size:.7rem;font-weight:700;color:var(--muted);background:var(--bg);border-radius:999px;padding:3px 10px}
+.ms b{font-family:var(--font-jp);color:var(--ink)}
+.na{font-size:.85rem;font-weight:700;color:var(--muted);margin:4px 0}
 .plan-list{list-style:none;margin:0;padding:0}
-.plan-list li{display:grid;grid-template-columns:78px 1fr auto;gap:6px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.75rem;font-weight:600;line-height:1.4}
-.plan-list li:last-child{border-bottom:0}
-.plan-list .m{font-weight:800}
-.plan-list .m-nap{color:var(--blue-ink)}
-.plan-list .m-sleep{color:var(--gold-ink)}
-.plan-list .x{color:var(--muted);text-align:right}
-.plan-list .more{grid-template-columns:1fr}
-.plan-list .more button{font:inherit;border:0;background:none;color:var(--psy-ink);font-weight:800;font-size:.75rem;text-align:left;padding:0;min-height:32px;cursor:pointer}
-.ms{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.7rem;font-weight:700;color:var(--muted);margin:0}
-.ms b{color:var(--ink);font-family:var(--font-num)}
+.plan-list li{display:grid;grid-template-columns:3.4em minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--line-soft)}
+.plan-list li:first-child{border-top:none}
+.pd{font-family:var(--font-num);font-size:.85rem;font-weight:600;line-height:1.3;padding-left:9px;position:relative}
+.pd small{display:block;font-family:var(--font-jp);font-size:.62rem;font-weight:700;color:var(--muted)}
+.pd::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:3px;border-radius:2px;background:var(--line)}
+.k-nap .pd::before{background:var(--blue-ink)}
+.k-sleep .pd::before{background:var(--gold-ink)}
+.pm{display:flex;flex-direction:column;gap:3px;min-width:0}
+.pm b{font-size:.85rem;font-weight:800}
+.pm b i{font-style:normal;font-family:var(--font-num);font-size:.72rem;font-weight:600;color:var(--muted);margin-left:2px}
+.pm small{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-family:var(--font-num);font-size:.75rem;font-weight:600;color:var(--muted)}
+.pm em{font-style:normal;font-family:var(--font-jp);font-size:.64rem;font-weight:800;border-radius:999px;padding:1px 8px;background:var(--line-soft);color:var(--white-ink)}
+.pm em.t-tk{background:var(--blue-badge);color:var(--blue-ink)}
+.pm em.t-half{background:var(--gold-badge);color:var(--gold-ink)}
+.plan-list .x{font-family:var(--font-num);font-size:.9rem;font-weight:600;text-align:right}
+.planmore{font:inherit;width:100%;min-height:44px;margin-top:6px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font-size:.8rem;font-weight:800;cursor:pointer}
 
-/* 下の帯。最短で届く日と、使うアメ・ゆめのかけら。 */
-.bar-in{display:flex;align-items:center;gap:12px}
-.bmain{flex:1;min-width:0;display:flex;flex-direction:column}
-.bmain small{font-size:.62rem;font-weight:700;color:var(--night-muted)}
-.bmain b{font-size:1.3rem;white-space:normal;line-height:1.25}
-.bmain b small{display:inline;font-family:var(--font-jp);font-size:.6em;font-weight:700;color:var(--night-muted)}
-.bmain b em{font-style:normal;font-size:.8rem;margin-left:8px;color:var(--night-muted)}
-.bside{flex:none;display:flex;flex-direction:column;align-items:flex-end;font-size:.62rem;font-weight:700;color:var(--night-muted);padding-right:6px}
-.bside b{font-size:.82rem;color:var(--night-ink)}
-
-/* 詳細のダイアログ。 */
-.dgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
-.dgrid input{width:100%;padding:0 10px}
-#moreDlg h3{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-#moreDlg h3 small{font-size:.66rem;font-weight:600;letter-spacing:0;color:var(--muted)}
-.chips3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
-.chips3 button{font:inherit;min-height:40px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:.72rem;font-weight:700;cursor:pointer}
-.chips3 button[aria-pressed="true"]{background:var(--psy);border-color:var(--psy);color:#fff}
-#moreDlg .seg button{min-height:36px}
-#gsdList{list-style:none;margin:6px 0 0;padding:0}
-#gsdList li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px dashed var(--line)}
-#gsdList li>span{font-size:.78rem;font-weight:700;line-height:1.4}
-#gsdList li>span small{display:block;font-size:.66rem;font-weight:500;color:var(--muted)}
-#gsdList li.chg>span{color:var(--psy-ink)}
-#gsdList li.off>span{color:var(--muted);text-decoration:line-through}
-.gsd-act{display:flex;gap:4px;flex:none}
-.gsd-act button{font:inherit;font-size:.7rem;font-weight:700;min-width:44px;min-height:36px;padding:0 6px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
-.gsd-act button:disabled{opacity:.4;cursor:default}
+/* フッター。 */
 .back{font-size:.75rem;font-weight:700;color:var(--psy-ink)}
-@media (max-width:360px){.lvrow input{width:54px}.cond input{width:60px}.plan-list li{grid-template-columns:70px 1fr auto}}
-.plan-list li small{display:block;font-size:.68rem;font-weight:600;color:var(--muted)}
-#boostLimitRow[hidden]{display:none}
+
+/* 下の帯。結果のカードが画面の外にあるときだけ、届く日とアメ・かけらを出す。 */
+.bar-in{display:flex;justify-content:space-between;align-items:center}
+.bmain{display:flex;flex-direction:column;min-width:0}
+.bmain small{font-size:.68rem;font-weight:700;color:var(--night-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bmain b small{font-size:.6em}
+.bside{display:flex;flex-direction:column;align-items:flex-end;gap:0;white-space:nowrap;font-size:.68rem;font-weight:700;color:var(--night-muted);flex:none;padding-right:8px}
+.bside b{font-size:.95rem}
+
+/* 日程のダイアログ。グッドスリープデーは1回1行で、日付と −1日・＋1日・なし。狭い画面では日付の下にボタンを回す。 */
+#gsdList{list-style:none;margin:8px 0 0;padding:0}
+#gsdList li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;padding:10px 0;border-top:1px solid var(--line-soft)}
+#gsdList li:first-child{border-top:none}
+.gd{display:flex;flex-direction:column;min-width:0;flex:1 1 11em}
+.gd b{font-size:.85rem;font-weight:800}
+.gd small{font-size:.66rem;font-weight:600;color:var(--muted)}
+#gsdList li.off .gd b{color:var(--muted);text-decoration:line-through}
+#gsdList li.chg .gd small{color:var(--psy-ink)}
+.gsd-act{display:flex;gap:4px;flex:none;margin-left:auto}
+.gsd-act button{font:inherit;min-width:44px;min-height:40px;padding:0 8px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:.75rem;font-weight:700;cursor:pointer}
+.gsd-act button:disabled{opacity:.35;cursor:default}
+#schedDlg h3 small{margin-left:8px;font-weight:600;color:var(--muted);letter-spacing:0}
+
+/* 広い画面では入力を左、結果を右に並べる（チェッカーと同じ）。結果は上に貼りつける。 */
+@media (min-width:960px){
+  main>.col-in:last-child{position:sticky;top:12px}
+}
+.bmain b{white-space:nowrap;display:flex;align-items:baseline;gap:2px}

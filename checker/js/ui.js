@@ -9,6 +9,7 @@ import { HEAL_AMT, HEAL_TIMES, TEAM_OTHERS, FIELD_BONUS, PARAM_LIMITS } from './
 import { boostedEnergy } from './berry/calc.js';
 import { energyAt } from './engine.js';
 import { ingIcon } from './ingicons.js';
+import { initMonPicker, splitName } from './monpick.js';
 import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLabel } from './picker.js';
 import {
   state, monData, loadSettings, setCamp, setLevel, setLvOpen, setMon, setType, setTarget, setNature, resetSelection,
@@ -23,26 +24,7 @@ const chipHtml = (v, label, pressed, dis, cls) =>
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 // ポケモンの画像。img/mon/ はゲーム内のメニュー画像を切り詰めたもの。
 const monSrc = (key) => `img/mon/${key}.webp`;
-// 名前検索の正規化。全角半角・大文字小文字をそろえ、ひらがなはカタカナにする。
-// loose はさらに濁点・半濁点と小さい字の違い、長音記号を無視する。
-const SMALL = { ァ: 'ア', ィ: 'イ', ゥ: 'ウ', ェ: 'エ', ォ: 'オ', ッ: 'ツ', ャ: 'ヤ', ュ: 'ユ', ョ: 'ヨ', ヮ: 'ワ' };
-const norm = (s) => s.normalize('NFKC').toLowerCase().replace(/[\s・()（）]/g, '')
-  .replace(/[\u3041-\u3096]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
-const loose = (s) => norm(s).normalize('NFD').replace(/[\u3099\u309a]/g, '').normalize('NFC')
-  .replace(/[ァィゥェォッャュョヮ]/g, (c) => SMALL[c]).replace(/ー/g, '');
-// 文字が順番どおりに含まれているか（「ふしばな」→フシギバナ）。
-const inOrder = (q, s) => { let i = 0; for (const c of s) if (c === q[i]) i += 1; return i === q.length; };
-// 一致の度合い。小さいほど上に出す。一致しなければ null。
-function matchRank(q, name, key) {
-  const n = norm(name), lq = loose(q), ln = loose(name);
-  if (n.startsWith(norm(q))) return 0;
-  if (n.includes(norm(q))) return 1;
-  if (ln.includes(lq) || key.includes(norm(q))) return 2;
-  if (inOrder(lq, ln)) return 3;
-  return null;
-}
-// 「キュウコン(アローラのすがた)」を名前と姿に分ける。
-const splitName = (name) => name.match(/^([^(]+)(?:\((.+)\))?$/).slice(1);
+// 「キュウコン(アローラのすがた)」を名前と姿に分けるのは monpick.js の splitName。
 const def = () => TYPES[state.type];
 // ダイアログの注記で使う、そのタイプの順位の基準。
 const METRIC = { berry: 'きのみエナジー', ingredient: '食材の個数', skill: 'スキルの発動回数' };
@@ -120,46 +102,15 @@ export function initUI(engines) {
     next.click();
     next.focus();
   });
-  // カードから開いたときは今のタイプに、虫めがねから開いたときは「すべて」に絞り込んでおく。
-  const openMon = (search) => {
-    $('monQ').value = '';
-    monFilter = search ? 'all' : state.type;
-    renderMonDlg();
-    $('monDlg').showModal();
-    $('monGrid').querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: 'center' });
-    // タブの横の虫めがねから開いたときは、すぐ名前を入れられるようにする（3タイプから探す）。
-    if (search) $('monQ').focus();
-  };
-  $('monBtn').onclick = () => openMon(false);
-  $('searchBtn').onclick = () => openMon(true);
-  $('monClose').onclick = () => $('monDlg').close();
-  $('monDlg').addEventListener('click', (e) => { if (e.target === $('monDlg')) $('monDlg').close(); });
-  const pickMon = (key) => {
-    hideToast();
-    setMon(key);
-    syncUrl();
-    $('monDlg').close();
-    refresh(engines);
-  };
-  $('monQ').addEventListener('input', renderMonDlg);
-  // Enter で一番上の候補を選ぶ。
-  // Enter で一番よく一致する候補を選ぶ（名前を入れていないときは一番上）。
-  $('monQ').addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' || e.isComposing) return;
-    const b = $('monGrid').querySelector('button[data-best]') || $('monGrid').querySelector('button');
-    if (b) { e.preventDefault(); pickMon(b.dataset.v); }
+  // カードから開いたときは今のタイプに、虫めがねから開いたときは「すべて」に絞り込んでおく（すぐ名前を入れられるようにする）。
+  const openMon = initMonPicker({
+    groups: TYPES,
+    imgBase: 'img/mon/',
+    current: () => state.mon,
+    onPick: (key) => { hideToast(); setMon(key); syncUrl(); refresh(engines); },
   });
-  $('monGrid').addEventListener('click', (e) => {
-    const b = e.target.closest('button');
-    if (!b) return;
-    pickMon(b.dataset.v);
-  });
-  $('monFilter').addEventListener('click', (e) => {
-    const b = e.target.closest('button');
-    if (!b) return;
-    monFilter = b.dataset.f;
-    renderMonDlg();
-  });
+  $('monBtn').onclick = () => openMon(state.type);
+  $('searchBtn').onclick = () => openMon('all', true);
 
   initParams(engines);
   $('lvxHead').onclick = () => { setLvOpen(!state.lvOpen); renderLvList(engines); };
@@ -361,39 +312,6 @@ function initDialogs(engines) {
     $('natDlg').close();
     refresh(engines);
   });
-}
-
-// ポケモンの一覧。タイプの絞り込み（すべて・きのみ・食材・スキル）と名前で探し、タイプごとの見出しの下に並べる。
-// 名前を入れたら一致の度合いの順に並べ、絞り込みのボタンにはそれぞれの件数を出す。
-let monFilter = 'all';
-function renderMonDlg() {
-  const q = $('monQ').value.trim();
-  const found = Object.fromEntries(Object.entries(TYPES).map(([t, d]) => {
-    let list = Object.entries(d.MONS).map(([k, m], i) => ({ k, m, i, rank: 0 }));
-    if (q) {
-      list = list.map((x) => ({ ...x, rank: matchRank(q, x.m.name, x.k) })).filter((x) => x.rank !== null)
-        .sort((a, b) => a.rank - b.rank || a.i - b.i);
-    }
-    return [t, list];
-  }));
-  const count = (t) => (t === 'all' ? Object.values(found).reduce((n, l) => n + l.length, 0) : found[t].length);
-  $('monFilter').innerHTML = ['all', ...Object.keys(TYPES)].map((t) => `<button type="button" data-f="${t}" aria-pressed="${t === monFilter}">`
-    + `${t === 'all' ? 'すべて' : `<i class="d-${t}"></i>${TYPES[t].short}`}${q ? `<small>${count(t)}</small>` : ''}</button>`).join('');
-  const shown = (monFilter === 'all' ? Object.keys(TYPES) : [monFilter]).filter((t) => found[t].length);
-  // Enter で選ぶ候補は、表示している中で一番よく一致するもの。
-  const best = q ? shown.flatMap((t) => found[t]).reduce((a, x) => (!a || x.rank < a.rank ? x : a), null) : null;
-  $('monGrid').innerHTML = shown.map((t) => `<h3 class="monsec"><i class="d-${t}"></i>${TYPES[t].label}<span>${found[t].length}</span></h3>`
-    + `<div class="mongrid">${found[t].map(({ k, m }) => {
-      const [base, form] = splitName(m.name);
-      return `<button data-v="${k}" aria-pressed="${k === state.mon}"${best && best.k === k ? ' data-best' : ''}><img src="${monSrc(k)}" alt="" width="56" height="56" loading="lazy">`
-        + `<span>${esc(base)}</span>${form ? `<small>${esc(form)}</small>` : ''}</button>`;
-    }).join('')}</div>`).join('');
-  // 絞り込んだタイプにいなくても、ほかのタイプにいればそう伝える。
-  const others = count('all');
-  $('monNone').hidden = shown.length > 0;
-  $('monNone').textContent = monFilter !== 'all' && others
-    ? `${TYPES[monFilter].label}には見つかりませんでした（「すべて」で${others}匹）`
-    : '見つかりませんでした';
 }
 
 function openSub(i) {
