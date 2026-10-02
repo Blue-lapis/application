@@ -101,3 +101,5 @@ section.res{display:flex;flex-direction:column;gap:8px;padding-bottom:12px}
 .gsd-act button:disabled{opacity:.4;cursor:default}
 .back{font-size:.75rem;font-weight:700;color:var(--psy-ink)}
 @media (max-width:360px){.lvrow input{width:54px}.cond input{width:60px}.plan-list li{grid-template-columns:70px 1fr auto}}
+.plan-list li small{display:block;font-size:.68rem;font-weight:600;color:var(--muted)}
+#boostLimitRow[hidden]{display:none}

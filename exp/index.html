@@ -21,7 +21,7 @@
   <input type="password" id="loginPw" name="password" autocomplete="current-password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required>
   <p class="loginmsg" id="loginMsg" role="status"></p>
   <button type="submit">ログイン</button>
-  <p class="ver">試作版 v0.5</p>
+  <p class="ver">試作版 v0.6</p>
 </form>
 
 <div class="appbar">
@@ -32,7 +32,7 @@
 </div>
 
 <main>
-  <!-- よく変えるものだけを画面に出し、あまり変えないもの（かけらの上限・始める日・おこう・経験値タイプ・グッドスリープデー）は「詳細」に置く。 -->
+  <!-- よく変えるものだけを画面に出し、あまり変えないもの（かけらの上限・始める日・アメブースト・おこう・経験値タイプ・グッドスリープデー）は「詳細」に置く。 -->
   <section class="mon">
     <div class="monbtn">
       <img id="monImg" alt="" width="44" height="44">
@@ -68,7 +68,7 @@
 
   <footer class="foot">
     <p class="note">数値はにとよんツールと Pokémon Sleep 攻略・検証 Wiki を参考にしています。グッドスリープデーは満月の日から出した見込みで、「詳細」で直せます。</p>
-    <div class="foot-row"><span class="ver">育成日数シミュレーター 試作版 v0.5</span><a class="back" href="../checker/">厳選チェッカーへ</a></div>
+    <div class="foot-row"><span class="ver">育成日数シミュレーター 試作版 v0.6</span><a class="back" href="../checker/">厳選チェッカーへ</a></div>
   </footer>
 </main>
 
@@ -88,7 +88,11 @@
       <label>始める日<input type="date" id="start"></label>
       <label>島に続けて預ける上限（日）<input type="number" id="napMax" min="7" max="365" step="1" inputmode="numeric" placeholder="なし"></label>
     </div>
-    <p class="note">ものひろいの箱がいっぱいにならないよう、上限の日数で引き取ってすぐ預け直します（預け直すと7日の数えはやり直し）。空欄なら上限なしで続けて預けます。</p>
+    <p class="note">ものひろいの箱がいっぱいにならないよう、上限の日数で引き取ってすぐ預け直します（預け直すと7日の数えはやり直し）。空欄なら上限なしで続けて預けます。島から寝る生活に戻る日は、夕方まで預けて引き取ります（起きている15時間30分ぶん多く貯まる）。</p>
+    <h3>アメブースト<small>イベントの期間だけ</small></h3>
+    <div class="seg" role="group" aria-label="アメブースト" id="boostSeg"><button data-v="none">なし</button><button data-v="mini">ミニ（かけら4倍）</button><button data-v="full">通常（かけら5倍）</button></div>
+    <div class="dgrid" id="boostLimitRow"><label>ブーストで使える数（個）<input type="number" id="boostLimit" min="0" step="50" inputmode="numeric" placeholder="なし"></label></div>
+    <p class="note">アメ1個のEXPが2倍になります。上限の数まではブーストで使い、残りのアメはふつうに使います（イベントの残り日数×1日の上限を入れてください）。</p>
     <h3>せいちょうのおこう</h3>
     <div class="chips3" role="group" aria-label="せいちょうのおこう" id="incSeg"><button data-v="none">使わない</button><button data-v="fullMoon">満月の日だけ</button><button data-v="gsd">GSDの3日間</button><button data-v="every2Days">2日に1回</button><button data-v="everyDay">毎日</button></div>
     <h3>経験値タイプ<small>ポケモンを選ぶと決まります</small></h3>

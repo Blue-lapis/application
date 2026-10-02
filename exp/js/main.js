@@ -12,7 +12,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 // ---- 状態と保存 ----
 const KEY = 'expsim';
-const DEFAULTS = { mon: '', expType: 600, nature: 'none', level: 10, toNext: null, target: 50, candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, start: '', gsd: {}, napMax: 14 };
+const DEFAULTS = { mon: '', expType: 600, nature: 'none', level: 10, toNext: null, target: 50, candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, start: '', gsd: {}, napMax: 14, boost: 'none', boostLimit: null };
 let st = { ...DEFAULTS, gsd: {} };
 try { Object.assign(st, JSON.parse(localStorage.getItem(KEY)) || {}); } catch { /* storage unavailable */ }
 if (!st.gsd || typeof st.gsd !== 'object' || Array.isArray(st.gsd)) st.gsd = {};
@@ -69,6 +69,7 @@ function num(id, key, { min = 0, max = Infinity, empty = undefined } = {}) {
 
 // ---- 表示 ----
 const ROUTES = [['mix', '組み合わせ'], ['nap', '島のみ'], ['sleep', '睡眠のみ']];
+const BOOST_LABEL = { mini: 'ミニアメブースト', full: 'アメブースト' };
 const INC_LABEL = { none: 'おこうなし', fullMoon: 'おこう: 満月の日', gsd: 'おこう: GSDの3日間', every2Days: 'おこう: 2日に1回', everyDay: 'おこう: 毎日' };
 const plain = (days) => dur(days).replace(/<[^>]+>/g, '');
 let route = 'mix', planOpen = false; // 見ているタブと、予定をすべて出すか（保存しない）
@@ -81,6 +82,7 @@ function show(writeInputs) {
     $('toNext').value = st.toNext ?? span;
     $('shardCap').value = st.shardCap ?? '';
     $('napMax').value = st.napMax ?? '';
+    $('boostLimit').value = st.boostLimit ?? '';
     $('start').value = st.start || todayStr();
     $('mon').value = st.mon;
   }
@@ -89,6 +91,8 @@ function show(writeInputs) {
   showSeg('natSeg', st.nature);
   showSeg('targetSeg', st.target);
   showSeg('incSeg', st.incense);
+  showSeg('boostSeg', st.boost);
+  $('boostLimitRow').hidden = st.boost === 'none';
   $('bonusVal').textContent = st.bonus;
   $('bonusDown').disabled = st.bonus <= 0;
   $('bonusUp').disabled = st.bonus >= 5;
@@ -111,13 +115,13 @@ function show(writeInputs) {
   // グッドスリープデーの日程は、一番遅いルートが届くまで（最低60日）を出す。
   const reach = p.routes ? Object.values(p.routes).filter(Boolean).map((r) => Math.ceil(r.days)) : [];
   const g = renderGsd(startDay, Math.max(60, ...reach));
-  $('sumLine').textContent = `${INC_LABEL[st.incense]} ・ 島は${st.napMax ? `${st.napMax}日ごと` : '続けて'} ・ ${dateLabel(startDay)}から ・ GSD ${g.count}回（${g.changed ? `${g.changed}回を直した` : '見込み'}）`;
+  $('sumLine').textContent = `${st.boost !== 'none' ? `${BOOST_LABEL[st.boost]} ・ ` : ''}${INC_LABEL[st.incense]} ・ 島は${st.napMax ? `${st.napMax}日ごと` : '続けて'} ・ ${dateLabel(startDay)}から ・ GSD ${g.count}回（${g.changed ? `${g.changed}回を直した` : '見込み'}）`;
   $('needHint').textContent = `必要 ${fmt(p.need)}`;
 
   const c = p.candy;
   if (!p.routes) {
     $('rtabs').innerHTML = '';
-    $('routeBody').innerHTML = `<p class="candy done">アメだけで Lv.${st.target} に届きます（あまるアメ ${fmt(st.candy - c.used)}個）。</p>`;
+    $('routeBody').innerHTML = `<p class="candy done">アメ ${fmt(c.used)}個${boostNote(c)}で Lv.${st.target} に届きます（あまるアメ ${fmt(st.candy - c.used)}個）。</p>`;
     setBar(`アメだけで Lv.${st.target} に届く`, '今日', c);
     return;
   }
@@ -131,7 +135,7 @@ function show(writeInputs) {
   }).join('');
 
   const r = R[route];
-  const candyLine = c.used ? `<p class="candy">先にアメを ${fmt(c.used)}個使って Lv.${c.level} へ。残り ${fmt(p.goal - c.cum)} EXP を稼ぎます。</p>` : '';
+  const candyLine = c.used ? `<p class="candy">先にアメを ${fmt(c.used)}個${boostNote(c)}使って Lv.${c.level} へ。残り ${fmt(p.goal - c.cum)} EXP を稼ぎます。</p>` : '';
   if (!r) {
     $('routeBody').innerHTML = `${candyLine}<p class="na">${route === 'sleep' && !st.score ? '睡眠スコアが0なので、睡眠EXPが入りません。' : '届きません（10年を超えます）。'}</p>`;
   } else {
@@ -149,6 +153,9 @@ function show(writeInputs) {
   const bestKey = ok.find(([k]) => Math.abs(R[k].days - best) < 1e-9);
   setBar(bestKey ? `Lv.${st.target} に届く日（最短: ${bestKey[1]}）` : '届きません', bestKey ? `${dateLabel(startDay + Math.ceil(best)).replace(/（(.)）/, '<small>（$1）</small>')}<em>${plain(best)}</em>` : '—', c);
 }
+
+// アメブーストで使った個数（全部がブーストなら「すべてブースト」）。
+const boostNote = (c) => (!c.boosted ? '' : c.boosted === c.used ? `（すべて${BOOST_LABEL[st.boost]}）` : `（うち${BOOST_LABEL[st.boost]} ${fmt(c.boosted)}個）`);
 
 function setBar(cap, date, c) {
   $('bCap').textContent = cap;
@@ -194,17 +201,18 @@ function initGsd() {
   $('gsdReset').onclick = () => { st.gsd = {}; update(); };
 }
 
-// 予定の一覧。長いときは最初の3つだけ出し、「ほか○つを見る」で残りを出す。
+// 予定の一覧。島は1回の預けごとに「1回目」「2回目」と出す。長いときは最初の3つだけ出し、「ほか○つを見る」で残りを出す。
 const PLAN_SHOW = 3;
 function planList(blocks, startDay) {
+  let nth = 0;
   const rows = blocks.map((b) => {
     const from = dateLabel(startDay + b.from).replace(/（.）/, ''), len = plain(b.days);
     if (b.mode === 'sleep') return `<li><span class="m m-sleep">チームで寝る</span><span>${from}の夜から ${len}</span><span class="x">${fmt(b.exp)}</span></li>`;
-    // 引き取りの回数は、日数を上限で割った切り上げ（1日あたりのEXPは同じなので、少ない回数で同じだけ貯まる）。
-    const times = st.napMax ? Math.ceil(b.days / st.napMax - 1e-9) : 1;
-    const tk = (times > 1 ? `・${times}回に分けて預ける` : '') + (b.ticketDays ? '・チケット' : '');
-    if (b.half) return `<li><span class="m m-nap">島に預ける</span><span>${from}から ${len}${tk}<br>7日未満で引き取る（貯まる ${fmt(b.raw)} → 半分）</span><span class="x">${fmt(b.exp)}</span></li>`;
-    return `<li><span class="m m-nap">島に預ける</span><span>${from}から ${len}${tk}</span><span class="x">${fmt(b.exp)}</span></li>`;
+    const tags = [];
+    if (b.ticketDays) tags.push(`チケット${plain(b.ticketDays)}`);
+    if (b.eve) tags.push(`${len}目の夕方に引き取り、その夜から寝る`);
+    if (b.half) tags.push(`7日未満で引き取る（貯まる ${fmt(b.raw)} → 半分）`);
+    return `<li><span class="m m-nap">島 ${++nth}回目</span><span>${from}から ${len}${tags.length ? `<br><small>${tags.join('・')}</small>` : ''}</span><span class="x">${fmt(b.exp)}</span></li>`;
   });
   const hidden = rows.length - PLAN_SHOW;
   const shown = planOpen || hidden <= 0 ? rows : rows.slice(0, PLAN_SHOW);
@@ -250,6 +258,7 @@ requireLogin().then(() => {
   seg('typeSeg', 'expType', Number);
   seg('natSeg', 'nature');
   seg('incSeg', 'incense');
+  seg('boostSeg', 'boost');
   $('bonusDown').onclick = () => { st.bonus = Math.max(0, st.bonus - 1); update(); };
   $('bonusUp').onclick = () => { st.bonus = Math.min(5, st.bonus + 1); update(); };
   $('targetSeg').querySelectorAll('button').forEach((b) => { b.type = 'button'; b.onclick = () => { st.target = Number(b.dataset.v); update(); }; });
@@ -260,6 +269,7 @@ requireLogin().then(() => {
   num('candy', 'candy', { max: 9999 });
   num('shardCap', 'shardCap', { empty: null });
   num('napMax', 'napMax', { min: 7, max: 365, empty: null });
+  num('boostLimit', 'boostLimit', { max: 99999, empty: null });
   num('score', 'score', { max: 100 });
   num('tickets', 'tickets', { max: 99 });
   $('start').onchange = () => { st.start = $('start').value; update(); };
@@ -270,5 +280,6 @@ requireLogin().then(() => {
   $('moreClose').onclick = () => dlg.close();
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // 外側を押したら閉じる
   if (!EXP_TYPES[st.expType]) st.expType = 600;
+  if (!['none', 'mini', 'full'].includes(st.boost)) st.boost = 'none';
   update();
 });
