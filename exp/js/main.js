@@ -12,7 +12,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 // ---- 状態と保存 ----
 const KEY = 'expsim';
-const DEFAULTS = { mon: '', expType: 600, nature: 'none', level: 10, toNext: null, target: 50, candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, start: '', gsd: {} };
+const DEFAULTS = { mon: '', expType: 600, nature: 'none', level: 10, toNext: null, target: 50, candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, start: '', gsd: {}, napMax: 14 };
 let st = { ...DEFAULTS, gsd: {} };
 try { Object.assign(st, JSON.parse(localStorage.getItem(KEY)) || {}); } catch { /* storage unavailable */ }
 if (!st.gsd || typeof st.gsd !== 'object' || Array.isArray(st.gsd)) st.gsd = {};
@@ -80,6 +80,7 @@ function show(writeInputs) {
     for (const k of ['level', 'target', 'candy', 'score', 'tickets']) $(k).value = st[k];
     $('toNext').value = st.toNext ?? span;
     $('shardCap').value = st.shardCap ?? '';
+    $('napMax').value = st.napMax ?? '';
     $('start').value = st.start || todayStr();
     $('mon').value = st.mon;
   }
@@ -110,7 +111,7 @@ function show(writeInputs) {
   // グッドスリープデーの日程は、一番遅いルートが届くまで（最低60日）を出す。
   const reach = p.routes ? Object.values(p.routes).filter(Boolean).map((r) => Math.ceil(r.days)) : [];
   const g = renderGsd(startDay, Math.max(60, ...reach));
-  $('sumLine').textContent = `${INC_LABEL[st.incense]} ・ ${dateLabel(startDay)}から ・ GSD ${g.count}回（${g.changed ? `${g.changed}回を直した` : '見込み'}）`;
+  $('sumLine').textContent = `${INC_LABEL[st.incense]} ・ 島は${st.napMax ? `${st.napMax}日ごと` : '続けて'} ・ ${dateLabel(startDay)}から ・ GSD ${g.count}回（${g.changed ? `${g.changed}回を直した` : '見込み'}）`;
   $('needHint').textContent = `必要 ${fmt(p.need)}`;
 
   const c = p.candy;
@@ -132,16 +133,14 @@ function show(writeInputs) {
   const r = R[route];
   const candyLine = c.used ? `<p class="candy">先にアメを ${fmt(c.used)}個使って Lv.${c.level} へ。残り ${fmt(p.goal - c.cum)} EXP を稼ぎます。</p>` : '';
   if (!r) {
-    $('routeBody').innerHTML = `${candyLine}<p class="na">届きません（10年、または島に預けられる1年を超えます）。</p>`;
+    $('routeBody').innerHTML = `${candyLine}<p class="na">${route === 'sleep' && !st.score ? '睡眠スコアが0なので、睡眠EXPが入りません。' : '届きません（10年を超えます）。'}</p>`;
   } else {
     const notes = [`${dateLabel(startDay + Math.ceil(r.days))} ごろ`];
     if (st.incense !== 'none' && r.incense) notes.push(`おこう 約${Math.ceil(r.incense)}個`);
     if (r.tickets) notes.push(`チケット${r.tickets}枚`);
     const want = new Set([25, 30, 50, 60]);
     const ms = r.passed.filter((x) => want.has(x.level) && x.level < st.target && x.level > c.level);
-    const blocks = route === 'mix' ? r.blocks
-      : route === 'nap' ? [{ mode: 'nap', from: 0, days: r.days, exp: r.exp, raw: r.raw, half: r.half, ticketDays: Math.min(r.days, st.tickets * 7) }]
-        : [{ mode: 'sleep', from: 0, days: r.days, exp: r.need }];
+    const blocks = r.blocks;
     $('routeBody').innerHTML = candyLine
       + `<p class="rnote">${notes.join(' ・ ')}</p>`
       + (ms.length ? `<p class="ms">${ms.map((x) => `<span>Lv.${x.level} <b>${dateLabel(startDay + Math.ceil(x.days))}</b></span>`).join('')}</p>` : '')
@@ -201,7 +200,9 @@ function planList(blocks, startDay) {
   const rows = blocks.map((b) => {
     const from = dateLabel(startDay + b.from).replace(/（.）/, ''), len = plain(b.days);
     if (b.mode === 'sleep') return `<li><span class="m m-sleep">チームで寝る</span><span>${from}の夜から ${len}</span><span class="x">${fmt(b.exp)}</span></li>`;
-    const tk = b.ticketDays ? '・チケット' : '';
+    // 引き取りの回数は、日数を上限で割った切り上げ（1日あたりのEXPは同じなので、少ない回数で同じだけ貯まる）。
+    const times = st.napMax ? Math.ceil(b.days / st.napMax - 1e-9) : 1;
+    const tk = (times > 1 ? `・${times}回に分けて預ける` : '') + (b.ticketDays ? '・チケット' : '');
     if (b.half) return `<li><span class="m m-nap">島に預ける</span><span>${from}から ${len}${tk}<br>7日未満で引き取る（貯まる ${fmt(b.raw)} → 半分）</span><span class="x">${fmt(b.exp)}</span></li>`;
     return `<li><span class="m m-nap">島に預ける</span><span>${from}から ${len}${tk}</span><span class="x">${fmt(b.exp)}</span></li>`;
   });
@@ -258,6 +259,7 @@ requireLogin().then(() => {
   num('target', 'target', { min: 2, max: MAX_LEVEL });
   num('candy', 'candy', { max: 9999 });
   num('shardCap', 'shardCap', { empty: null });
+  num('napMax', 'napMax', { min: 7, max: 365, empty: null });
   num('score', 'score', { max: 100 });
   num('tickets', 'tickets', { max: 99 });
   $('start').onchange = () => { st.start = $('start').value; update(); };
