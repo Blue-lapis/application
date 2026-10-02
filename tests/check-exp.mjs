@@ -195,6 +195,16 @@ ok('チケットの残りは引き取りをまたいで使う', () => {
   assert.equal(nap.blocks.reduce((s, b) => s + b.ticketDays, 0), 14);
 });
 
+// チケット2枚・1回11日まで。必要 9,000: 11日（6,600）→ 7日（3日×600＋4日×150 = 2,400）で18日。
+// 必要 7,500: 11日（6,600）→ 3日で引き取る（1,800 の半分で900）と同じ14日（7日＋7日なら半分にならず 7,950）。
+ok('チケットが途中で切れる預け・3日で引き取る預け', () => {
+  const th = thresholds(1320), base = th[62] - th[61];
+  const at = (need) => plan({ expType: 1320, level: 60, toNext: need - base, target: 62, nature: 'none', candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 2, napMax: 11, startDay: Date.UTC(2026, 9, 1) / 864e5 }).routes.nap;
+  assert.equal(at(9000).days, 18);
+  assert.equal(at(9001).days, 18 + 1 / 1440 * Math.ceil(1440 / 150));
+  assert.equal(at(7500).days, 14);
+});
+
 ok('預ける日数の上限（引き取って預け直す）', () => {
   const s0 = Date.UTC(2026, 9, 1) / 864e5;
   for (const [cap, c] of [[14, { target: 36, tickets: 0 }], [10, { target: 35, tickets: 1 }], [7, { target: 35, tickets: 0 }]]) {
