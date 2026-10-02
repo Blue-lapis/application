@@ -125,21 +125,26 @@ ok('7日未満で引き取ると、貯まったEXPの半分', () => {
 });
 
 // 併用（動的計画法）は、すべての予定を試した最短と一致する。総当たりは島を 7〜30日のどの長さでも預けられ、
-// 最後は「半分で引き取る」「7日待つ」「満喫して届いた時刻」を試す。グッドスリープデー・満月が週をまたぐ開始日も含む。
+// 途中で7日未満で引き取る（半分）ことも試し、最後は「半分で引き取る」「7日待つ」「満喫して届いた時刻」を試す。グッドスリープデー・満月が週をまたぐ開始日も含む。
 function brute(need, o, { cap = 30, sleep = true } = {}) {
   const rate = Math.max(NATURE_RATE[o.nature], 1);
   const napE = (min, tkMin) => { const u = Math.min(min, tkMin); return Math.floor(rate * (NAP.ticketPerDay * u + NAP.perDay * (min - u)) / 1440 + 1e-9); };
   let best = Infinity;
+  // 同じ日・同じチケットの残りで、もっと多くのEXPを持っていた道があれば、その先は調べなくてよい（それより早くはならない）。
+  const seen = new Map();
   const go = (d, t, e) => {
     if (d >= best) return;
     if (e >= need) { best = d; return; }
+    const key = d * 1000 + t;
+    if (seen.get(key) >= e) return;
+    seen.set(key, e);
     // ここから預けて届く時刻（分単位）。
     for (let m = 1; m <= cap * 1440 && d + m / 1440 < best; m++) {
       const full = napE(m, t * 1440), got = m < 7 * 1440 ? Math.floor(full / 2) : full;
       if (e + got >= need) { best = d + m / 1440; break; }
     }
     if (sleep) go(d + 1, t, e + sleepDay(o.startDay + d + 1, o).exp);
-    for (let k = 7; k <= cap; k++) { const u = Math.min(t, k); go(d + k, t - u, e + napE(k * 1440, u * 1440)); }
+    for (let k = 1; k <= cap; k++) { const u = Math.min(t, k), f = napE(k * 1440, u * 1440); go(d + k, t - u, e + (k < 7 ? Math.floor(f / 2) : f)); }
   };
   go(0, o.tickets * 7, 0);
   return best;
@@ -150,18 +155,36 @@ ok('併用 = 総当たりの最短', () => {
     { target: 34, tickets: 0, incense: 'none', bonus: 0 },
     { target: 34, tickets: 0, incense: 'fullMoon', bonus: 2 },
     { target: 35, tickets: 1, incense: 'gsd', bonus: 1 },
+    // 途中で7日未満で引き取る（半分）のが効きやすい条件: チケットが多い、睡眠スコアが低い。
+    { target: 36, tickets: 10, incense: 'gsd', bonus: 0, napMax: 14 },
+    { target: 35, tickets: 0, incense: 'none', bonus: 0, score: 40, napMax: 14 },
+    { target: 36, tickets: 3, incense: 'none', bonus: 0, score: 70, napMax: 10 },
   ];
   for (const c of cases) {
     for (let k = 0; k < 30; k += 3) {
       const o = { expType: 600, level: 30, nature: 'none', candy: 0, shardCap: null, score: 100, startDay: s0 + k, ...c };
       const p = plan(o);
-      const want = brute(p.need, o);
+      const want = brute(p.need, o, { cap: c.napMax ?? 30 });
       assert.ok(Math.abs(p.routes.mix.days - want) < 1e-9, `${JSON.stringify(c)} +${k}日: ${p.routes.mix.days} != ${want}`);
     }
   }
 });
 
 // 島に預ける日数に上限（2週間など）があるとき。上限で引き取ってすぐ預け直し、預け直すと7日の数えはやり直し。
+// グッドスリープデーの前に島へ預け、7日未満で引き取って（半分）グッドスリープデーに寝るほうが早いことがある。
+ok('途中で7日未満で引き取る（半分）', () => {
+  const o = { expType: 600, level: 30, target: 33, nature: 'none', candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'gsd', tickets: 1, napMax: 14, startDay: Date.UTC(2026, 9, 22) / 864e5 };
+  const p = plan(o), no = plan({ ...o, midHalf: false });
+  assert.ok(p.routes.mix.days < no.routes.mix.days - 1);
+  const [first, second] = p.routes.mix.blocks;
+  assert.ok(first.mode === 'nap' && first.half && first.days < 7 && first.ticketDays === first.days);
+  assert.equal(second.mode, 'sleep');
+  assert.ok(Math.abs(p.routes.mix.days - brute(p.need, o, { cap: 14 })) < 1e-9);
+  // 引き取ってもチケットの残りは持ち越す（使った日数の合計はチケット1枚 = 7日以内）。
+  assert.ok(p.routes.mix.blocks.filter((b) => b.mode === 'nap').reduce((s, b) => s + b.ticketDays, 0) <= 7 + 1e-9);
+  assert.equal(p.routes.mix.tickets, 1);
+});
+
 ok('預ける日数の上限（引き取って預け直す）', () => {
   const s0 = Date.UTC(2026, 9, 1) / 864e5;
   for (const [cap, c] of [[14, { target: 36, tickets: 0 }], [10, { target: 35, tickets: 1 }], [7, { target: 35, tickets: 0 }]]) {

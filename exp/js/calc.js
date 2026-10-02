@@ -145,13 +145,18 @@ const ticketsOf = (ticketMinutes) => Math.ceil(ticketMinutes / (NAP.ticketDays *
 // （1日あたりのEXP は整数なので、つないでも切り捨てで減らない）。最後は、どの日から預けても届く時刻（半分で引き取るか
 // 7日待つか）を候補にし、睡眠で届く日とあわせて最も早いものを選ぶ。グッドスリープデーが週をまたいでも取りこぼさない。
 // 1回に預ける日数の上限 napMax（null なら1年）があるときは、上限で引き取ってすぐ預け直す（7日の数えはやり直し）。
-// 前提: 途中で7日未満で引き取る（半分）ことはしない（総当たりで試した範囲では最短にならなかった）。島から引き取るのは朝とする。
+// 途中で7日未満（1〜6日）で引き取る（EXPは半分）こともできる。チケットが余っているときや睡眠スコアが低いとき、
+// グッドスリープデーの前に島へ預けて途中で引き取ると早いことがある。チケットの残りは引き取っても次の預けに持ち越す。
+// 前提: 島から引き取るのは朝とする。
 const MAX_DAYS = 3650;
-const SLEEP = 0; // 行動の番号。0 は寝る、7〜13 は島に k 日預ける。親への戻り先は「チケットの残り日数 × ACT + 行動」に詰める。
-const ACT = 16;
-function route(cum0, th, goal, o, { sleep = true, nap = true } = {}) {
+// 行動の番号。0 は寝る、7〜13 は島に k 日預ける、HALF + k（k = 1〜6）は k 日で引き取る（半分）。
+// 親への戻り先は「チケットの残り日数 × ACT + 行動」に詰める。
+const SLEEP = 0, HALF = 16, ACT = 32;
+const actDays = (a) => (a === SLEEP ? 1 : a > HALF ? a - HALF : a);
+function route(cum0, th, goal, o, { sleep = true, nap = true, midHalf = true } = {}) {
   const cap = o.napMax == null ? NAP.maxDays : Math.max(NAP.fullDays, o.napMax);
   const segs = nap ? Array.from({ length: Math.min(13, cap) - 6 }, (_, i) => 7 + i) : [];
+  const halves = nap && midHalf ? [1, 2, 3, 4, 5, 6] : [];
   const need = goal - cum0;
   // 島で1日に貯まるのはチケットありで600以上なので、need ÷ 600 日を超えるチケットは届く前に使い切れない。
   const TD = nap ? Math.min(o.tickets * NAP.ticketDays, Math.ceil(need / NAP.ticketPerDay)) : 0, W = TD + 1;
@@ -179,13 +184,14 @@ function route(cum0, th, goal, o, { sleep = true, nap = true } = {}) {
       const s = sleep ? sd(d + 1).exp : 0;
       if (s > 0) reach(d + 1, t, e + s, t * ACT + SLEEP);
       for (const k of segs) { const used = Math.min(t, k); reach(d + k, t - used, e + dayNap(k, used), t * ACT + k); }
+      for (const k of halves) { const used = Math.min(t, k); reach(d + k, t - used, e + Math.floor(dayNap(k, used) / 2), t * ACT + HALF + k); }
     }
   }
   if (!end) return null;
 
   // 選んだ行動を後ろからたどる。
   const acts = [];
-  const back = (d, p) => { const k = p % ACT; return { kind: k || 'sleep', d: d - (k || 1), t: Math.floor(p / ACT) }; };
+  const back = (d, p) => { const a = p % ACT; return { kind: a === SLEEP ? 'sleep' : 'nap', days: actDays(a), half: a > HALF, d: d - actDays(a), t: Math.floor(p / ACT) }; };
   let cur = end.nap ? { kind: 'final', d: end.d, t: end.t, nap: end.nap } : back(end.d, end.prev);
   acts.push(cur);
   while (cur.d > 0 || cur.t !== TD) { cur = back(cur.d, par[cur.d][cur.t]); acts.push(cur); }
@@ -215,11 +221,11 @@ function route(cum0, th, goal, o, { sleep = true, nap = true } = {}) {
       levelUps(a.d + days);
       addNap(a.d, days, exp, used / DAY_MIN, a.nap.half, raw);
     } else {
-      const used = Math.min(a.t, a.kind), exp = dayNap(a.kind, used);
+      const used = Math.min(a.t, a.days), raw = dayNap(a.days, used), exp = a.half ? Math.floor(raw / 2) : raw;
       cum += exp;
       ticketMin += used * DAY_MIN;
-      levelUps(a.d + a.kind);
-      addNap(a.d, a.kind, exp, used, false);
+      levelUps(a.d + a.days);
+      addNap(a.d, a.days, exp, used, a.half, raw);
     }
   }
   return { days: best, passed, blocks, incense, tickets: ticketsOf(ticketMin) };
@@ -241,8 +247,8 @@ export function plan(input) {
   const rest = (r) => (r ? { ...r, need: goal - candy.cum } : null);
   out.routes = {
     sleep: rest(route(candy.cum, th, goal, o, { nap: false })),
-    nap: rest(route(candy.cum, th, goal, o, { sleep: false })),
-    mix: rest(route(candy.cum, th, goal, o)),
+    nap: rest(route(candy.cum, th, goal, o, { sleep: false, midHalf: input.midHalf !== false })),
+    mix: rest(route(candy.cum, th, goal, o, { midHalf: input.midHalf !== false })),
   };
   return out;
 }
