@@ -4,6 +4,11 @@ import assert from 'node:assert/strict';
 import { thresholds, useCandy, sleepDay, napMinutes, plan, dayKind, fullMoonMs, gsdCalendar, gsdSchedule } from '../exp/js/calc.js';
 import { NAP, NATURE_RATE, NAP_EVENING_MIN } from '../exp/js/data.js';
 import { TOTAL_EXP, SHARDS_PER_CANDY } from '../exp/js/data.js';
+import { checkerLink } from '../exp/js/link.js';
+import { typeOf } from '../checker/js/types.js';
+import { MONS as BERRY } from '../checker/js/berry/mons.js';
+import { MONS as ING } from '../checker/js/ingredient/mons.js';
+import { MONS as SKILL } from '../checker/js/skill/mons.js';
 
 let n = 0;
 const ok = (name, fn) => { fn(); n++; console.log('ok', name); };
@@ -329,6 +334,20 @@ ok('アメブースト', () => {
   // ゆめのかけらが足りなくなったら、ブーストを切って続ける。
   const cap = useCandy({ ...base, boost: 'full', shardCap: 20000 });
   assert.ok(cap.shards <= 20000 && cap.used > cap.boosted);
+});
+
+// 厳選チェッカーへのリンク。未選択・チェッカーにないポケモンは開けず、3タイプの全ポケモンは ?mon= で開ける。
+ok('厳選チェッカーへのリンク', () => {
+  assert.deepEqual(checkerLink(''), { href: null, sub: 'ポケモンを選ぶと開けます' });
+  for (const mon of ['mew', 'darkrai', 'nosuchmon', 'toString', '__proto__']) {
+    assert.deepEqual(checkerLink(mon), { href: null, sub: 'このポケモンは厳選チェッカーに未対応です' }, mon);
+  }
+  const all = [...Object.keys(BERRY), ...Object.keys(ING), ...Object.keys(SKILL)];
+  for (const mon of all) {
+    assert.deepEqual(checkerLink(mon), { href: `../checker/?mon=${mon}`, sub: null }, mon);
+    assert.ok(typeOf(mon), mon); // チェッカーもそのポケモンで開く
+  }
+  assert.equal(checkerLink('butterfree').href, '../checker/?mon=butterfree');
 });
 
 console.log(`${n} 件すべて通った`);

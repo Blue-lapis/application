@@ -5,6 +5,7 @@ import { MONS as ING } from '../../checker/js/ingredient/mons.js';
 import { MONS as SKILL } from '../../checker/js/skill/mons.js';
 import { initMonPicker, splitName, TYPE_LABELS } from '../../checker/js/monpick.js';
 import { EXP_TYPE_OF, EXP_TYPES, MAX_LEVEL, candyExp } from './data.js';
+import { checkerLink } from './link.js';
 import { plan, thresholds, gsdSchedule, sleepDay, useCandy } from './calc.js';
 
 const $ = (id) => document.getElementById(id);
@@ -13,7 +14,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 // ---- 状態と保存 ----
 const KEY = 'expsim';
-const DEFAULTS = { mon: '', expType: 600, nature: 'none', level: 10, toNext: null, target: 50, candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, start: '', gsd: {}, napMax: 14, boost: 'none', boostLimit: null };
+const DEFAULTS = { mon: '', expType: 600, nature: 'none', level: 30, toNext: null, target: 50, candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, start: '', gsd: {}, napMax: 14, boost: 'none', boostLimit: null };
 let st = { ...DEFAULTS, gsd: {}, byMon: {} };
 try { Object.assign(st, JSON.parse(localStorage.getItem(KEY)) || {}); } catch { /* storage unavailable */ }
 if (!st.gsd || typeof st.gsd !== 'object' || Array.isArray(st.gsd)) st.gsd = {};
@@ -94,6 +95,18 @@ function renderMon() {
     + `<span class="go">ポケモンを変える${chev}</span></span>`;
 }
 
+// 厳選チェッカーへのカード（チェッカーの「育成日数を見る」と同じ .toexp）。開けないときは <div aria-disabled> にして押せなくする。
+// 数の入力のたびに要素が入れ替わらないよう、ポケモンが変わったときだけ作り直す。
+const SCALE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M8 21h8M5 6h14M5 6l-3 8a3 3 0 0 0 6 0zM19 6l-3 8a3 3 0 0 0 6 0z"/></svg>';
+let shownCheck = null;
+function renderToChecker() {
+  if (st.mon === shownCheck) return;
+  shownCheck = st.mon;
+  const { href, sub } = checkerLink(st.mon);
+  const body = `${SCALE}<span><b>厳選チェッカーで見る</b><small>${esc(sub ?? `${ALL_MONS[st.mon].name}の個体を判定`)}</small></span>${chev}`;
+  $('toChecker').innerHTML = href ? `<a class="toexp" href="${esc(href)}">${body}</a>` : `<div class="toexp" aria-disabled="true">${body}</div>`;
+}
+
 // ---- 部品 ----
 function seg(id, key, parse = (v) => v) {
   $(id).querySelectorAll('button').forEach((b) => {
@@ -134,6 +147,7 @@ function show(writeInputs) {
   }
   $('toNext').max = span;
   renderMon();
+  renderToChecker();
   showSeg('typeSeg', st.expType);
   showSeg('natSeg', st.nature);
   showSeg('targetSeg', st.target);
