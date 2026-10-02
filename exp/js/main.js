@@ -13,15 +13,28 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 // ---- 状態と保存 ----
 const KEY = 'expsim';
-const DEFAULTS = { mon: '', expType: 600, nature: 'none', level: 10, toNext: null, target: 50, candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, start: '', gsd: {}, napMax: 14, boost: 'none', boostLimit: null };
-let st = { ...DEFAULTS, gsd: {} };
+const DEFAULTS = { byMon: {}, mon: '', expType: 600, nature: 'none', level: 10, toNext: null, target: 50, candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, start: '', gsd: {}, napMax: 14, boost: 'none', boostLimit: null };
+let st = { ...DEFAULTS, gsd: {}, byMon: {} };
 try { Object.assign(st, JSON.parse(localStorage.getItem(KEY)) || {}); } catch { /* storage unavailable */ }
 if (!st.gsd || typeof st.gsd !== 'object' || Array.isArray(st.gsd)) st.gsd = {};
+if (!st.byMon || typeof st.byMon !== 'object' || Array.isArray(st.byMon)) st.byMon = {};
+
+// ポケモンごとに覚える入力（今のレベル・次のレベルまで・手持ちのアメ・目標・性格の補正）。アメはポケモンごとに違い、
+// レベルも個体ごとに違うので、ポケモンを変えたら、そのポケモンの前回の値（初めてなら既定の値）に切り替える。
+// 睡眠・おひるね島・日程などは、ポケモンに関係ないのでそのまま。
+const PER_MON = ['level', 'toNext', 'candy', 'target', 'nature'];
+const keepMon = () => { if (st.mon) st.byMon[st.mon] = Object.fromEntries(PER_MON.map((k) => [k, st[k]])); };
+function switchMon(key) {
+  keepMon();
+  st.mon = key;
+  Object.assign(st, Object.fromEntries(PER_MON.map((k) => [k, DEFAULTS[k]])), st.byMon[key] || {});
+}
+
 // チェッカーから開いたときは、URL のポケモン・性格のEXP補正・目標を使う（読んだら URL から消す）。
 {
   const q = new URLSearchParams(location.search);
   if (q.has('mon')) {
-    st.mon = q.get('mon');
+    switchMon(q.get('mon'));
     if (['up', 'none', 'down'].includes(q.get('nature'))) st.nature = q.get('nature');
     const t = Number(q.get('target'));
     if (Number.isInteger(t) && t > 1 && t <= 70) st.target = t;
@@ -30,7 +43,7 @@ if (!st.gsd || typeof st.gsd !== 'object' || Array.isArray(st.gsd)) st.gsd = {};
 }
 // 始める日は開くたびに今日にする（前の日付が残らないように）。
 st.start = '';
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch { /* storage unavailable */ } };
+const save = () => { keepMon(); try { localStorage.setItem(KEY, JSON.stringify(st)); } catch { /* storage unavailable */ } };
 
 // ---- 日付 ----
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -54,10 +67,10 @@ function initMon() {
     groups: GROUPS,
     imgBase: '../checker/img/mon/',
     current: () => st.mon,
-    onPick: (key) => { st.mon = key; st.expType = expOf(key); update(); },
+    onPick: (key) => { if (key !== st.mon) switchMon(key); st.expType = expOf(key); update(); },
   });
   $('monBtn').onclick = () => open('all', false);
-  $('monClear').onclick = () => { $('monDlg').close(); st.mon = ''; update(); };
+  $('monClear').onclick = () => { $('monDlg').close(); keepMon(); st.mon = ''; update(); };
 }
 
 // ポケモンのカード（チェッカーと同じ形）。選んでいないときは経験値タイプだけ出す。
