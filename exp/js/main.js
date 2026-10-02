@@ -177,7 +177,7 @@ function renderFacts(th, cum, need) {
   const c = useCandy({ cum, th, target: st.target, nature: st.nature, candy: Infinity });
   const cell = (label, value) => `<div><small>${label}</small><b>${value}</b></div>`;
   $('lvFacts').innerHTML = cell('必要EXP', fmt(need))
-    + cell('アメなら', `${fmt(c.used)}<span class="u">個</span>`)
+    + cell('必要アメ数', `${fmt(c.used)}<span class="u">個</span>`)
     + cell('ゆめのかけら', fmt(c.shards));
   $('lvFacts').hidden = false;
 }
