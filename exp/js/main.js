@@ -22,10 +22,10 @@ if (!st.byMon || typeof st.byMon !== 'object' || Array.isArray(st.byMon)) st.byM
 
 // ポケモンごとに覚える入力（今のレベル・次のレベルまで・手持ちのアメ・目標・性格の補正）。アメはポケモンごとに違い、
 // レベルも個体ごとに違うので、ポケモンを変えたら（チェッカーから開いたときも）、そのポケモンの前回の値に切り替える。
-// 初めてのポケモンは START（Lv.27・次のレベルまでは貯まっていない・アメ0・性格の補正なし。目標はそのまま）から。
+// 初めてのポケモンは START（Lv.30・次のレベルまでは貯まっていない・アメ0・性格の補正なし。目標はそのまま）から。
 // 睡眠・おひるね島・日程などは、ポケモンに関係ないのでそのまま。
 const PER_MON = ['level', 'toNext', 'candy', 'target', 'nature'];
-const START = { level: 27, toNext: null, candy: 0, nature: 'none' };
+const START = { level: 30, toNext: null, candy: 0, nature: 'none' };
 const keepMon = () => { if (st.mon) st.byMon[st.mon] = Object.fromEntries(PER_MON.map((k) => [k, st[k]])); };
 function switchMon(key) {
   keepMon();
