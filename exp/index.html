@@ -68,7 +68,7 @@
 
   <footer class="foot">
     <p class="note">数値はにとよんツールと Pokémon Sleep 攻略・検証 Wiki を参考にしています。グッドスリープデーは満月の日から出した見込みで、「詳細」で直せます。</p>
-    <div class="foot-row"><span class="ver">育成日数シミュレーター 試作版 v0.4</span><a class="back" href="../checker/">厳選チェッカーへ</a></div>
+    <div class="foot-row"><span class="ver">育成日数シミュレーター 試作版 v0.5</span><a class="back" href="../checker/">厳選チェッカーへ</a></div>
   </footer>
 </main>
 
@@ -86,7 +86,9 @@
     <div class="dgrid">
       <label>ゆめのかけらの上限<input type="number" id="shardCap" min="0" step="1000" inputmode="numeric" placeholder="なし"></label>
       <label>始める日<input type="date" id="start"></label>
+      <label>島に続けて預ける上限（日）<input type="number" id="napMax" min="7" max="365" step="1" inputmode="numeric" placeholder="なし"></label>
     </div>
+    <p class="note">ものひろいの箱がいっぱいにならないよう、上限の日数で引き取ってすぐ預け直します（預け直すと7日の数えはやり直し）。空欄なら上限なしで続けて預けます。</p>
     <h3>せいちょうのおこう</h3>
     <div class="chips3" role="group" aria-label="せいちょうのおこう" id="incSeg"><button data-v="none">使わない</button><button data-v="fullMoon">満月の日だけ</button><button data-v="gsd">GSDの3日間</button><button data-v="every2Days">2日に1回</button><button data-v="everyDay">毎日</button></div>
     <h3>経験値タイプ<small>ポケモンを選ぶと決まります</small></h3>

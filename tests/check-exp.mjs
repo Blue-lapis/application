@@ -116,9 +116,9 @@ ok('7日未満で引き取ると、貯まったEXPの半分', () => {
   // あと少し（Lv.30 で次まで 40 EXP）なら、島に預けて半分で引き取るのが早い。
   const p = plan({ expType: 600, level: 30, toNext: 40, target: 31, nature: 'none', candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, startDay });
   assert.equal(p.need, 40);
-  assert.equal(p.routes.nap.half, true);
-  assert.equal(p.routes.nap.exp, Math.floor(p.routes.nap.raw / 2));
-  assert.ok(p.routes.nap.exp >= 40 && Math.floor(p.routes.nap.raw / 2) >= 40);
+  const nap = p.routes.nap.blocks.at(-1);
+  assert.equal(nap.half, true);
+  assert.ok(nap.exp === Math.floor(nap.raw / 2) && nap.exp >= 40);
   assert.equal(p.routes.nap.days, (40 * 2) / 150); // 80 EXP 貯まる 12時間48分
   const last = p.routes.mix.blocks.at(-1);
   assert.ok(last.mode === 'nap' && last.half && last.exp === Math.floor(last.raw / 2));
@@ -126,7 +126,7 @@ ok('7日未満で引き取ると、貯まったEXPの半分', () => {
 
 // 併用（動的計画法）は、すべての予定を試した最短と一致する。総当たりは島を 7〜30日のどの長さでも預けられ、
 // 最後は「半分で引き取る」「7日待つ」「満喫して届いた時刻」を試す。グッドスリープデー・満月が週をまたぐ開始日も含む。
-function brute(need, o) {
+function brute(need, o, { cap = 30, sleep = true } = {}) {
   const rate = Math.max(NATURE_RATE[o.nature], 1);
   const napE = (min, tkMin) => { const u = Math.min(min, tkMin); return Math.floor(rate * (NAP.ticketPerDay * u + NAP.perDay * (min - u)) / 1440 + 1e-9); };
   let best = Infinity;
@@ -134,12 +134,12 @@ function brute(need, o) {
     if (d >= best) return;
     if (e >= need) { best = d; return; }
     // ここから預けて届く時刻（分単位）。
-    for (let m = 1; m <= 40 * 1440 && d + m / 1440 < best; m++) {
+    for (let m = 1; m <= cap * 1440 && d + m / 1440 < best; m++) {
       const full = napE(m, t * 1440), got = m < 7 * 1440 ? Math.floor(full / 2) : full;
       if (e + got >= need) { best = d + m / 1440; break; }
     }
-    go(d + 1, t, e + sleepDay(o.startDay + d + 1, o).exp);
-    for (let k = 7; k <= 30; k++) { const u = Math.min(t, k); go(d + k, t - u, e + napE(k * 1440, u * 1440)); }
+    if (sleep) go(d + 1, t, e + sleepDay(o.startDay + d + 1, o).exp);
+    for (let k = 7; k <= cap; k++) { const u = Math.min(t, k); go(d + k, t - u, e + napE(k * 1440, u * 1440)); }
   };
   go(0, o.tickets * 7, 0);
   return best;
@@ -159,6 +159,26 @@ ok('併用 = 総当たりの最短', () => {
       assert.ok(Math.abs(p.routes.mix.days - want) < 1e-9, `${JSON.stringify(c)} +${k}日: ${p.routes.mix.days} != ${want}`);
     }
   }
+});
+
+// 島に預ける日数に上限（2週間など）があるとき。上限で引き取ってすぐ預け直し、預け直すと7日の数えはやり直し。
+ok('預ける日数の上限（引き取って預け直す）', () => {
+  const s0 = Date.UTC(2026, 9, 1) / 864e5;
+  for (const [cap, c] of [[14, { target: 36, tickets: 0 }], [10, { target: 35, tickets: 1 }], [7, { target: 35, tickets: 0 }]]) {
+    for (let k = 0; k < 30; k += 10) {
+      const o = { expType: 600, level: 30, nature: 'none', candy: 0, shardCap: null, score: 100, incense: 'none', bonus: 0, startDay: s0 + k, napMax: cap, ...c };
+      const p = plan(o);
+      assert.ok(Math.abs(p.routes.mix.days - brute(p.need, o, { cap })) < 1e-9, `mix cap=${cap} +${k}日`);
+      assert.ok(Math.abs(p.routes.nap.days - brute(p.need, o, { cap, sleep: false })) < 1e-9, `nap cap=${cap} +${k}日`);
+      // 上限があると、上限なしより早くはならない。
+      const free = plan({ ...o, napMax: null });
+      assert.ok(p.routes.nap.days >= free.routes.nap.days - 1e-9 && p.routes.mix.days >= free.routes.mix.days - 1e-9);
+    }
+  }
+  // 島のみ・14日ごと：1回の預けはどれも14日以下で、回数は日数から決まる。
+  const p = plan({ expType: 900, level: 30, target: 50, nature: 'none', candy: 0, shardCap: null, score: 100, incense: 'none', bonus: 0, tickets: 0, startDay: s0, napMax: 14 });
+  const b = p.routes.nap.blocks[0];
+  assert.ok(b.deposits >= Math.ceil(b.days / 14) && b.days / b.deposits <= 14);
 });
 
 ok('併用は単独のルートより遅くならない', () => {
