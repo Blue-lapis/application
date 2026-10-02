@@ -124,8 +124,8 @@ ok('7日未満で引き取ると、貯まったEXPの半分', () => {
   assert.ok(last.mode === 'nap' && last.half && last.exp === Math.floor(last.raw / 2));
 });
 
-// 併用（動的計画法）は、すべての予定を試した最短と一致する。総当たりは島を 7〜30日のどの長さでも預けられ、
-// 途中で7日未満で引き取る（半分）ことも試し、最後は「半分で引き取る」「7日待つ」「満喫して届いた時刻」を試す。グッドスリープデー・満月が週をまたぐ開始日も含む。
+// 併用（動的計画法）は、すべての予定を試した最短と一致する。総当たりは島を 1〜30日（上限まで）のどの長さでも預けられ、
+// 7日未満で引き取ると半分にし、最後は「半分で引き取る」「7日待つ」「満喫して届いた時刻」を試す。グッドスリープデー・満月が週をまたぐ開始日も含む。
 function brute(need, o, { cap = 30, sleep = true } = {}) {
   const rate = Math.max(NATURE_RATE[o.nature], 1);
   const napE = (min, tkMin) => { const u = Math.min(min, tkMin); return Math.floor(rate * (NAP.ticketPerDay * u + NAP.perDay * (min - u)) / 1440 + 1e-9); };

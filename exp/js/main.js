@@ -133,7 +133,7 @@ function show(writeInputs) {
   const r = R[route];
   const candyLine = c.used ? `<p class="candy">先にアメを ${fmt(c.used)}個使って Lv.${c.level} へ。残り ${fmt(p.goal - c.cum)} EXP を稼ぎます。</p>` : '';
   if (!r) {
-    $('routeBody').innerHTML = `${candyLine}<p class="na">届きません（10年を超えます）。</p>`;
+    $('routeBody').innerHTML = `${candyLine}<p class="na">${route === 'sleep' && !st.score ? '睡眠スコアが0なので、睡眠EXPが入りません。' : '届きません（10年を超えます）。'}</p>`;
   } else {
     const notes = [`${dateLabel(startDay + Math.ceil(r.days))} ごろ`];
     if (st.incense !== 'none' && r.incense) notes.push(`おこう 約${Math.ceil(r.incense)}個`);
