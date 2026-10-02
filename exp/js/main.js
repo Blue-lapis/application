@@ -195,7 +195,7 @@ function show(writeInputs) {
     const ms = r.passed.filter((x) => want.has(x.level) && x.level < st.target && x.level > c.level);
     $('routeBody').innerHTML = `<p class="rnote">${notes.join(' ・ ')}</p>`
       + (ms.length ? `<p class="ms">${ms.map((x) => `<span>Lv.${x.level} <b>${dateLabel(startDay + Math.ceil(x.days))}</b></span>`).join('')}</p>` : '')
-      + planList(r.blocks, startDay);
+      + planList(r.blocks, startDay, c, c.cum - (p.goal - p.need));
   }
   const bestKey = ok.find(([k]) => Math.abs(R[k].days - best) < 1e-9);
   if (bestKey) setOut(`Lv.${st.target} に届く日（最短は${bestKey[1]}）`, dateBig(startDay + Math.ceil(best)), `始める日から ${plain(best)}`, c);
@@ -288,12 +288,14 @@ function initGsd() {
   $('gsdReset').onclick = () => { st.gsd = {}; update(); };
 }
 
-// 予定の一覧（日付・何をするか・稼ぐEXP）。島は1回の預けごとに「1回目」「2回目」と出す。
+// 予定の一覧（日付・何をするか・稼ぐEXP）。先頭はアメを使って何レベルまで上がるか。島は1回の預けごとに「1回目」「2回目」と出す。
 // 長いときは最初の PLAN_SHOW 個だけ出し、「ほか○つを見る」で残りを出す。
 const PLAN_SHOW = 4;
-function planList(blocks, startDay) {
+function planList(blocks, startDay, c, candyGain) {
   let nth = 0;
-  const rows = blocks.map((b) => {
+  // 先頭は、始める日に手持ちのアメを使って上がるところ（アメを使うときだけ）。
+  const first = c.used ? [`<li class="k-candy"><span class="pd">${dateLabel(startDay).replace(/（(.)）/, '<small>$1</small>')}</span><span class="pm"><b>アメを使う</b><small>${fmt(c.used)}個で Lv.${st.level} → <em class="t-lv">Lv.${c.level}</em></small></span><span class="x">${fmt(candyGain)}</span></li>`] : [];
+  const rows = first.concat(blocks.map((b) => {
     const d = dateLabel(startDay + b.from).replace(/（(.)）/, '<small>$1</small>'), len = plain(b.days);
     if (b.mode === 'sleep') {
       return `<li class="k-sleep"><span class="pd">${d}</span><span class="pm"><b>チームで寝る</b><small>その夜から ${b.days === 1 ? '1晩' : `${len}`}</small></span><span class="x">${fmt(b.exp)}</span></li>`;
@@ -303,7 +305,7 @@ function planList(blocks, startDay) {
     if (b.eve) tags.push('<em>夕方に引き取って寝る</em>');
     if (b.half) tags.push(`<em class="t-half">7日未満で半分（${fmt(b.raw)}→）</em>`);
     return `<li class="k-nap"><span class="pd">${d}</span><span class="pm"><b>島に預ける <i>${++nth}回目</i></b><small>${len}${tags.join('')}</small></span><span class="x">${fmt(b.exp)}</span></li>`;
-  });
+  }));
   const hidden = rows.length - PLAN_SHOW;
   const shown = planOpen || hidden <= 0 ? rows : rows.slice(0, PLAN_SHOW);
   const more = hidden > 0 ? `<button type="button" class="planmore" id="planMore">${planOpen ? '最初の4つだけにする' : `ほか${hidden}つを見る`}</button>` : '';
