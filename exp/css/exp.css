@@ -40,6 +40,9 @@ section{padding:16px 14px}
 .lvbox.goal{background:var(--psy-soft);border-color:var(--psy)}
 .lvbox.goal small{color:var(--psy-ink)}
 .lvpair .arrow{color:var(--muted);display:flex}
+/* 必要EXPとアメ換算。チェッカーの .facts を、カードの内側の余白に合わせる。 */
+.lvfacts{margin:14px -14px -16px;padding:12px 14px 14px;background:var(--bg);border-radius:0 0 20px 20px}
+.lvfacts b{font-family:var(--font-num)}
 section.lv .lvseg{margin:12px 0 14px;align-items:center;justify-content:space-between}
 section.lv .lvseg>span{font-size:.75rem;font-weight:700;color:var(--muted);margin-right:auto}
 section.lv .lvseg button{width:44px;flex:none}

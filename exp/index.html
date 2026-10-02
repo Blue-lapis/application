@@ -21,7 +21,7 @@
   <input type="password" id="loginPw" name="password" autocomplete="current-password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required>
   <p class="loginmsg" id="loginMsg" role="status"></p>
   <button type="submit">ログイン</button>
-  <p class="ver">試作版 v0.7</p>
+  <p class="ver">v1.0</p>
 </form>
 
 <div class="appbar">
@@ -44,7 +44,7 @@
     </section>
 
     <section class="lv">
-      <div class="sec-head"><h2>レベル</h2><span class="hint" id="needHint"></span></div>
+      <div class="sec-head"><h2>レベル</h2></div>
       <div class="lvpair">
         <label class="lvbox"><small>今</small><input type="number" id="level" min="1" max="69" step="1" inputmode="numeric" aria-label="今のレベル"></label>
         <span class="arrow" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>
@@ -54,6 +54,8 @@
       <div class="nums">
         <label class="num"><span>次のレベルまで<small>ゲームの「次のレベルまで」の数</small></span><span class="iu"><input type="number" id="toNext" min="1" step="1" inputmode="numeric"><i>EXP</i></span></label>
       </div>
+      <!-- 目標までに要るEXPと、それをアメだけでまかなうときの数（チェッカーの .facts と同じ形）。 -->
+      <div class="facts lvfacts" id="lvFacts"></div>
     </section>
 
     <section class="candy-sec">
@@ -104,7 +106,7 @@
 
     <footer class="foot">
       <p class="credit">数値はにとよんツールと Pokémon Sleep 攻略・検証 Wiki を参考にしています。グッドスリープデーは満月の日から出した見込みで、「日程」で直せます。ゲーム画像の著作権は ©Pokémon. ©Nintendo/Creatures Inc./GAME FREAK inc. ©SELECT BUTTON inc. に帰属します。</p>
-      <div class="foot-row"><span class="ver">育成日数シミュレーター 試作版 v0.7</span><a class="back" href="../checker/">厳選チェッカーへ</a></div>
+      <div class="foot-row"><span class="ver">育成日数シミュレーター v1.0</span><a class="back" href="../checker/">厳選チェッカーへ</a></div>
     </footer>
   </div>
 </main>
