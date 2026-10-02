@@ -21,7 +21,7 @@
   <input type="password" id="loginPw" name="password" autocomplete="current-password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required>
   <p class="loginmsg" id="loginMsg" role="status"></p>
   <button type="submit">ログイン</button>
-  <p class="ver">v1.0</p>
+  <p class="ver">v1.1</p>
 </form>
 
 <div class="appbar">
@@ -98,6 +98,16 @@
       <div class="o-candy" id="oCandy"></div>
     </section>
 
+    <!-- 目標レベル別（チェッカーの「レベル別」と同じ部品）。開いているときだけ計算する。行を押すとその目標に切り替わる。 -->
+    <div class="lvx" id="lvx">
+      <button type="button" class="lvx-head" id="lvxHead" aria-expanded="false" aria-controls="lvxBody"><small>目標レベル別</small><span id="lvxSum">—</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div id="lvxBody" hidden>
+        <div class="lvx-cols lvx2" aria-hidden="true"><span>目標</span><span>最短日数</span></div>
+        <div id="lvxRows"></div>
+        <p class="lvx-foot">手持ちのアメを使ったあと、睡眠・島で稼ぐ最短の日数です。行をタップするとその目標に切り替わります</p>
+      </div>
+    </div>
+
     <section class="plan-sec" id="planSec">
       <div class="sec-head"><h2>育て方</h2><span class="hint">右は稼ぐEXP</span></div>
       <div class="rtabs" role="tablist" aria-label="育て方" id="rtabs"></div>
@@ -106,7 +116,7 @@
 
     <footer class="foot">
       <p class="credit">数値はにとよんツールと Pokémon Sleep 攻略・検証 Wiki を参考にしています。グッドスリープデーは満月の日から出した見込みで、「日程」で直せます。ゲーム画像の著作権は ©Pokémon. ©Nintendo/Creatures Inc./GAME FREAK inc. ©SELECT BUTTON inc. に帰属します。</p>
-      <div class="foot-row"><span class="ver">育成日数シミュレーター v1.0</span><a class="back" href="../checker/">厳選チェッカーへ</a></div>
+      <div class="foot-row"><span class="ver">育成日数シミュレーター v1.1</span><a class="back" href="../checker/">厳選チェッカーへ</a></div>
     </footer>
   </div>
 </main>

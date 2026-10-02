@@ -17,6 +17,17 @@ const DEFAULTS = { mon: '', expType: 600, nature: 'none', level: 10, toNext: nul
 let st = { ...DEFAULTS, gsd: {} };
 try { Object.assign(st, JSON.parse(localStorage.getItem(KEY)) || {}); } catch { /* storage unavailable */ }
 if (!st.gsd || typeof st.gsd !== 'object' || Array.isArray(st.gsd)) st.gsd = {};
+// チェッカーから開いたときは、URL のポケモン・性格のEXP補正・目標を使う（読んだら URL から消す）。
+{
+  const q = new URLSearchParams(location.search);
+  if (q.has('mon')) {
+    st.mon = q.get('mon');
+    if (['up', 'none', 'down'].includes(q.get('nature'))) st.nature = q.get('nature');
+    const t = Number(q.get('target'));
+    if (Number.isInteger(t) && t > 1 && t <= 70) st.target = t;
+  }
+  if (location.search) history.replaceState(null, '', location.pathname);
+}
 // 始める日は開くたびに今日にする（前の日付が残らないように）。
 st.start = '';
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch { /* storage unavailable */ } };
@@ -124,6 +135,7 @@ function show(writeInputs) {
 
   if (!(st.level >= 1 && st.level < MAX_LEVEL && st.target > st.level && st.target <= MAX_LEVEL)) {
     $('lvFacts').hidden = true;
+    $('lvx').hidden = true;
     $('rtabs').innerHTML = '';
     $('routeBody').innerHTML = '<p class="na">目標のレベルを今のレベルより上（70まで）にしてください。</p>';
     $('schedLine').textContent = `${dateLabel(startDay)}から`;
@@ -138,6 +150,8 @@ function show(writeInputs) {
   $('schedLine').textContent = `${dateLabel(startDay)}から・GSD ${g.count}回（${g.changed ? `${g.changed}回を直した` : '見込み'}）`;
   renderFacts(th, th[st.level] + span - (st.toNext ?? span), p.need);
 
+  $('lvx').hidden = false;
+  renderLvx(th, startDay, span, p);
   const c = p.candy;
   if (!p.routes) {
     $('planSec').hidden = true;
@@ -180,6 +194,29 @@ function renderFacts(th, cum, need) {
     + cell('必要アメ数', `${fmt(c.used)}<span class="u">個</span>`)
     + cell('ゆめのかけら', fmt(c.shards));
   $('lvFacts').hidden = false;
+}
+
+// 目標レベル別の一覧。50・60・70 と今の目標のうち、手持ちのアメで届くレベルより上を並べる（アメで届くものは比べなくてよい）。
+// 出すのは最短の日数だけ（アメ・かけらはレベルのカードで見られる）。
+// 日数は目標ごとに最短の育て方を計算する（重いことがあるので、開いているときだけ）。
+let lvOpen = false;
+const LVX = [50, 60, 70];
+function renderLvx(th, startDay, span, cur) {
+  const from = Math.max(st.level, cur.candy.level);
+  const lvs = [...new Set([...LVX, st.target])].filter((t) => t > from).sort((a, b) => a - b);
+  const daysOf = (p) => (!p.routes ? 0 : Math.min(...Object.values(p.routes).filter(Boolean).map((r) => r.days)));
+  const curDays = daysOf(cur);
+  $('lvxSum').innerHTML = `Lv.${st.target} まで <b>${Number.isFinite(curDays) ? plain(curDays) : '—'}</b>`;
+  $('lvx').hidden = !lvs.length;
+  $('lvxHead').setAttribute('aria-expanded', String(lvOpen));
+  $('lvxBody').hidden = !lvOpen;
+  if (!lvOpen) return;
+  $('lvxRows').innerHTML = lvs.map((t) => {
+    const p = t === st.target ? cur : plan({ ...st, target: t, toNext: st.toNext ?? span, startDay });
+    const d = daysOf(p), on = t === st.target;
+    const days = !Number.isFinite(d) ? '—' : d === 0 ? '0<span class="u">日</span>' : `${Math.ceil(d)}<span class="u">日</span>`; // 一覧は日に切り上げ
+    return `<button type="button" class="lvx-row lvx2" data-v="${t}" aria-pressed="${on}"><span class="lvx-lv">Lv.${t}</span><b class="d">${days}</b></button>`;
+  }).join('');
 }
 
 // 結果のカードと下の帯。アメを使うときは、使う数・ゆめのかけらと、アメで届くレベルを出す。
@@ -310,6 +347,8 @@ requireLogin().then(() => {
   num('score', 'score', { max: 100 });
   num('tickets', 'tickets', { max: 99 });
   $('start').onchange = () => { st.start = $('start').value; update(); };
+  $('lvxHead').onclick = () => { lvOpen = !lvOpen; show(false); };
+  $('lvxRows').onclick = (e) => { const b = e.target.closest('.lvx-row'); if (b) { st.target = Number(b.dataset.v); update(); } };
   $('rtabs').onclick = (e) => { const b = e.target.closest('button[data-r]'); if (b) { route = b.dataset.r; planOpen = false; show(false); } };
   $('routeBody').onclick = (e) => { if (e.target.closest('#planMore')) { planOpen = !planOpen; show(false); } };
   const dlg = $('schedDlg');
@@ -321,5 +360,6 @@ requireLogin().then(() => {
   if (!EXP_TYPES[st.expType]) st.expType = 600;
   if (!['none', 'mini', 'full'].includes(st.boost)) st.boost = 'none';
   if (st.mon && !ALL_MONS[st.mon]) st.mon = '';
+  if (st.mon) st.expType = expOf(st.mon); // URL から来たときも、ポケモンの経験値タイプにそろえる
   update();
 });

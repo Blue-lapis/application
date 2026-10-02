@@ -131,3 +131,9 @@ section.out{padding:18px 16px}
   main>.col-in:last-child{position:sticky;top:12px}
 }
 .bmain b{white-space:nowrap;display:flex;align-items:baseline;gap:2px}
+
+/* 目標レベル別。チェッカーの .lvx を2列（目標・最短日数）にする。 */
+.lvx-cols.lvx2,.lvx-row.lvx2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.lvx-row.lvx2 b.d{font-weight:700}
+.rtabs button small{white-space:nowrap}
+@media (max-width:359px){.rtabs button small{font-size:.74rem}}
