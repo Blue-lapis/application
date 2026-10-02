@@ -138,7 +138,3 @@ section.out{padding:18px 16px}
 .lvx-row.lvx4 b.d{font-weight:700}
 .rtabs button small{white-space:nowrap}
 @media (max-width:359px){.rtabs button small{font-size:.74rem}}
-/* 見出しを2段にして、「アメだけなら」（個・かけら）と日数の前提が違うことを見せる。 */
-.lvx-cols.lvx-grp{grid-template-columns:minmax(0,.9fr) minmax(0,2.1fr) minmax(0,1fr);padding-bottom:0}
-.lvx-grp .g{text-align:center;font-weight:800;color:var(--ink);border-bottom:1px solid var(--line);padding-bottom:3px;margin-left:12%}
-.lvx-cols.lvx-sub{border-top:0;padding-top:4px}
