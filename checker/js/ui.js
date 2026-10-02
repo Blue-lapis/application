@@ -166,6 +166,15 @@ export function initUI(engines) {
 
 // 見出し・ポケモンの情報・性能の行の枠は、タイプとポケモンが変わったときだけ作り直す。
 let shownHeader = null;
+// 育成日数シミュレーターへのリンク。ポケモン・性格の EXP の補正（上昇・下降・なし）・評価のレベル（70まで）を渡す。
+// 性格とレベルはポケモンを変えなくても変わるので、ヘッダーとは別に毎回作る。
+function renderToExp() {
+  const nat = natByName(state.nat), expNat = !nat || nat[1] === nat[2] ? 'none' : nat[1] === 'ex' ? 'up' : nat[2] === 'ex' ? 'down' : 'none';
+  const expTarget = Math.min(state.lv, 70);
+  $('toExp').href = `../exp/?${new URLSearchParams({ mon: state.mon, nature: expNat, target: expTarget })}`;
+  $('toExpSub').textContent = `Lv.${expTarget} までの日数とアメ${expNat === 'none' ? '' : `（性格 EXP${expNat === 'up' ? '▲' : '▼'}）`}`;
+}
+
 function renderHeader() {
   const key = `${state.type}|${state.mon}`;
   if (key === shownHeader) return;
@@ -929,6 +938,7 @@ function renderRankNote() {
 
 function refresh(engines) {
   renderHeader();
+  renderToExp();
   renderRankNote();
   renderParams();
   renderIngs(engines);

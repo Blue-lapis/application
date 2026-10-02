@@ -98,6 +98,16 @@
       <div class="o-candy" id="oCandy"></div>
     </section>
 
+    <!-- 目標レベル別（チェッカーの「レベル別」と同じ部品）。開いているときだけ計算する。行を押すとその目標に切り替わる。 -->
+    <div class="lvx" id="lvx">
+      <button type="button" class="lvx-head" id="lvxHead" aria-expanded="false" aria-controls="lvxBody"><small>目標レベル別</small><span id="lvxSum">—</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div id="lvxBody" hidden>
+        <div class="lvx-cols lvx4" aria-hidden="true"><span>目標</span><span>必要アメ数</span><span>かけら</span><span>日数</span></div>
+        <div id="lvxRows"></div>
+        <p class="lvx-foot">日数は最短の育て方（アメは手持ちを先に使う）。行をタップするとその目標に切り替わります</p>
+      </div>
+    </div>
+
     <section class="plan-sec" id="planSec">
       <div class="sec-head"><h2>育て方</h2><span class="hint">右は稼ぐEXP</span></div>
       <div class="rtabs" role="tablist" aria-label="育て方" id="rtabs"></div>
