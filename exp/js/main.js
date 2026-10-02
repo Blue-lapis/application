@@ -4,7 +4,7 @@ import { MONS as BERRY } from '../../checker/js/berry/mons.js';
 import { MONS as ING } from '../../checker/js/ingredient/mons.js';
 import { MONS as SKILL } from '../../checker/js/skill/mons.js';
 import { initMonPicker, splitName, TYPE_LABELS } from '../../checker/js/monpick.js';
-import { EXP_TYPE_OF, EXP_TYPES, MAX_LEVEL } from './data.js';
+import { EXP_TYPE_OF, EXP_TYPES, MAX_LEVEL, candyExp } from './data.js';
 import { plan, thresholds, gsdSchedule, sleepDay } from './calc.js';
 
 const $ = (id) => document.getElementById(id);
@@ -117,8 +117,10 @@ function show(writeInputs) {
   $('bonusDown').disabled = st.bonus <= 0;
   $('bonusUp').disabled = st.bonus >= 5;
   const startDay = dayOf(st.start || todayStr());
-  // ふつうの日の1晩の睡眠EXP（おこう・GSD なし）。
-  $('sleepHint').textContent = `ふつうの日は1晩 ${fmt(sleepDay(-1e6, { score: st.score, bonus: st.bonus, incense: 'none', nature: st.nature, kindOf: () => 'normal' }).exp)} EXP`;
+  // 見出しの横は、おひるね島の「1日150 EXP」と同じ形で、1個・1晩あたりのEXP。
+  // アメは今のレベルでの1個（ブーストなら2倍）、睡眠はふつうの日の1晩（おこう・GSD なし）。
+  $('candyHint').textContent = `1個 ${fmt(candyExp(st.level, st.nature) * (st.boost === 'none' ? 1 : 2))} EXP`;
+  $('sleepHint').textContent = `1晩 ${fmt(sleepDay(-1e6, { score: st.score, bonus: st.bonus, incense: 'none', nature: st.nature, kindOf: () => 'normal' }).exp)} EXP`;
 
   if (!(st.level >= 1 && st.level < MAX_LEVEL && st.target > st.level && st.target <= MAX_LEVEL)) {
     $('needHint').textContent = '';
