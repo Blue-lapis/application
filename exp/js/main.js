@@ -3,6 +3,7 @@ import { requireLogin } from '../../checker/js/auth.js';
 import { MONS as BERRY } from '../../checker/js/berry/mons.js';
 import { MONS as ING } from '../../checker/js/ingredient/mons.js';
 import { MONS as SKILL } from '../../checker/js/skill/mons.js';
+import { initMonPicker, splitName, TYPE_LABELS } from '../../checker/js/monpick.js';
 import { EXP_TYPE_OF, EXP_TYPES, MAX_LEVEL } from './data.js';
 import { plan, thresholds, gsdSchedule } from './calc.js';
 
@@ -31,20 +32,35 @@ const dur = (days) => {
   return h ? `${d}<span class="u">日</span>${h}<span class="u">時間</span>` : `${d}<span class="u">日</span>`;
 };
 
-// ---- ポケモンの一覧（チェッカーの3タイプの最終進化形） ----
-const MONLIST = Object.entries({ ...BERRY, ...ING, ...SKILL })
-  .map(([key, m]) => ({ key, name: m.name, exp: EXP_TYPE_OF[key] || 600 }))
-  .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+// ---- ポケモン（チェッカーの3タイプの最終進化形）。選ぶダイアログはチェッカーと共通 ----
+const GROUPS = { berry: { ...TYPE_LABELS.berry, MONS: BERRY }, ingredient: { ...TYPE_LABELS.ingredient, MONS: ING }, skill: { ...TYPE_LABELS.skill, MONS: SKILL } };
+const ALL_MONS = { ...BERRY, ...ING, ...SKILL };
+const expOf = (key) => EXP_TYPE_OF[key] || 600;
+const chev = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
 
 function initMon() {
-  $('mon').innerHTML = '<option value="">（選ばない）</option>'
-    + MONLIST.map((m) => `<option value="${m.key}">${esc(m.name)}${m.exp !== 600 ? `（${m.exp}）` : ''}</option>`).join('');
-  $('mon').onchange = () => {
-    st.mon = $('mon').value;
-    const m = MONLIST.find((x) => x.key === st.mon);
-    if (m) st.expType = m.exp;
-    update();
-  };
+  const open = initMonPicker({
+    groups: GROUPS,
+    imgBase: '../checker/img/mon/',
+    current: () => st.mon,
+    onPick: (key) => { st.mon = key; st.expType = expOf(key); update(); },
+  });
+  $('monBtn').onclick = () => open('all', false);
+  $('monClear').onclick = () => { $('monDlg').close(); st.mon = ''; update(); };
+}
+
+// ポケモンのカード（チェッカーと同じ形）。選んでいないときは経験値タイプだけ出す。
+function renderMon() {
+  const m = ALL_MONS[st.mon];
+  if (!m) {
+    $('monBtn').innerHTML = `<span class="ph" aria-hidden="true">?</span><span class="mb"><small class="mt">経験値 ${st.expType}タイプ</small><b>ポケモンを選ぶ</b><span class="go">選ぶと経験値タイプが決まります${chev}</span></span>`;
+    return;
+  }
+  const [base, form] = splitName(m.name);
+  $('monBtn').innerHTML = `<img src="../checker/img/mon/${st.mon}.webp" alt="" width="92" height="92"><span class="mb">`
+    + `<small class="mt">経験値 ${st.expType}タイプ</small>`
+    + `<b>${esc(base)}${form ? `<small class="form">${esc(form)}</small>` : ''}</b>`
+    + `<span class="go">ポケモンを変える${chev}</span></span>`;
 }
 
 // ---- 部品 ----
@@ -84,7 +100,6 @@ function show(writeInputs) {
     $('napMax').value = st.napMax ?? '';
     $('boostLimit').value = st.boostLimit ?? '';
     $('start').value = st.start || todayStr();
-    $('mon').value = st.mon;
   }
   $('toNext').max = span;
   showSeg('typeSeg', st.expType);
@@ -96,11 +111,7 @@ function show(writeInputs) {
   $('bonusVal').textContent = st.bonus;
   $('bonusDown').disabled = st.bonus <= 0;
   $('bonusUp').disabled = st.bonus >= 5;
-  const m = MONLIST.find((x) => x.key === st.mon);
-  $('monImg').hidden = !m;
-  if (m) $('monImg').src = `../checker/img/mon/${m.key}.webp`;
-  $('monName').textContent = m ? m.name : 'ポケモンを選ぶ';
-  $('monType').textContent = `経験値 ${st.expType}タイプ`;
+  renderMon();
 
   if (!(st.level >= 1 && st.level < MAX_LEVEL && st.target > st.level && st.target <= MAX_LEVEL)) {
     $('needHint').textContent = '';
@@ -280,6 +291,7 @@ requireLogin().then(() => {
   $('moreClose').onclick = () => dlg.close();
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // 外側を押したら閉じる
   if (!EXP_TYPES[st.expType]) st.expType = 600;
+  if (st.mon && !ALL_MONS[st.mon]) st.mon = '';
   if (!['none', 'mini', 'full'].includes(st.boost)) st.boost = 'none';
   update();
 });

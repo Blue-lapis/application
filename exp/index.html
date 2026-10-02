@@ -34,12 +34,7 @@
 <main>
   <!-- よく変えるものだけを画面に出し、あまり変えないもの（かけらの上限・始める日・アメブースト・おこう・経験値タイプ・グッドスリープデー）は「詳細」に置く。 -->
   <section class="mon">
-    <div class="monbtn">
-      <img id="monImg" alt="" width="44" height="44">
-      <div class="mb"><b id="monName"></b><small id="monType"></small></div>
-      <span class="go">変える ›</span>
-      <select id="mon" aria-label="ポケモン"></select>
-    </div>
+    <button type="button" class="monbtn" id="monBtn" aria-haspopup="dialog"></button>
     <div class="seg" role="group" aria-label="性格のEXP補正" id="natSeg"><button data-v="up">▲ EXPアップ</button><button data-v="none">性格の補正なし</button><button data-v="down">▼ EXPダウン</button></div>
   </section>
 
@@ -79,6 +74,18 @@
     <div class="bside"><span>アメ <b id="bCandy">0</b></span><span>かけら <b id="bShards">0</b></span></div>
   </div>
 </div>
+
+<!-- ポケモンを選ぶダイアログ。チェッカーと同じもの（checker/js/monpick.js）。 -->
+<dialog class="sheet" id="monDlg" aria-labelledby="monTitle">
+  <div class="dlg-in">
+    <h2 id="monTitle" tabindex="-1" autofocus>ポケモンを選ぶ</h2>
+    <div class="monq-w"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input type="search" class="monq" id="monQ" placeholder="名前で探す" aria-label="ポケモンの名前で探す" autocomplete="off" enterkeyhint="done"></div>
+    <div class="monf" id="monFilter" role="group" aria-label="タイプで絞り込む"></div>
+    <div class="monlist" id="monGrid"></div>
+    <p class="note" id="monNone" hidden>見つかりませんでした</p>
+    <div class="dlg-foot"><button type="button" class="txt" id="monClear">選ばない</button><button type="button" class="primary" id="monClose">閉じる</button></div>
+  </div>
+</dialog>
 
 <dialog class="sheet" id="moreDlg" aria-labelledby="moreTitle">
   <div class="dlg-in">

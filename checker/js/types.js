@@ -1,4 +1,5 @@
 // きのみタイプ・食材タイプ・スキルタイプの定義をまとめる。ポケモンのキーは3タイプで重ならない。
+import { TYPE_LABELS } from './monpick.js';
 import * as ingredient from './ingredient/constants.js';
 import * as berry from './berry/constants.js';
 import * as skill from './skill/constants.js';
@@ -8,9 +9,9 @@ import { mults as skillMults, createEngine as skillEngine } from './skill/calc.j
 
 // 並び順はタブの順。
 export const TYPES = {
-  berry: { label: 'きのみタイプ', short: 'きのみ', ...berry, mults: berryMults, createEngine: berryEngine },
-  ingredient: { label: '食材タイプ', short: '食材', ...ingredient, mults: ingMults, createEngine: ingEngine },
-  skill: { label: 'スキルタイプ', short: 'スキル', ...skill, mults: skillMults, createEngine: skillEngine },
+  berry: { ...TYPE_LABELS.berry, ...berry, mults: berryMults, createEngine: berryEngine },
+  ingredient: { ...TYPE_LABELS.ingredient, ...ingredient, mults: ingMults, createEngine: ingEngine },
+  skill: { ...TYPE_LABELS.skill, ...skill, mults: skillMults, createEngine: skillEngine },
 };
 
 export const DEFAULT_TYPE = 'berry';
