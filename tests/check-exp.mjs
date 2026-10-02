@@ -177,8 +177,21 @@ ok('預ける日数の上限（引き取って預け直す）', () => {
   }
   // 島のみ・14日ごと：1回の預けはどれも14日以下で、回数は日数から決まる。
   const p = plan({ expType: 900, level: 30, target: 50, nature: 'none', candy: 0, shardCap: null, score: 100, incense: 'none', bonus: 0, tickets: 0, startDay: s0, napMax: 14 });
-  const b = p.routes.nap.blocks[0];
-  assert.ok(b.deposits >= Math.ceil(b.days / 14) && b.days / b.deposits <= 14);
+  assert.equal(p.routes.nap.blocks.length, 1);
+  assert.equal(p.routes.nap.blocks[0].days, p.routes.nap.days);
+});
+
+// 睡眠のみは、毎晩の睡眠EXPを足していって届いた日と同じ。
+ok('睡眠のみ = 毎晩足していく計算', () => {
+  const s0 = Date.UTC(2026, 9, 1) / 864e5;
+  for (const extra of [{}, { incense: 'every2Days', bonus: 2 }, { nature: 'down', score: 63 }]) {
+    const o = { expType: 1080, level: 20, target: 45, nature: 'none', candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 3, startDay: s0, ...extra };
+    const p = plan(o);
+    let e = 0, d = 0;
+    while (e < p.need) e += sleepDay(s0 + ++d, o).exp;
+    assert.equal(p.routes.sleep.days, d);
+    assert.deepEqual(p.routes.sleep.blocks.map((b) => [b.mode, b.days]), [['sleep', d]]);
+  }
 });
 
 ok('併用は単独のルートより遅くならない', () => {

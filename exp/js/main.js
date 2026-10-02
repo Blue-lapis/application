@@ -133,14 +133,14 @@ function show(writeInputs) {
   const r = R[route];
   const candyLine = c.used ? `<p class="candy">先にアメを ${fmt(c.used)}個使って Lv.${c.level} へ。残り ${fmt(p.goal - c.cum)} EXP を稼ぎます。</p>` : '';
   if (!r) {
-    $('routeBody').innerHTML = `${candyLine}<p class="na">届きません（10年、または島に預けられる1年を超えます）。</p>`;
+    $('routeBody').innerHTML = `${candyLine}<p class="na">届きません（10年を超えます）。</p>`;
   } else {
     const notes = [`${dateLabel(startDay + Math.ceil(r.days))} ごろ`];
     if (st.incense !== 'none' && r.incense) notes.push(`おこう 約${Math.ceil(r.incense)}個`);
     if (r.tickets) notes.push(`チケット${r.tickets}枚`);
     const want = new Set([25, 30, 50, 60]);
     const ms = r.passed.filter((x) => want.has(x.level) && x.level < st.target && x.level > c.level);
-    const blocks = route === 'sleep' ? [{ mode: 'sleep', from: 0, days: r.days, exp: r.need }] : r.blocks;
+    const blocks = r.blocks;
     $('routeBody').innerHTML = candyLine
       + `<p class="rnote">${notes.join(' ・ ')}</p>`
       + (ms.length ? `<p class="ms">${ms.map((x) => `<span>Lv.${x.level} <b>${dateLabel(startDay + Math.ceil(x.days))}</b></span>`).join('')}</p>` : '')
