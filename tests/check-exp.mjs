@@ -2,7 +2,7 @@
 // 期待値は Pokémon Sleep 攻略・検証 Wiki の表と、表から手で計算した値。
 import assert from 'node:assert/strict';
 import { thresholds, useCandy, sleepDay, napMinutes, plan, dayKind, fullMoonMs, gsdCalendar, gsdSchedule } from '../exp/js/calc.js';
-import { NAP, NATURE_RATE } from '../exp/js/data.js';
+import { NAP, NATURE_RATE, NAP_EVENING_MIN } from '../exp/js/data.js';
 import { TOTAL_EXP, SHARDS_PER_CANDY } from '../exp/js/data.js';
 
 let n = 0;
@@ -125,8 +125,8 @@ ok('7日未満で引き取ると、貯まったEXPの半分', () => {
 });
 
 // 併用（動的計画法）は、すべての予定を試した最短と一致する。総当たりは島を 1〜30日（上限まで）のどの長さでも預けられ、
-// 7日未満で引き取ると半分にし、最後は「半分で引き取る」「7日待つ」「満喫して届いた時刻」を試す。グッドスリープデー・満月が週をまたぐ開始日も含む。
-function brute(need, o, { cap = 30, sleep = true } = {}) {
+// 7日未満で引き取ると半分にし、睡眠に戻る日は夕方に引き取ってもよく、最後は「半分で引き取る」「7日待つ」「満喫して届いた時刻」を試す。グッドスリープデー・満月が週をまたぐ開始日も含む。
+function brute(need, o, { cap = 30, sleep = true, evening = true } = {}) {
   const rate = Math.max(NATURE_RATE[o.nature], 1);
   const napE = (min, tkMin) => { const u = Math.min(min, tkMin); return Math.floor(rate * (NAP.ticketPerDay * u + NAP.perDay * (min - u)) / 1440 + 1e-9); };
   let best = Infinity;
@@ -145,6 +145,13 @@ function brute(need, o, { cap = 30, sleep = true } = {}) {
     }
     if (sleep) go(d + 1, t, e + sleepDay(o.startDay + d + 1, o).exp);
     for (let k = 1; k <= cap; k++) { const u = Math.min(t, k), f = napE(k * 1440, u * 1440); go(d + k, t - u, e + (k < 7 ? Math.floor(f / 2) : f)); }
+    // k 日目の夕方に引き取って、その夜に寝る（夕方まで使ったチケットはその日の分まで使ったとみなす）。
+    if (sleep && evening) {
+      for (let k = 1; k * 1440 + NAP_EVENING_MIN <= cap * 1440; k++) {
+        const m = k * 1440 + NAP_EVENING_MIN, f = napE(m, Math.min(t * 1440, m));
+        go(d + k + 1, t - Math.min(t, k + 1), e + (k < 7 ? Math.floor(f / 2) : f) + sleepDay(o.startDay + d + k + 1, o).exp);
+      }
+    }
   };
   go(0, o.tickets * 7, 0);
   return best;
@@ -177,7 +184,7 @@ ok('途中で7日未満で引き取る（半分）', () => {
   const p = plan(o), no = plan({ ...o, midHalf: false });
   assert.ok(p.routes.mix.days < no.routes.mix.days - 1);
   const [first, second] = p.routes.mix.blocks;
-  assert.ok(first.mode === 'nap' && first.half && first.days < 7 && first.ticketDays === first.days);
+  assert.ok(first.mode === 'nap' && first.half && first.days < 7 && first.ticketDays >= first.days);
   assert.equal(second.mode, 'sleep');
   assert.ok(Math.abs(p.routes.mix.days - brute(p.need, o, { cap: 14 })) < 1e-9);
   // 引き取ってもチケットの残りは持ち越す（使った日数の合計はチケット1枚 = 7日以内）。
@@ -218,10 +225,12 @@ ok('預ける日数の上限（引き取って預け直す）', () => {
       assert.ok(p.routes.nap.days >= free.routes.nap.days - 1e-9 && p.routes.mix.days >= free.routes.mix.days - 1e-9);
     }
   }
-  // 島のみ・14日ごと：1回の預けはどれも14日以下で、回数は日数から決まる。
+  // 島のみ・14日ごと：予定は1回の預けごとで、どれも14日以下。回数は日数から決まる。
   const p = plan({ expType: 900, level: 30, target: 50, nature: 'none', candy: 0, shardCap: null, score: 100, incense: 'none', bonus: 0, tickets: 0, startDay: s0, napMax: 14 });
-  assert.equal(p.routes.nap.blocks.length, 1);
-  assert.equal(p.routes.nap.blocks[0].days, p.routes.nap.days);
+  const bl = p.routes.nap.blocks;
+  assert.equal(bl.length, Math.ceil(p.routes.nap.days / 14 - 1e-9));
+  assert.ok(bl.every((b) => b.days <= 14));
+  assert.ok(Math.abs(bl.reduce((s, b) => s + b.days, 0) - p.routes.nap.days) < 1e-9);
 });
 
 // 睡眠のみは、毎晩の睡眠EXPを足していって届いた日と同じ。
@@ -240,14 +249,86 @@ ok('睡眠のみ = 毎晩足していく計算', () => {
 ok('併用は単独のルートより遅くならない', () => {
   const s0 = Date.UTC(2026, 9, 1) / 864e5;
   for (let k = 0; k < 60; k++) {
-    for (const extra of [{}, { tickets: 2 }, { incense: 'gsd', bonus: 3 }, { nature: 'up' }]) {
-      const p = plan({ expType: 900, level: 25, target: 50, nature: 'none', candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, startDay: s0 + k, ...extra });
+    for (const extra of [{}, { tickets: 2 }, { incense: 'gsd', bonus: 3 }, { nature: 'up' }, { score: 70, tickets: 2 }]) {
+      const p = plan({ expType: 900, level: 25, target: 50, nature: 'none', candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, napMax: 14, startDay: s0 + k, ...extra });
       const { sleep, nap, mix } = p.routes;
       assert.ok(mix.days <= Math.min(sleep.days, nap.days) + 1e-9, `+${k}日 ${JSON.stringify(extra)}`);
-      // 予定の日数の合計が到達日数と合う。
-      assert.ok(Math.abs(mix.blocks.reduce((s, b) => s + b.days, 0) - mix.days) < 1e-9);
+      // 予定の日数の合計が到達日数と合い、EXP の合計で届く。預けは上限（14日）以下。
+      for (const r of [mix, nap]) {
+        assert.ok(Math.abs(r.blocks.reduce((s, b) => s + b.days, 0) - r.days) < 1e-9);
+        assert.ok(r.blocks.reduce((s, b) => s + b.exp, 0) >= r.need);
+        assert.ok(r.blocks.every((b) => b.mode === 'sleep' || b.days + (b.eve ? 930 / 1440 : 0) <= 14 + 1e-9));
+        assert.ok(r.blocks.every((b) => b.mode === 'sleep' || b.half || b.days >= 7));
+      }
     }
   }
+});
+
+// 島から睡眠に戻る日は、夕方まで預けて引き取ると、その日の昼の分も貯まる。
+ok('睡眠に戻る日は夕方に引き取る', () => {
+  // 15時間30分ぶん：チケットなし 96、性格の上昇 114、チケットあり 387。
+  assert.equal(NAP_EVENING_MIN, 930);
+  assert.equal(Math.floor(150 * 930 / 1440), 96);
+  // 島7日 → 夕方に引き取って寝る、が選ばれる例を探し、EXP が7日ぶん＋夕方の分になっていることを確かめる。
+  const s0 = Date.UTC(2026, 9, 1) / 864e5;
+  let found = 0;
+  for (let k = 0; k < 30 && !found; k++) {
+    const o = { expType: 600, level: 30, target: 35, nature: 'none', candy: 0, shardCap: null, score: 60, bonus: 0, incense: 'none', tickets: 0, napMax: 14, startDay: s0 + k };
+    const p = plan(o), bl = p.routes.mix.blocks;
+    const i = bl.findIndex((b) => b.mode === 'nap' && b.eve);
+    if (i < 0) continue;
+    const b = bl[i];
+    assert.equal(b.raw, Math.floor(150 * (b.days * 1440 + 930) / 1440));
+    assert.equal(bl[i + 1].mode, 'sleep');
+    assert.equal(bl[i + 1].from, b.from + b.days);
+    // 夕方の分を数えないときより早くなることはあっても、遅くはならない。
+    assert.ok(p.routes.mix.days <= brute(p.need, o, { cap: 14, evening: false }) + 1e-9);
+    found++;
+  }
+  assert.ok(found, '夕方に引き取る予定が1つも選ばれない');
+});
+
+// 予定は1回の預けごとに出す。どの預けも上限以下で、7日未満のものは半分。
+ok('予定は預けごと', () => {
+  const s0 = Date.UTC(2026, 9, 1) / 864e5;
+  for (const [cap, tickets] of [[14, 0], [11, 2], [10, 5]]) {
+    const p = plan({ expType: 900, level: 30, target: 50, nature: 'none', candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets, napMax: cap, startDay: s0 });
+    const naps = p.routes.nap.blocks;
+    assert.ok(naps.length >= 2);
+    for (const b of naps) {
+      assert.equal(b.mode, 'nap');
+      assert.ok(b.days <= cap + 1e-9 && (b.half || b.days >= 7 || b === naps.at(-1)), `${cap}: ${b.days}`);
+    }
+    assert.equal(naps.length, Math.ceil(p.routes.nap.days / cap - 1e-9));
+    assert.ok(Math.abs(naps.reduce((s, b) => s + b.ticketDays, 0) - tickets * 7) < 1e-9);
+  }
+});
+
+// アメブースト：EXP 2倍、ゆめのかけらは通常5倍・ミニ4倍。上限の個数を超えた分はふつうに使う。
+ok('アメブースト', () => {
+  const th = thresholds(600);
+  const base = { cum: th[10], th, target: 30, nature: 'none', candy: 99999 };
+  const n = useCandy(base);
+  const f = useCandy({ ...base, boost: 'full' }), m = useCandy({ ...base, boost: 'mini' });
+  // Lv.10→30（性格なし）：ふつう273個。ブーストは約半分、かけらは5倍・4倍の単価。
+  assert.equal(n.used, 273);
+  assert.ok(f.used <= 137 && f.used >= 136 && f.boosted === f.used);
+  assert.equal(m.used, f.used);
+  assert.equal(f.shards / 5, m.shards / 4);
+  // 自分で数えた値：Lv.10→11 は 345 EXP、ブーストで1個80 → 5個（400）で、かけら 50×5×5 = 1,250。
+  const one = useCandy({ ...base, target: 11, boost: 'full' });
+  assert.deepEqual([one.used, one.shards], [5, 1250]);
+  // 上限50個までブースト、残りはふつう。
+  const lim = useCandy({ ...base, boost: 'full', boostLimit: 50 });
+  assert.equal(lim.boosted, 50);
+  assert.ok(lim.used > 50 && lim.used < n.used && lim.level === 30);
+  // plan からも効く。
+  const p = plan({ expType: 600, level: 10, target: 30, nature: 'none', candy: 140, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, startDay: 0, boost: 'full' });
+  assert.equal(p.routes, null);
+  assert.equal(p.candy.boosted, p.candy.used);
+  // ゆめのかけらが足りなくなったら、ブーストを切って続ける。
+  const cap = useCandy({ ...base, boost: 'full', shardCap: 20000 });
+  assert.ok(cap.shards <= 20000 && cap.used > cap.boosted);
 });
 
 console.log(`${n} 件すべて通った`);
