@@ -197,7 +197,7 @@ function renderFacts(th, cum, need) {
 }
 
 // 目標レベル別の一覧。50・60・70 と今の目標のうち、手持ちのアメで届くレベルより上を並べる（アメで届くものは比べなくてよい）。
-// どの列も「手持ちのアメを使ったあと」から数える（さらに要るアメ・かけらと、睡眠・島で稼ぐ日数）。
+// 出すのは最短の日数だけ（アメ・かけらはレベルのカードで見られる）。
 // 日数は目標ごとに最短の育て方を計算する（重いことがあるので、開いているときだけ）。
 let lvOpen = false;
 const LVX = [50, 60, 70];
@@ -207,17 +207,15 @@ function renderLvx(th, startDay, span, cur) {
   const daysOf = (p) => (!p.routes ? 0 : Math.min(...Object.values(p.routes).filter(Boolean).map((r) => r.days)));
   const curDays = daysOf(cur);
   $('lvxSum').innerHTML = `Lv.${st.target} まで <b>${Number.isFinite(curDays) ? plain(curDays) : '—'}</b>`;
-  $('lvxFrom').textContent = cur.candy.used ? `手持ちのアメで Lv.${cur.candy.level} まで上げたあと、` : '今から、';
   $('lvx').hidden = !lvs.length;
   $('lvxHead').setAttribute('aria-expanded', String(lvOpen));
   $('lvxBody').hidden = !lvOpen;
   if (!lvOpen) return;
   $('lvxRows').innerHTML = lvs.map((t) => {
-    const c = useCandy({ cum: cur.candy.cum, th, target: t, nature: st.nature, candy: Infinity }); // 手持ちのアメを使ったあとから
     const p = t === st.target ? cur : plan({ ...st, target: t, toNext: st.toNext ?? span, startDay });
     const d = daysOf(p), on = t === st.target;
     const days = !Number.isFinite(d) ? '—' : d === 0 ? '0<span class="u">日</span>' : `${Math.ceil(d)}<span class="u">日</span>`; // 一覧は日に切り上げ
-    return `<button type="button" class="lvx-row lvx4" data-v="${t}" aria-pressed="${on}"><span class="lvx-lv">Lv.${t}</span><b>${fmt(c.used)}</b><b>${fmt(c.shards)}</b><b class="d">${days}</b></button>`;
+    return `<button type="button" class="lvx-row lvx2" data-v="${t}" aria-pressed="${on}"><span class="lvx-lv">Lv.${t}</span><b class="d">${days}</b></button>`;
   }).join('');
 }
 
