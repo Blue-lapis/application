@@ -20,7 +20,7 @@
   <input type="password" id="loginPw" name="password" autocomplete="current-password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required>
   <p class="loginmsg" id="loginMsg" role="status"></p>
   <button type="submit">ログイン</button>
-  <p class="ver">v1.1</p>
+  <p class="ver">v1.2</p>
 </form>
 
 <div class="appbar">
@@ -47,8 +47,6 @@
       <button class="monbtn" id="monBtn" aria-haspopup="dialog"></button>
       <div class="facts" id="facts"></div>
       <div id="monInfo"></div>
-      <!-- 育成日数シミュレーターへ。このポケモン・性格のEXP補正・評価のレベル（70まで）を引き継いで開く。 -->
-      <a class="toexp" id="toExp" href="../exp/"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18M9 17l2-2 2 1 3-3"/></svg><span><b>育成日数を見る</b><small id="toExpSub"></small></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
     </section>
 
     <section id="arrSec">
@@ -116,10 +114,12 @@
       <p class="note" id="rankNote"></p>
     </section>
 
+    <!-- 育成日数シミュレーターへ。このポケモン・性格のEXP補正・評価のレベル（70まで）を引き継いで開く。 -->
+    <div class="xapp" id="toExpCard"><a class="toexp" id="toExp" href="../exp/"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18M9 17l2-2 2 1 3-3"/></svg><span><b>育成日数を見る</b><small id="toExpSub"></small></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a></div>
+
     <footer class="foot">
       <p class="credit">ゲーム画像の著作権は ©Pokémon. ©Nintendo/Creatures Inc./GAME FREAK inc. ©SELECT BUTTON inc. に帰属します。</p>
-      <p class="credit"><a href="../exp/">育成日数シミュレーター</a></p>
-      <div class="foot-row"><span class="ver">厳選チェッカー v1.1</span><button class="logout" id="logout" type="button" hidden>ログアウト</button></div>
+      <div class="foot-row"><span class="ver">厳選チェッカー v1.2</span><button class="logout" id="logout" type="button" hidden>ログアウト</button></div>
     </footer>
   </div>
 </main>

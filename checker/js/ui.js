@@ -224,7 +224,7 @@ function renderTabs() {
 
 // ポケモンがないと意味のない部分（ポケモンの情報・育成日数へのリンク・入力・性能・レベル別の一覧・くわしい数値）。
 // 食材配列の欄はタイプでも出し分けるので、出すときは renderHeader が決める。
-const MON_PARTS = ['facts', 'monInfo', 'toExp', 'subSec', 'natSec', 'outSec', 'lvx', 'detailSec'];
+const MON_PARTS = ['facts', 'monInfo', 'toExpCard', 'subSec', 'natSec', 'outSec', 'lvx', 'detailSec'];
 function showMonParts(on) {
   MON_PARTS.forEach((id) => { $(id).hidden = !on; });
   if (!on) $('arrSec').hidden = true;
