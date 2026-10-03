@@ -15,6 +15,8 @@ export const TYPES = {
 };
 
 export const DEFAULT_TYPE = 'berry';
+// 日中の受け取りの初期値（3タイプとも3時間ごと）。事前計算の範囲（precomputed.js）もこれに合わせる。
+export const DEFAULT_TAP = '3h';
 
 export const typeOf = (mon) => Object.keys(TYPES).find((t) => typeof mon === 'string' && Object.hasOwn(TYPES[t].MONS, mon)) || null;
 

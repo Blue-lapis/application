@@ -20,7 +20,7 @@
   <input type="password" id="loginPw" name="password" autocomplete="current-password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required>
   <p class="loginmsg" id="loginMsg" role="status"></p>
   <button type="submit">ログイン</button>
-  <p class="ver">v1.0</p>
+  <p class="ver">v1.1</p>
 </form>
 
 <div class="appbar">
@@ -57,7 +57,7 @@
       <div id="arr"></div>
     </section>
 
-    <section>
+    <section id="subSec">
       <div class="sec-head">
         <h2>サブスキル</h2>
         <span class="subcount" id="subCount"></span>
@@ -65,7 +65,7 @@
       <div class="subslots" id="slots"></div>
     </section>
 
-    <section>
+    <section id="natSec">
       <div class="sec-head"><h2>性格</h2></div>
       <button class="natbtn" id="natBtn" aria-haspopup="dialog"></button>
       <button class="reset" id="reset" type="button">サブスキル・性格を消す</button>
@@ -88,7 +88,7 @@
     </section>
 
 
-    <section class="out">
+    <section class="out" id="outSec">
       <small class="o-label" id="hLabel">—</small>
       <b class="o-all" id="hAll">—</b>
       <div class="split" aria-hidden="true"><i id="hSplit"></i></div>
@@ -110,7 +110,7 @@
       </div>
     </div>
 
-    <section class="detail">
+    <section class="detail" id="detailSec">
       <h2>くわしい数値</h2>
       <div id="rows"></div>
       <p class="note" id="rankNote"></p>
@@ -119,7 +119,7 @@
     <footer class="foot">
       <p class="credit">ゲーム画像の著作権は ©Pokémon. ©Nintendo/Creatures Inc./GAME FREAK inc. ©SELECT BUTTON inc. に帰属します。</p>
       <p class="credit"><a href="../exp/">育成日数シミュレーター</a></p>
-      <div class="foot-row"><span class="ver">厳選チェッカー v1.0</span><button class="logout" id="logout" type="button" hidden>ログアウト</button></div>
+      <div class="foot-row"><span class="ver">厳選チェッカー v1.1</span><button class="logout" id="logout" type="button" hidden>ログアウト</button></div>
     </footer>
   </div>
 </main>

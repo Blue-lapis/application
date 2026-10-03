@@ -1,12 +1,13 @@
 # ポケモンスリープ 厳選チェッカー
 
-ポケモンスリープのきのみタイプ・食材タイプ・スキルタイプ（最終進化形）向けの厳選チェッカーです（v1.0）。選んだサブスキル・性格から1日あたりの期待値を計算し、無補正個体との比較や、同等以上の個体になる確率（平均何匹に1匹）を表示します。使い方・ポケモンのデータ・タイプごとの計算は [`checker/README.md`](checker/README.md) にあります。
+ポケモンスリープのきのみタイプ・食材タイプ・スキルタイプ（最終進化形）向けの厳選チェッカーです（v1.1）。選んだサブスキル・性格から1日あたりの期待値を計算し、無補正個体との比較や、同等以上の個体になる確率（平均何匹に1匹）を表示します。使い方・ポケモンのデータ・タイプごとの計算は [`checker/README.md`](checker/README.md) にあります。
 
 ## バージョン
 
 - v1.0 — 画面を刷新した最初のリリース（あとで判定のカードはやめ、旧版と同じく下の帯をいつも出す形に戻した）。判定（同等以上の確率・無補正比・平均何匹に1匹）を夜空色のカードにまとめ、条件をその直前に移動。記録は別のダイアログに、消した入力と削除した記録は「元に戻す」で戻せるようにした。表示テーマの切り替え（自動・ライト・ダーク）、3タイプからの名前検索、文字を M PLUS 2・数字を Lexend に変更。配色・計算・保存データ（記録・設定）は以前のまま。
+- v1.1 — 入力中のサブスキル・性格・食材配列をポケモンごとに端末に保存し、そのポケモンを選ぶと戻すようにした。初めて開いたときはポケモン未選択から始め、日中の受け取りの初期値を3タイプとも「3時間ごと」に変更（事前計算の分布もこの条件に合わせた）。保存済みの設定・記録はそのまま使う。設計は [`docs/design-v1.10.md`](docs/design-v1.10.md)。
 
-バージョンは画面の一番下とログイン画面に出す（`checker/index.html` の「v1.0」）。`docs/` の ver1.1〜ver1.9 は計算と機能の設計の版で、このリリースの番号とは別。
+バージョンは画面の一番下とログイン画面に出す（`checker/index.html` の「v1.1」）。`docs/` の ver1.1〜ver1.10 は計算と機能の設計の版で、このリリースの番号とは別。
 
 ## 公開ページ
 
@@ -23,9 +24,10 @@ https://blue-lapis.github.io/application/checker/
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、おてつだい時間と確率の丸め、所持数の遷移、スキル抽選回数とストック、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数
 - `css/style.css` — 土台のスタイル（見た目は `checker/css/theme.css` で上書き。色・文字・部品の形は theme.css にまとめている）
-- `docs/` — ver1.1〜ver1.9 の要件定義書・設計書（最新: [要件定義](docs/requirements-v1.9.md)・[設計書](docs/design-v1.9.md)）。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない。ver1.9 は上位%の分布の事前計算（あわせて、レベル別の一覧と、Lv.50 でまだ出ない狙い食材を押せなくする変更。どちらも要件定義はない）
+- `docs/` — ver1.1〜ver1.10 の要件定義書・設計書（最新: [要件定義](docs/requirements-v1.9.md)・[設計書](docs/design-v1.10.md)）。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない。ver1.9 は上位%の分布の事前計算（あわせて、レベル別の一覧と、Lv.50 でまだ出ない狙い食材を押せなくする変更。どちらも要件定義はない）。ver1.10 は入力のポケモンごとの保存と初期値の変更（要件定義はない）
 - `scripts/precompute-dist.mjs` — 既定の条件の上位%の分布を事前計算し、`checker/dist/` に書き出す（公開時に実行。[ローカルでの実行手順](#事前計算した分布)）
 - `tests/check-dist.mjs` — 上位%の分布の整合性テスト（`node tests/check-dist.mjs`）
+- `tests/check-draft.mjs` — 入力のポケモンごとの保存（`ckdraft`）・壊れたデータの扱い・初期値（ポケモン未選択・受け取り3時間ごと）のテスト（`node tests/check-draft.mjs`）
 - `tests/check-precomputed.mjs` — 事前計算の分布がそろっていて、計算した分布とビットまで一致し、版の違う・壊れたファイルを使わないことのテスト
 - `tests/check-precomputed-browser.mjs` — 同じことをヘッドレス Chromium（スマートフォンの幅）の画面で確かめる（Playwright が要る。CI では実行しない）
 - `tests/check-segs.mjs` — 所持数・ストック・天井込みの確率の境界テスト（`node tests/check-segs.mjs`）
@@ -33,7 +35,7 @@ https://blue-lapis.github.io/application/checker/
 - `tests/compare-values.mjs`・`tests/bench-dist.mjs`・`tests/compare-dist.mjs` — 変更前後の値・分布・計算時間の比較（[実行手順](docs/design-v1.4.md#5-再確認する手順)）
 - `tests/compare-nitoyon.mjs`・`tests/nitoyon/runner.ts` — にとよんツールとの値の比較（[実行手順](docs/design-v1.5.md#5-再確認する手順)）
 - `index.html`・`ingredient/index.html`・`berry/index.html` — `checker/` へ移動するページ
-- `.github/workflows/pages.yml` — `main` への push で `check-segs.mjs`・`check-dist.mjs`・`check-boost.mjs` を実行し、通れば分布を事前計算して `check-precomputed.mjs` で確かめ、アプリのファイルと事前計算の分布だけを GitHub Pages に公開する
+- `.github/workflows/pages.yml` — `main` への push で `check-segs.mjs`・`check-dist.mjs`・`check-boost.mjs`・`check-exp.mjs`・`check-draft.mjs` を実行し、通れば分布を事前計算して `check-precomputed.mjs` で確かめ、アプリのファイルと事前計算の分布だけを GitHub Pages に公開する
 
 ## 共通の計算モデル
 

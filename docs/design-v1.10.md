@@ -9,8 +9,11 @@
 | `checker/js/state.js` | 入力の保存（`ckdraft`）の読み書き。`selectMon` で前回の入力を戻す。`state.mon` に `null`（未選択）を許す。`loadSettings`・`lastMonOf`・`setType` で既定のポケモンを使わず未選択にする。`tap`・`ingTap` の初期値を `'3h'` に。`hasMon()` を追加 |
 | `checker/js/ui.js` | `refresh` の先頭で `saveDraft()` を呼ぶ。未選択の画面（`renderEmpty` 相当の分岐）。`requestDist`・`renderLvList`・`renderToExp`・`syncUrl` などをポケモンがないときに呼ばない／何もしない |
 | `checker/index.html` | 受け取りのボタンの並びはそのまま（`aria-pressed` で初期値が出る）。未選択のときに隠す欄に `id` を足す（必要な分だけ）。バージョン `v1.0` → `v1.1`（ログイン画面とフッター） |
-| `checker/css/theme.css`（またはページ内の style） | 未選択のカードの「?」（育成シミュレーターの `.ph` と同じ見た目）を足す。exp 側の定義を写すか共通化するかは実装時に見て小さい方 |
-| `checker/js/types.js`・`*/constants.js` | 変更なし（`DEFAULT_TYPE`・`DEFAULT_MON` は残す。事前計算のテストが使う。§7-1） |
+| `checker/css/theme.css` | 未選択のカードの「?」（`.monbtn .ph`、育成シミュレーターから移す） |
+| `checker/js/types.js` | 受け取りの初期値 `DEFAULT_TAP = '3h'` を追加（§7）。`DEFAULT_TYPE`・`DEFAULT_MON` は残す（事前計算のテストが使う） |
+| `checker/js/precomputed.js`・`tests/check-precomputed.mjs` | 事前計算の受け取りを `DEFAULT_TAP` に（§7） |
+| `exp/css/exp.css` | `.monbtn .ph` を `theme.css` に移す（育成シミュレーターも `theme.css` を読んでいるので見た目は同じ） |
+| `.github/workflows/pages.yml` | `test` ジョブで `tests/check-draft.mjs` も実行する |
 | `README.md` | 「バージョン」に v1.1 の1行 |
 | `tests/check-draft.mjs` | 新規。保存・読み込み・壊れたデータの扱いを Node で確かめる（`localStorage` は簡単な代用品を置く。既存テストと同じやり方） |
 
@@ -153,14 +156,20 @@
 4. **初回のタブ。** 未選択でもタブはどれか1つ選ばれている必要があるので、今の `DEFAULT_TYPE`（きのみ）にする。
 5. **`up`・`down` を保存するか。** 性格の名前のない古い記録を戻したときの入力を保てるよう、保存する。
 
-## 7. 気づいたこと（判断をお願いしたいもの）
+## 7. 事前計算の範囲（決定：案A）
 
-1. **事前計算の範囲と受け取りの初期値がずれる。** 事前計算（`precomputed.js:16`）は受け取りを `TYPES[type].TAPS[0]`（きのみ `none`、食材・スキル `always`）で作っている。初期値を `3h` にすると、新しい人の既定の条件は範囲外になり、毎回その場で計算する（スマートフォンでは遅くなる）。また `tests/check-precomputed.mjs` の「画面の既定の条件が範囲に入る」が落ちる見込み。案:
-   - **A（推奨）** 事前計算の受け取りを、新しい既定の `3h` に変える（件数は1,554件のまま、CI の時間も同じ）。前の既定（`none`・`always`）を使っている既存の人は範囲外になり、計算に戻る。
-   - B 受け取りの2通りとも事前計算する（3,108件、CI と公開物がおよそ2倍：約270秒・136MB）。
-   - C 事前計算は変えない（新しい人は毎回計算）。
-   「事前計算の分布には影響させない」とあったので、どれにするか決めてください。A・B は `precomputed.js` の範囲と `check-precomputed.mjs` を直す（分布の中身・キーの形・`MODEL_VERSION` は変えない）。
-2. `TAPS` の並び（`['none', '3h']` など）は画面のボタンの順でもあるので、並べ替えでは対応しない。
+事前計算（`precomputed.js`）は受け取りを `TYPES[type].TAPS[0]`（きのみ `none`、食材・スキル `always`）で作っていた。初期値を `3h` にすると新しい人の既定の条件が範囲外になるので、レビューで次の案から **A** に決めた。
+
+- **A（採用）** 事前計算の受け取りを、新しい既定の `3h` にする。件数は1,554件のまま、CI の時間も同じ。前の既定（`none`・`always`）を保存している今の人は範囲外になり、その場の計算に戻る。
+- B 受け取りの2通りとも事前計算する（3,108件、CI と公開物がおよそ2倍）。
+- C 事前計算は変えない（新しい人は毎回計算）。
+
+実装:
+
+- 受け取りの初期値を `types.js` の `DEFAULT_TAP = '3h'` にまとめ、`state.js`（初期値・`loadSettings`）と `precomputed.js`（`preEnv`）の両方がこれを使う。ずれないよう1か所にした。
+- `tests/check-precomputed.mjs` の「範囲外の条件」の受け取りを、`'3h'` からそのタイプの `TAPS[0]`（前の既定）に変えた。「画面の既定の条件が範囲に入る」はそのまま通る。
+- 分布の中身・キーの形・`MODEL_VERSION` は変えない（`tap` はもともと条件の一部としてキーに入っている）。
+- `TAPS` の並び（`['none', '3h']` など）は画面のボタンの順でもあるので、並べ替えでは対応しない。
 
 ## 8. 採らなかった案
 
