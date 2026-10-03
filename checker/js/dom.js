@@ -1,4 +1,4 @@
-// 厳選チェッカーと育成日数シミュレーター（exp/）の画面で共通の部品。HTML のエスケープ、線のアイコン、表示テーマの切り替え。
+// 厳選チェッカーと育成日数シミュレーター（exp/）の画面で共通の部品。HTML のエスケープ、線のアイコン、版の表示、表示テーマの切り替え。
 // 計算のコードには依存しない。
 
 export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -7,6 +7,11 @@ export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt
 export const icon = (d, size = 20, width = 2) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 // カードの右端などに置く ＞。
 export const CHEV = icon('<path d="M9 6l6 6-6 6"/>', 14, 2.4);
+
+// 版（それぞれの version.js）を、data-ver の付いた要素（ログイン画面とフッター）に出す。
+export function showVersion(v) {
+  document.querySelectorAll('[data-ver]').forEach((el) => { el.textContent = v; });
+}
 
 // 表示テーマ。自動（端末の設定）→ライト→ダークの順に切り替え、cktheme に保存する（両アプリで同じ設定）。
 // 描画前の適用はそれぞれの index.html でする。btn は切り替えのボタン。

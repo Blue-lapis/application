@@ -1,6 +1,6 @@
 # ポケモンスリープ 厳選チェッカー
 
-ポケモンスリープのきのみタイプ・食材タイプ・スキルタイプ（最終進化形）向けの厳選チェッカーです（v1.2）。選んだサブスキル・性格から1日あたりの期待値を計算し、無補正個体との比較や、同等以上の個体になる確率（平均何匹に1匹）を表示します。使い方・ポケモンのデータ・タイプごとの計算は [`checker/README.md`](checker/README.md) にあります。
+ポケモンスリープのきのみタイプ・食材タイプ・スキルタイプ（最終進化形）向けの厳選チェッカーです。選んだサブスキル・性格から1日あたりの期待値を計算し、無補正個体との比較や、同等以上の個体になる確率（平均何匹に1匹）を表示します。使い方・ポケモンのデータ・タイプごとの計算は [`checker/README.md`](checker/README.md) にあります。
 
 ## バージョン
 
@@ -25,7 +25,7 @@
 
 ### 版の表示と書き換える場所
 
-版は画面の一番下（フッター）とログイン画面の2か所に出します。上げるときは、そのアプリの `index.html` の2か所（厳選チェッカーは `checker/index.html`、育成日数シミュレーターは `exp/index.html`）と、この README の版を書き換えます。
+版はアプリごとに1つのファイル（厳選チェッカーは `checker/js/version.js`、育成日数シミュレーターは `exp/js/version.js`）にだけ書き、画面の一番下（フッター）とログイン画面には、そこから出します（`index.html` の `data-ver`）。上げるときは、その `version.js` と、この README の「今の版」・版の一覧を書き換えます。README と `version.js` がそろっていることは `tests/check-version.mjs` で確かめます（PR のテストでも動きます）。
 
 `docs/checker/` の設計書・要件定義書の番号（チェッカーの ver1.1〜ver1.11）は計算と機能の設計の版で、リリースの番号とは別です。番号の対応は [`docs/README.md`](docs/README.md) にまとめています。
 
@@ -41,7 +41,9 @@
 - `checker/js/dom.js` — 厳選チェッカーと育成日数シミュレーターの画面で共通の部品（HTML のエスケープ・線のアイコン・表示テーマの切り替え）。ポケモンを選ぶダイアログ（`checker/js/monpick.js`）とログイン（`checker/js/auth.js`）も両アプリで共通
 - `checker/img/mon/` — ポケモンの画像（ゲーム内のメニュー画像を切り詰めた WebP）。ファイル名は `mons.js` のキー
 - `checker/img/ing/` — 食材アイコン（ゲーム内のスクリーンショットから切り抜き、56×56 に縮めた WebP）。食材名との対応は `checker/js/ingicons.js`
-- `exp/` — 育成日数シミュレーター（v1.5）。アメ・睡眠EXP・ゴンベのおひるね島を組み合わせて、目標のレベルまでの日数を出す。ページの一番下の「厳選チェッカーで見る」から、選んでいるポケモンで厳選チェッカーを開ける。要件は [`docs/exp/requirements-v1.0.md`](docs/exp/requirements-v1.0.md)。計算は `exp/js/calc.js`（DOM非依存）、ゲームデータは `exp/js/data.js`、保存データ（`expsim`）の読み込みと確かめは `exp/js/store.js`
+- `exp/` — 育成日数シミュレーター。アメ・睡眠EXP・ゴンベのおひるね島を組み合わせて、目標のレベルまでの日数を出す。ページの一番下の「厳選チェッカーで見る」から、選んでいるポケモンで厳選チェッカーを開ける。要件は [`docs/exp/requirements-v1.0.md`](docs/exp/requirements-v1.0.md)。計算は `exp/js/calc.js`（DOM非依存）、ゲームデータは `exp/js/data.js`、保存データ（`expsim`）の読み込みと確かめは `exp/js/store.js`
+- `checker/js/version.js`・`exp/js/version.js` — それぞれのアプリの版（[バージョン](#版の表示と書き換える場所)）
+- `tests/check-version.mjs` — 版の番号がそろっていること（`version.js` と README の「今の版」・版の一覧の最後、`index.html` に版を直接書いていないこと）のテスト（`node tests/check-version.mjs`）
 - `tests/check-exp.mjs` — 育成日数シミュレーターの計算のテスト（wiki の表との照合）と、保存データの読み込み（壊れた項目の扱い）のテスト（`node tests/check-exp.mjs`）
 - `js/constants.js` — サブスキル・性格・げんきなどのゲームデータ（3タイプ共通）
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、おてつだい時間と確率の丸め、所持数の遷移、スキル抽選回数とストック、サブスキルの抽選分布）。DOM非依存
@@ -59,8 +61,8 @@
 - `tests/compare-values.mjs`・`tests/bench-dist.mjs`・`tests/compare-dist.mjs` — 変更前後の値・分布・計算時間の比較（[実行手順](docs/checker/design-v1.4.md#5-再確認する手順)）
 - `tests/compare-nitoyon.mjs`・`tests/nitoyon/runner.ts` — にとよんツールとの値の比較（[実行手順](docs/checker/design-v1.5.md#5-再確認する手順)）
 - `index.html`・`ingredient/index.html`・`berry/index.html` — `checker/` へ移動するページ
-- `.github/workflows/test.yml` — `check-segs.mjs`・`check-dist.mjs`・`check-boost.mjs`・`check-exp.mjs`・`check-draft.mjs` を実行する。PR を作ったとき・更新したときに動き、`pages.yml` からも呼ばれる
-- `.github/workflows/pages.yml` — `main` への push で `test.yml` のテストを実行し、通れば分布を事前計算して `check-precomputed.mjs` で確かめ、アプリのファイルと事前計算の分布だけを GitHub Pages に公開する
+- `.github/workflows/test.yml` — `check-segs.mjs`・`check-dist.mjs`・`check-boost.mjs`・`check-exp.mjs`・`check-draft.mjs`・`check-version.mjs` を実行する。PR を作ったとき・更新したときに動き、`pages.yml` からも呼ばれる
+- `.github/workflows/pages.yml` — `main` への push で `test.yml` のテストを実行し、通れば分布を事前計算して `check-precomputed.mjs` で確かめ、アプリのファイルと事前計算の分布だけを GitHub Pages に公開する。`docs/`・`tests/`・リポジトリ直下の `README.md` だけを変えた push では動かない（公開し直すと版が変わり、利用者の端末に保存した分布を読み直させてしまうため。手で公開するときは Actions の画面から実行する）
 
 ## 共通の計算モデル
 

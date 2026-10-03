@@ -4,11 +4,14 @@ import { MONS as BERRY } from '../../checker/js/berry/mons.js';
 import { MONS as ING } from '../../checker/js/ingredient/mons.js';
 import { MONS as SKILL } from '../../checker/js/skill/mons.js';
 import { initMonPicker, splitName, TYPE_LABELS } from '../../checker/js/monpick.js';
-import { esc, icon, CHEV, initTheme } from '../../checker/js/dom.js';
+import { esc, icon, CHEV, initTheme, showVersion } from '../../checker/js/dom.js';
 import { EXP_TYPE_OF, MAX_LEVEL, candyExp } from './data.js';
 import { checkerLink } from './link.js';
 import { loadState, PER_MON, START, MAX_SHIFT } from './store.js';
 import { plan, thresholds, gsdSchedule, sleepDay, useCandy } from './calc.js';
+import { VERSION } from './version.js';
+
+showVersion(VERSION);
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Math.round(n).toLocaleString('ja-JP');
