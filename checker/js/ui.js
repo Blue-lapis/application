@@ -10,6 +10,7 @@ import { boostedEnergy } from './berry/calc.js';
 import { energyAt } from './engine.js';
 import { ingIcon } from './ingicons.js';
 import { initMonPicker, splitName } from './monpick.js';
+import { esc, icon, CHEV, initTheme } from './dom.js';
 import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLabel } from './picker.js';
 import {
   state, monData, hasMon, saveDraft, loadSettings, setCamp, setLevel, setLvOpen, setMon, setType, setTarget, setNature, resetSelection,
@@ -21,7 +22,6 @@ import {
 const $ = (id) => document.getElementById(id);
 const chipHtml = (v, label, pressed, dis, cls) =>
   `<button class="chip ${cls || ''}" data-v="${v}" aria-pressed="${pressed}" ${dis ? 'disabled' : ''}>${label}</button>`;
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 // ポケモンの画像。img/mon/ はゲーム内のメニュー画像を切り詰めたもの。
 const monSrc = (key) => `img/mon/${key}.webp`;
 // 「キュウコン(アローラのすがた)」を名前と姿に分けるのは monpick.js の splitName。
@@ -160,7 +160,7 @@ export function initUI(engines) {
   $('logDlg').addEventListener('click', (e) => { if (e.target === $('logDlg')) $('logDlg').close(); });
   $('toastAct').onclick = () => { const f = toastFn; hideToast(); if (f) f(); };
 
-  initTheme();
+  initTheme($('themeBtn'));
 
   refresh(engines);
 }
@@ -190,7 +190,7 @@ function renderHeader() {
   $('monBtn').innerHTML = `<img src="${monSrc(state.mon)}" alt="" width="92" height="92"><span class="mb">`
     + `<small class="mt">${d.label}${note ? ` · ${note}` : ''}</small>`
     + `<b>${esc(base)}${form ? `<small class="form">${esc(form)}</small>` : ''}</b>`
-    + '<span class="go">ポケモンを変える<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></span>';
+    + `<span class="go">ポケモンを変える${CHEV}</span></span>`;
   const fact = (label, value) => `<div><small>${label}</small><b>${value}</b></div>`;
   $('facts').innerHTML = fact('おてつだい', `${Math.floor(mm.time / 60)}:${String(mm.time % 60).padStart(2, '0')}`)
     + fact('食材確率', `${+(mm.ingP * 100).toFixed(1)}%`) + fact('最大所持数', mm.cap)
@@ -209,7 +209,7 @@ function renderHeader() {
     else groups[groups.length - 1].rows.push(`<dt>${label}</dt><dd id="${id}">—</dd>`);
   });
   $('rows').innerHTML = groups.map((g, i) => `<details${i === 0 ? ' open' : ''}><summary>${g.label}`
-    + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'
+    + icon('<path d="M6 9l6 6 6-6"/>', 18, 2.2)
     + `</summary><dl class="rows">${g.rows.join('')}</dl></details>`).join('');
 }
 
@@ -238,7 +238,7 @@ function renderEmpty(engines) {
   showMonParts(false);
   $('facts').innerHTML = '';
   $('monInfo').innerHTML = '';
-  $('monBtn').innerHTML = `<span class="ph" aria-hidden="true">?</span><span class="mb"><small class="mt">${def().label}</small><b>ポケモンを選ぶ</b><span class="go">選ぶと判定できます<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></span>`;
+  $('monBtn').innerHTML = `<span class="ph" aria-hidden="true">?</span><span class="mb"><small class="mt">${def().label}</small><b>ポケモンを選ぶ</b><span class="go">選ぶと判定できます${CHEV}</span></span>`;
   renderParams();
   ['bRatio', 'bRank', 'bOdds'].forEach((id) => { $(id).classList.add('dim'); $(id).textContent = '—'; });
   $('save').disabled = true;
@@ -780,34 +780,6 @@ function hideToast() {
   clearTimeout(toastTimer);
 }
 
-// 表示テーマ。自動（端末の設定）→ライト→ダークの順に切り替え、cktheme に保存する。描画前の適用は index.html でする。
-const THEMES = ['auto', 'light', 'dark'];
-const THEME_LABEL = { auto: '自動', light: 'ライト', dark: 'ダーク' };
-const svg = (d) => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-const THEME_ICON = {
-  auto: svg('<circle cx="12" cy="12" r="8"/><path d="M12 4v16" /><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/>'),
-  light: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
-  dark: svg('<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>'),
-};
-function initTheme() {
-  let cur = 'auto';
-  try { const t = JSON.parse(localStorage.getItem('cktheme')); if (THEMES.includes(t)) cur = t; } catch { /* storage unavailable */ }
-  const show = () => {
-    const root = document.documentElement;
-    if (cur === 'auto') delete root.dataset.theme; else root.dataset.theme = cur;
-    $('themeBtn').innerHTML = THEME_ICON[cur];
-    $('themeBtn').setAttribute('aria-label', `表示テーマ: ${THEME_LABEL[cur]}（押すと切り替え）`);
-    $('themeBtn').title = `表示テーマ: ${THEME_LABEL[cur]}`;
-  };
-  $('themeBtn').onclick = () => {
-    cur = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
-    try { localStorage.setItem('cktheme', JSON.stringify(cur)); } catch { /* storage unavailable */ }
-    show();
-  };
-  show();
-}
-
-
 function renderBar(engines) {
   // 未選択の間に Worker から届いた分布では描き直さない（帯は renderEmpty が出す）。
   if (!hasMon()) return;
@@ -856,7 +828,7 @@ function renderBar(engines) {
 let logFilter = 'all';
 // 一覧で確率を出すのに要る分布。一覧を開いている間に requestDist が1つずつ頼む。
 let logNeeds = [];
-const TRASH = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+const TRASH = icon('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', 18);
 
 // 記録 x を評価するレベル。今のレベルを先に、だめなら高いレベルから探す。どのレベルでも枠が足りなければ null。
 function evalLevel(x) {
@@ -880,6 +852,19 @@ function rateLog(engines, x) {
 
 function renderLog(engines) {
   const all = loadAllLogs();
+  // アプリバーの記録ボタンに、記録の数（すべて）を出す。
+  $('logCount').hidden = all.length === 0;
+  $('logCount').textContent = all.length > 99 ? '99+' : String(all.length);
+  $('logBtn').setAttribute('aria-label', `記録を開く（${all.length}件）`);
+  // 評価するレベルのボタンは、メイン画面のレベルといつもそろえておく。
+  $('logLvSeg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.v === state.lv)));
+  // 閉じている間は一覧を作らない（入力のたびに全部の記録を評価しないため。開くときに openLog が描く）。
+  // 今のポケモンのほかの条件・レベルの分布は requestDist が続けて頼むので、呼ぶのはやめない。
+  if (!$('logDlg').open) {
+    logNeeds = [];
+    requestDist(engines);
+    return;
+  }
   const rows = all.filter((x) => logFilter === 'all' || x.type === logFilter).map((x) => ({ ...x, ...rateLog(engines, x) }));
   logNeeds = rows.filter((x) => x.e && x.r > 0 && !x.ready).map((x) => ({ type: x.type, env: x.e }));
   requestDist(engines);
@@ -889,7 +874,6 @@ function renderLog(engines) {
   $('logFilter').innerHTML = ['all', ...Object.keys(TYPES)].map((t) => `<button type="button" data-f="${t}" aria-pressed="${t === logFilter}">`
     + `${t === 'all' ? 'すべて' : `<i class="d-${t}"></i>${TYPES[t].short}`}<small>${n(t)}</small></button>`).join('');
 
-  $('logLvSeg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.v === state.lv)));
 
   // ポケモンごとにまとめる。
   const groups = new Map();
@@ -953,10 +937,6 @@ function renderLog(engines) {
       if (gone) toast('記録を削除しました', '元に戻す', () => { appendLog(gone, type); renderLog(engines); });
     };
   });
-  // アプリバーの記録ボタンに、記録の数（すべて）を出す。
-  $('logCount').hidden = all.length === 0;
-  $('logCount').textContent = all.length > 99 ? '99+' : String(all.length);
-  $('logBtn').setAttribute('aria-label', `記録を開く（${all.length}件）`);
   $('logNum').textContent = `${rows.length}件`;
 }
 

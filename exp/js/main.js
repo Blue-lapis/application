@@ -4,29 +4,28 @@ import { MONS as BERRY } from '../../checker/js/berry/mons.js';
 import { MONS as ING } from '../../checker/js/ingredient/mons.js';
 import { MONS as SKILL } from '../../checker/js/skill/mons.js';
 import { initMonPicker, splitName, TYPE_LABELS } from '../../checker/js/monpick.js';
-import { EXP_TYPE_OF, EXP_TYPES, MAX_LEVEL, candyExp } from './data.js';
+import { esc, icon, CHEV, initTheme } from '../../checker/js/dom.js';
+import { EXP_TYPE_OF, MAX_LEVEL, candyExp } from './data.js';
 import { checkerLink } from './link.js';
+import { loadState, PER_MON, START, MAX_SHIFT } from './store.js';
 import { plan, thresholds, gsdSchedule, sleepDay, useCandy } from './calc.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Math.round(n).toLocaleString('ja-JP');
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 // ---- 状態と保存 ----
 const KEY = 'expsim';
-const DEFAULTS = { mon: '', expType: 600, nature: 'none', level: 30, toNext: null, target: 50, candy: 0, shardCap: null, score: 100, bonus: 0, incense: 'none', tickets: 0, start: '', gsd: {}, napMax: 14, boost: 'none', boostLimit: null };
-let st = { ...DEFAULTS, gsd: {}, byMon: {} };
-try { Object.assign(st, JSON.parse(localStorage.getItem(KEY)) || {}); } catch { /* storage unavailable */ }
-if (!st.gsd || typeof st.gsd !== 'object' || Array.isArray(st.gsd)) st.gsd = {};
-
-if (!st.byMon || typeof st.byMon !== 'object' || Array.isArray(st.byMon)) st.byMon = {};
+// 3タイプのポケモン（チェッカーの最終進化形）。
+const ALL_MONS = { ...BERRY, ...ING, ...SKILL };
+let saved = null;
+try { saved = localStorage.getItem(KEY); } catch { /* storage unavailable */ }
+// 項目ごとに確かめて読む（壊れた項目は既定の値。exp/js/store.js）。
+const st = loadState(saved);
 
 // ポケモンごとに覚える入力（今のレベル・次のレベルまで・手持ちのアメ・目標・性格の補正）。アメはポケモンごとに違い、
 // レベルも個体ごとに違うので、ポケモンを変えたら（チェッカーから開いたときも）、そのポケモンの前回の値に切り替える。
 // 初めてのポケモンは START（Lv.30・次のレベルまでは貯まっていない・アメ0・性格の補正なし。目標はそのまま）から。
-// 睡眠・おひるね島・日程などは、ポケモンに関係ないのでそのまま。
-const PER_MON = ['level', 'toNext', 'candy', 'target', 'nature'];
-const START = { level: 30, toNext: null, candy: 0, nature: 'none' };
+// 睡眠・おひるね島・日程などは、ポケモンに関係ないのでそのまま。どちらも store.js にある。
 const keepMon = () => { if (st.mon) st.byMon[st.mon] = Object.fromEntries(PER_MON.map((k) => [k, st[k]])); };
 function switchMon(key) {
   keepMon();
@@ -35,9 +34,10 @@ function switchMon(key) {
 }
 
 // チェッカーから開いたときは、URL のポケモン・性格のEXP補正・目標を使う（読んだら URL から消す）。
+// 知らないポケモンのときは URL を使わず、前回のポケモンと入力のままにする。
 {
   const q = new URLSearchParams(location.search);
-  if (q.has('mon')) {
+  if (Object.hasOwn(ALL_MONS, q.get('mon'))) {
     switchMon(q.get('mon'));
     if (['up', 'none', 'down'].includes(q.get('nature'))) st.nature = q.get('nature');
     const t = Number(q.get('target'));
@@ -62,9 +62,7 @@ const dur = (days) => {
 
 // ---- ポケモン（チェッカーの3タイプの最終進化形）。選ぶダイアログはチェッカーと共通 ----
 const GROUPS = { berry: { ...TYPE_LABELS.berry, MONS: BERRY }, ingredient: { ...TYPE_LABELS.ingredient, MONS: ING }, skill: { ...TYPE_LABELS.skill, MONS: SKILL } };
-const ALL_MONS = { ...BERRY, ...ING, ...SKILL };
 const expOf = (key) => EXP_TYPE_OF[key] || 600;
-const chev = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
 
 function initMon() {
   const open = initMonPicker({
@@ -85,25 +83,25 @@ function renderMon() {
   document.documentElement.dataset.type = (m && groupOf(st.mon)) || 'ingredient';
   $('typeRow').hidden = !!m;
   if (!m) {
-    $('monBtn').innerHTML = `<span class="ph" aria-hidden="true">?</span><span class="mb"><small class="mt">経験値 ${st.expType}タイプ</small><b>ポケモンを選ぶ</b><span class="go">選ぶと経験値タイプが決まります${chev}</span></span>`;
+    $('monBtn').innerHTML = `<span class="ph" aria-hidden="true">?</span><span class="mb"><small class="mt">経験値 ${st.expType}タイプ</small><b>ポケモンを選ぶ</b><span class="go">選ぶと経験値タイプが決まります${CHEV}</span></span>`;
     return;
   }
   const [base, form] = splitName(m.name);
   $('monBtn').innerHTML = `<img src="../checker/img/mon/${st.mon}.webp" alt="" width="92" height="92"><span class="mb">`
     + `<small class="mt">経験値 ${st.expType}タイプ</small>`
     + `<b>${esc(base)}${form ? `<small class="form">${esc(form)}</small>` : ''}</b>`
-    + `<span class="go">ポケモンを変える${chev}</span></span>`;
+    + `<span class="go">ポケモンを変える${CHEV}</span></span>`;
 }
 
 // 厳選チェッカーへのカード（チェッカーの「育成日数を見る」と同じ .toexp）。開けないときは <div aria-disabled> にして押せなくする。
 // 数の入力のたびに要素が入れ替わらないよう、ポケモンが変わったときだけ作り直す。
-const SCALE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M8 21h8M5 6h14M5 6l-3 8a3 3 0 0 0 6 0zM19 6l-3 8a3 3 0 0 0 6 0z"/></svg>';
+const SCALE = icon('<path d="M12 3v18M8 21h8M5 6h14M5 6l-3 8a3 3 0 0 0 6 0zM19 6l-3 8a3 3 0 0 0 6 0z"/>');
 let shownCheck = null;
 function renderToChecker() {
   if (st.mon === shownCheck) return;
   shownCheck = st.mon;
   const { href, sub } = checkerLink(st.mon);
-  const body = `${SCALE}<span><b>厳選チェッカーで見る</b><small>${esc(sub ?? `${ALL_MONS[st.mon].name}の個体を判定`)}</small></span>${chev}`;
+  const body = `${SCALE}<span><b>厳選チェッカーで見る</b><small>${esc(sub ?? `${ALL_MONS[st.mon].name}の個体を判定`)}</small></span>${CHEV}`;
   $('toChecker').innerHTML = href ? `<a class="toexp" href="${esc(href)}">${body}</a>` : `<div class="toexp" aria-disabled="true">${body}</div>`;
 }
 
@@ -266,7 +264,6 @@ function setOut(cap, date, sub, c) {
 }
 
 // グッドスリープデーの日程の一覧。見込みから前後に MAX_SHIFT 日までずらすか、なしにできる。
-const MAX_SHIFT = 3;
 function renderGsd(startDay, days) {
   const list = gsdSchedule(startDay, startDay + days, st.gsd);
   const changed = list.filter((g) => g.off || g.shift).length;
@@ -331,34 +328,8 @@ function update(writeInputs = true) {
   show(writeInputs);
 }
 
-// ---- 表示テーマ（チェッカーと同じ設定 cktheme） ----
-const THEMES = ['auto', 'light', 'dark'];
-const THEME_LABEL = { auto: '自動', light: 'ライト', dark: 'ダーク' };
-const svg = (d) => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-const THEME_ICON = {
-  auto: svg('<circle cx="12" cy="12" r="8"/><path d="M12 4v16" /><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/>'),
-  light: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
-  dark: svg('<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>'),
-};
-function initTheme() {
-  let cur = 'auto';
-  try { const t = JSON.parse(localStorage.getItem('cktheme')); if (THEMES.includes(t)) cur = t; } catch { /* storage unavailable */ }
-  const showTheme = () => {
-    const root = document.documentElement;
-    if (cur === 'auto') delete root.dataset.theme; else root.dataset.theme = cur;
-    $('themeBtn').innerHTML = THEME_ICON[cur];
-    $('themeBtn').setAttribute('aria-label', `表示テーマ: ${THEME_LABEL[cur]}（押すと切り替え）`);
-  };
-  $('themeBtn').onclick = () => {
-    cur = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
-    try { localStorage.setItem('cktheme', JSON.stringify(cur)); } catch { /* storage unavailable */ }
-    showTheme();
-  };
-  showTheme();
-}
-
 requireLogin().then(() => {
-  initTheme();
+  initTheme($('themeBtn'));
   initMon();
   initGsd();
   seg('typeSeg', 'expType', Number);
@@ -389,9 +360,7 @@ requireLogin().then(() => {
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // 外側を押したら閉じる
   // 下の帯は、結果のカードが画面の外にあるときだけ出す（チェッカーと同じ）。
   new IntersectionObserver(([e]) => $('bar').classList.toggle('away', e.isIntersecting)).observe($('outSec'));
-  if (!EXP_TYPES[st.expType]) st.expType = 600;
-  if (!['none', 'mini', 'full'].includes(st.boost)) st.boost = 'none';
-  if (st.mon && !ALL_MONS[st.mon]) st.mon = '';
+  if (st.mon && !Object.hasOwn(ALL_MONS, st.mon)) st.mon = '';
   if (st.mon) st.expType = expOf(st.mon); // URL から来たときも、ポケモンの経験値タイプにそろえる
   update();
 });
