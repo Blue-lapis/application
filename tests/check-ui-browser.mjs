@@ -123,7 +123,7 @@ const snapshot = () => {
   const body = document.body.cloneNode(true);
   body.querySelector('#toast')?.remove();
   const values = [...document.querySelectorAll('input')].map((i) => `${i.id}=${i.type === 'checkbox' ? i.checked : i.value}`);
-  const ls = Object.fromEntries(Object.keys(localStorage).sort().map((k) => [k, localStorage.getItem(k)]));
+  const ls = Object.fromEntries(Object.keys(localStorage).filter((k) => k !== 'ckauth').sort().map((k) => [k, localStorage.getItem(k)]));
   const root = document.documentElement;
   return { html: body.innerHTML, values, type: root.dataset.type, theme: root.dataset.theme, title: document.title, url: location.search, ls };
 };
@@ -134,14 +134,15 @@ const toastState = () => {
 
 async function run(root) {
   const server = await serve(resolve(root));
-  const { PASS_HASH } = await import(join(resolve(root), 'checker/js/auth.js'));
+  // v1.2 までのコード（ログインがある）と比べるときは、ログインを済ませておく（v1.3 でログインはなくした）。
+  const hash = await import(join(resolve(root), 'checker/js/auth.js')).then((m) => m.PASS_HASH, () => null);
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
-  await ctx.addInitScript((hash) => {
-    localStorage.setItem('ckauth', hash);
+  await ctx.addInitScript((h) => {
+    if (h) localStorage.setItem('ckauth', h);
     let t = 1.75e12;
     Date.now = () => (t += 1000);
-  }, PASS_HASH);
+  }, hash);
   await ctx.route(/fonts\.(googleapis|gstatic)/, (r) => r.abort());
   const page = await ctx.newPage();
   const errors = [];

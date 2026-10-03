@@ -3,6 +3,13 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+    # 公開物に入らないファイル（設計書・テスト・リポジトリ直下の README）だけを変えた push では公開しない。
+    # 公開し直すと版（?v=コミット）が変わり、利用者の端末に保存した分布（IndexedDB）を読み直させてしまうため。
+    # テストは PR で test.yml が動く。手で公開したいときは Actions の画面から実行する（workflow_dispatch）。
+    paths-ignore:
+      - 'docs/**'
+      - 'tests/**'
+      - 'README.md'
   workflow_dispatch:
 
 permissions:

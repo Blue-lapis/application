@@ -22,3 +22,4 @@ jobs:
       - run: node tests/check-boost.mjs
       - run: node tests/check-exp.mjs
       - run: node tests/check-draft.mjs
+      - run: node tests/check-version.mjs
