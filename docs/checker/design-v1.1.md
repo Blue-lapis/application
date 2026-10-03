@@ -1,6 +1,6 @@
 # ver1.1 設計書
 
-[要件定義](requirements-v1.1.md) を実装した作りをまとめる。計算式・ゲームデータの出典は [`README.md`](../README.md)（共通）と [`checker/README.md`](../checker/README.md)（タイプごと）にあり、ここでは重ねて書かない。
+[要件定義](requirements-v1.1.md) を実装した作りをまとめる。計算式・ゲームデータの出典は [`README.md`](../../README.md)（共通）と [`checker/README.md`](../../checker/README.md)（タイプごと）にあり、ここでは重ねて書かない。
 
 ## 1. 全体の構成
 

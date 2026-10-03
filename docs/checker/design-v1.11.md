@@ -78,7 +78,7 @@ initParams({ refresh: redraw });
 initLog({ engines, refresh: redraw });
 ```
 
-`engines` を使う描画の関数（`renderLog(engines)`・`renderIngs(engines)` など）は、今の引数の形のままにする。
+`engines` を使う描画の関数（`renderLog(engines)` など）は、今の引数の形のままにする。`renderIngs` は `engines` を `refresh` に渡すためだけに受け取っていたので、引数をなくした（`renderInput()` から呼ぶ）。
 
 ### 4.2 分布の依頼（`ui/dist.js`）
 
@@ -155,7 +155,7 @@ isComputing(type, env)        // 今の computing.has(jobKey(type, env))
 
 分布は Worker の計算を待ってから比べる（「計算中」「…」が消えてから）。
 
-## 7. 決めること
+## 7. 決めること（決定：D1〜D4 すべて推奨の案1）
 
 | # | 項目 | 案 | 推奨 |
 |---|---|---|---|
