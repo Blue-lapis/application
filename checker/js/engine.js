@@ -1,7 +1,7 @@
 // 3タイプの計算エンジン（./*/calc.js）が共有する部品。DOM に触れない。
 // 性格・サブスキルの倍率、げんきの推移とおてつだい回数、基礎値からの時間・確率・所持数、食材配列のパターン、上位%の分布。
 // タイプごとの calc.js は「何を数えるか」だけを持つ。
-import { WAKE_ENERGY, WAKE_ENERGY_ERB, NAT, LEVEL, slotWeights, ingOpen } from '../../js/constants.js';
+import { WAKE_ENERGY, WAKE_ENERGY_ERB, natsOf, LEVEL, slotWeights, ingOpen } from '../../js/constants.js';
 import {
   energyCurve, helpsPerTap, helpTime, rateOf, subsetDist, sumSubs, mergeSame, SAME_REL, AWAKE_SEC, DAY_SEC, clearCurves,
 } from '../../js/calc.js';
@@ -125,18 +125,22 @@ export function amountPatterns(mon, k = mon.slots.length) {
   return cache.get(k);
 }
 
-// 性格25種を、そのタイプの分類（natCat）で上昇・下降の組にまとめた [上昇, 下降, 確率]。
+// 性格 nats（NAT の要素。ふつうは25種、ストリンダーは姿に付くものだけ）を、そのタイプの分類（natCat）で
+// 上昇・下降の組にまとめた [上昇, 下降, 確率]。どの性格も等確率とする。
 const natCache = new Map();
-function natEntries(natCat) {
-  if (!natCache.has(natCat)) {
+function natEntries(natCat, nats) {
+  if (!natCache.has(natCat)) natCache.set(natCat, new Map());
+  const cache = natCache.get(natCat);
+  const key = nats.map(([name]) => name).join(',');
+  if (!cache.has(key)) {
     const count = {};
-    NAT.forEach(([, u, d]) => {
+    nats.forEach(([, u, d]) => {
       const k = `${natCat(u)}|${natCat(d)}`;
-      count[k] = (count[k] || 0) + 1 / NAT.length;
+      count[k] = (count[k] || 0) + 1 / nats.length;
     });
-    natCache.set(natCat, Object.entries(count).map(([k, v]) => [...k.split('|'), v]));
+    cache.set(key, Object.entries(count).map(([k, v]) => [...k.split('|'), v]));
   }
-  return natCache.get(natCat);
+  return cache.get(key);
 }
 
 // サブスキルの効果の組と確率。ignoreSkill ならスキル確率アップを無視して、それ以外の効果が同じ組をまとめる
@@ -156,10 +160,11 @@ function subGroups(N, ignoreSkill) {
   return groupCache.get(N);
 }
 
-// 上位%の分布。サブスキル（色別抽選・重複なし）と性格25種をすべて数え上げ、無補正比ごとの確率 [{ r, p }] を高い順に返す。
+// 上位%の分布。サブスキル（色別抽選・重複なし）と性格（そのポケモンに付くもの。natsOf）をすべて数え上げ、
+// 無補正比ごとの確率 [{ r, p }] を高い順に返す。
 // ratios(e, up, down) は、その組み合わせの無補正比と重み [[比, 重み], ...] を返す（食材タイプは食材配列ごと）。
-export function buildDist(N, natCat, ignoreSkill, ratios) {
-  const nats = natEntries(natCat);
+export function buildDist(N, natCat, ignoreSkill, ratios, mon) {
+  const nats = natEntries(natCat, natsOf(mon));
   const acc = new Map();
   for (const { e, p } of subGroups(N, ignoreSkill)) {
     for (const [u, d, v] of nats) {

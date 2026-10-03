@@ -1,5 +1,5 @@
 // 結果（ver1.11 で ui.js から分けた）。くわしい数値の行、タイプごとの期待値の表示、確率の注記。
-import { ingOpen } from '../../../js/constants.js';
+import { ingOpen, NAT, natsOf } from '../../../js/constants.js';
 import { trunc, mmss } from '../../../js/format.js';
 import { eff } from '../../../js/calc.js';
 import { arrName } from '../ingredient/constants.js';
@@ -8,7 +8,7 @@ import { TEAM_OTHERS } from '../berry/constants.js';
 import { boostedEnergy } from '../berry/calc.js';
 import { ingIcon } from '../ingicons.js';
 import { icon } from '../dom.js';
-import { state, monData, currentSubs, currentArr, isComplete, canRate, env } from '../state.js';
+import { state, hasMon, monData, currentSubs, currentArr, isComplete, canRate, env } from '../state.js';
 import { $, def, withUnit } from './common.js';
 import { healText, tapText, genkiText, boostText } from './params.js';
 
@@ -220,8 +220,11 @@ export function renderStats(engine) {
 export function renderRankNote() {
   const lv60 = ingOpen(state.lv) >= 3 ? '、Lv.60 は3候補を等確率' : '。Lv.60 の枠はまだ開いていないので使わない';
   const arr = state.type === 'ingredient' ? `食材配列は捕獲時の出現率（Lv.30 は A 1/3・B 2/3${lv60}）、` : `食材配列は捕獲時の出現率で平均${ingOpen(state.lv) >= 3 ? '' : '（Lv.60 の枠は使わない）'}、`;
+  // ストリンダーは姿に付く性格だけを数える。
+  const k = hasMon() ? natsOf(monData()).length : NAT.length;
+  const natText = k < NAT.length ? `は${monData().name}に付く${k}種` : `${NAT.length}種`;
   $('rankNote').textContent = '「同等以上の確率」は、同じポケモン・同じパラメーターで、サブスキルを1枠ずつ色（金14%・青33%・白53%）で抽選して'
-    + `その色の未所持のものから均等に選び、性格25種を等確率とした場合（${arr}フレンドメダルによる金枠確定なし）に、`
+    + `その色の未所持のものから均等に選び、性格${natText}を等確率とした場合（${arr}フレンドメダルによる金枠確定なし）に、`
     + 'この個体の無補正比以上になる推定確率です。「平均何匹に1匹」はその逆数（丸める前の確率から計算）です。'
     + '「性能値の順位」は、無補正比が異なる組み合わせの中での順位で、組み合わせごとの出やすさを考えないため、確率とは一致しません（参考値）。';
 }

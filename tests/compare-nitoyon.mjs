@@ -25,7 +25,7 @@ const SUBNAME = {
 // [にとよんツールの性格, 上昇, 下降]
 const NATS = [['Bashful', null, null], ['Lonely', 'speed', 'energy'], ['Modest', 'ing', 'speed'], ['Calm', 'skill', 'speed'],
   ['Bold', 'energy', 'speed'], ['Careful', 'skill', 'ing'], ['Adamant', 'speed', 'ing']];
-// ストリンダーは姿ごとに付く性格が決まっていて、にとよんツールは合わない性格を置き換える。その条件は比べない。
+// ストリンダーは姿ごとに付く性格が決まっていて、にとよんツールは合わない性格を置き換える（このアプリでは選べない）。その条件は比べない。
 const AMPED = ['Hardy', 'Docile', 'Quirky', 'Lax', 'Impish', 'Hasty', 'Naive', 'Jolly', 'Brave', 'Naughty', 'Adamant', 'Sassy', 'Rash'];
 const skip = (key, nat) => (key === 'toxtricity-amped' && !AMPED.includes(nat)) || (key === 'toxtricity-low-key' && AMPED.includes(nat));
 const SUBSETS = {

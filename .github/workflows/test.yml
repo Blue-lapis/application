@@ -19,6 +19,7 @@ jobs:
           node-version: 22
       - run: node tests/check-segs.mjs
       - run: node tests/check-dist.mjs
+      - run: node tests/check-nature.mjs
       - run: node tests/check-boost.mjs
       - run: node tests/check-exp.mjs
       - run: node tests/check-draft.mjs

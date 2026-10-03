@@ -139,7 +139,7 @@ export function createEngine() {
   // スキル確率アップはきのみに影響しないので、それ以外の効果が同じ組み合わせをまとめる。
   const store = distStore(envKey, (env) => {
     const b = baseMetric(env);
-    return buildDist(env.N, natCat, true, (e, u, d) => [[value(mk(e, u, d), env) / b, 1]]);
+    return buildDist(env.N, natCat, true, (e, u, d) => [[value(mk(e, u, d), env) / b, 1]], MONS[env.mon]);
   });
 
   return { metric, baseMetric, teamGain, value, score, daily, ...store };

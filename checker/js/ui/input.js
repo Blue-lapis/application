@@ -1,9 +1,9 @@
 // 入力（ver1.11 で ui.js から分けた）。狙い食材・食材配列、サブスキルの枠とダイアログ、性格のボタンと表。
-import { byId, UNLOCK, ingOpen } from '../../../js/constants.js';
+import { byId, UNLOCK, ingOpen, NAT, natsOf } from '../../../js/constants.js';
 import { SLOT_LV, targetLevel, targetOpen } from '../ingredient/constants.js';
 import { ingIcon } from '../ingicons.js';
 import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLabel } from '../picker.js';
-import { state, monData, setTarget, setNature, slotCount, filledSubs } from '../state.js';
+import { state, hasMon, monData, setTarget, setNature, natAllowed, slotCount, filledSubs } from '../state.js';
 import { $, def } from './common.js';
 
 // 入力が変わったときの描き直し（ui.js の refresh）。initInput で受け取る。
@@ -149,12 +149,15 @@ function renderNatDlg() {
   const head = (mark, code, label) => `<span class="h ${on(code) ? 'on' : ''}">${mark}${label}</span>`;
   $('natGrid').innerHTML = `<span class="h corner">▲＼▼</span>${NAT_AXES.map(([code, , short]) => head('▼', code, short)).join('')}`
     + NAT_AXES.map(([up, , short]) => head('▲', up, short) + NAT_AXES.map(([down]) => {
-      const name = natAt(up, down);
-      const cls = [up === down ? 'neutral' : '', on(up) || on(down) ? '' : 'off'].join(' ');
-      return `<button class="${cls}" data-v="${name}" aria-pressed="${state.nat === name}" aria-label="${name}（${up === down ? '無補正' : `▲${axisLabel(up)} ▼${axisLabel(down)}`}）">${name}</button>`;
+      const name = natAt(up, down), ok = natAllowed(name);
+      const cls = [up === down ? 'neutral' : '', on(up) || on(down) ? '' : 'off', ok ? '' : 'na'].join(' ');
+      return `<button class="${cls}" data-v="${name}" aria-pressed="${state.nat === name}" ${ok ? '' : 'disabled'} aria-label="${name}（${up === down ? '無補正' : `▲${axisLabel(up)} ▼${axisLabel(down)}`}${ok ? '' : '・この姿には付かない'}）">${name}</button>`;
     }).join('')).join('');
   const labels = NAT_AXES.filter(([code]) => on(code)).map(([, l]) => l);
-  $('natNote').textContent = `${METRIC[state.type]}に効くのは ${labels.join(' と ')} の補正だけです。薄い色の性格は「無補正」と同じ結果になります。`;
+  // ストリンダーは姿ごとに付く性格が決まっているので、付かない性格は押せなくする。
+  const nats = hasMon() ? natsOf(monData()) : NAT;
+  const only = nats.length < NAT.length ? `${monData().name}に付く性格は${nats.length}種で、ほかの性格は選べません。` : '';
+  $('natNote').textContent = `${only}${METRIC[state.type]}に効くのは ${labels.join(' と ')} の補正だけです。薄い色の性格は「無補正」と同じ結果になります。`;
 }
 
 // 入力の欄と、開いているダイアログを描き直す。

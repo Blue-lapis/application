@@ -148,7 +148,7 @@ export function createEngine() {
     return buildDist(env.N, natCat, true, (e, u, d) => {
       const m = mk(e, u, d);
       return arrs.map((a) => [value(m, a.arr, env) / b, a.p]);
-    });
+    }, MONS[env.mon]);
   });
 
   return { metric, value, team, reference, baseMetric, score, daily, ...store };

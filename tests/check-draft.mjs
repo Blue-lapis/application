@@ -166,4 +166,34 @@ test('壊れたデータはその部分だけ空', () => {
   assert.deepEqual(state.arr, [0, null, null], '候補の数が合わない食材配列は空');
 });
 
+test('ストリンダーは姿に付かない性格を選べない', () => {
+  reset();
+  loadSettings();
+  setMon('toxtricity-amped');
+  setNature('おだやか');
+  assert.equal(state.nat, null, 'ローなすがたの性格はハイなすがたに付かない');
+  assert.equal(state.up, null);
+  setNature('なまいき');
+  assert.equal(state.nat, 'なまいき');
+  setMon('toxtricity-low-key');
+  setNature('なまいき');
+  assert.equal(state.nat, null);
+  setNature('おだやか');
+  assert.equal(state.nat, 'おだやか');
+  // 記録・保存した入力の、姿に付かない性格は空にする（ほかの入力は戻す）。
+  restoreEntry({ subs: ['skM'], nat: 'ようき' });
+  assert.equal(state.subs[0], 'skM');
+  assert.equal(state.nat, null);
+  assert.equal(state.down, null);
+  reset({ ckmon: 'toxtricity-amped', ckdraft: { 'toxtricity-amped': { subs: ['hb'], nat: 'しんちょう', up: 'skill', down: 'ing' } } });
+  loadSettings();
+  assert.equal(state.subs[0], 'hb');
+  assert.equal(state.nat, null);
+  assert.equal(state.up, null);
+  // ほかのポケモンは25種すべて選べる。
+  setMon('mewtwo');
+  setNature('おだやか');
+  assert.equal(state.nat, 'おだやか');
+});
+
 console.log(`OK ${n}件`);

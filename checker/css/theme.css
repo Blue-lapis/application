@@ -356,6 +356,8 @@ dialog.sheet::backdrop{background:var(--scrim)}
 .natgrid button.neutral{background:var(--bg);border-style:dashed}
 .natgrid button.off{color:var(--off)}
 .natgrid button[aria-pressed="true"]{background:var(--psy);border-color:var(--psy);color:#fff}
+/* その姿に付かない性格（ストリンダー）。押せない。 */
+.natgrid button.na{color:var(--off);background:var(--line-soft);border-color:var(--line-soft);opacity:.45;cursor:not-allowed}
 
 /* サブスキルの色。枠・ダイアログの部品より後に置いて上書きする。 */
 .dlg-tabs button.r-gold,.pick.r-gold{background:var(--gold-bg);border-color:var(--gold-line)}
