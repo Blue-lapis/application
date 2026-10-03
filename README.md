@@ -37,10 +37,11 @@
 ## 構成
 
 - `checker/` — アプリ本体（画面・状態管理・タイプごとの計算エンジンとポケモンのデータ）
+- `checker/js/dom.js` — 厳選チェッカーと育成日数シミュレーターの画面で共通の部品（HTML のエスケープ・線のアイコン・表示テーマの切り替え）。ポケモンを選ぶダイアログ（`checker/js/monpick.js`）とログイン（`checker/js/auth.js`）も両アプリで共通
 - `checker/img/mon/` — ポケモンの画像（ゲーム内のメニュー画像を切り詰めた WebP）。ファイル名は `mons.js` のキー
 - `checker/img/ing/` — 食材アイコン（ゲーム内のスクリーンショットから切り抜き、56×56 に縮めた WebP）。食材名との対応は `checker/js/ingicons.js`
-- `exp/` — 育成日数シミュレーター（v1.5）。アメ・睡眠EXP・ゴンベのおひるね島を組み合わせて、目標のレベルまでの日数を出す。ページの一番下の「厳選チェッカーで見る」から、選んでいるポケモンで厳選チェッカーを開ける。要件は [`docs/exp/requirements-v1.0.md`](docs/exp/requirements-v1.0.md)。計算は `exp/js/calc.js`（DOM非依存）、ゲームデータは `exp/js/data.js`
-- `tests/check-exp.mjs` — 育成日数シミュレーターの計算のテスト（wiki の表との照合、`node tests/check-exp.mjs`）
+- `exp/` — 育成日数シミュレーター（v1.5）。アメ・睡眠EXP・ゴンベのおひるね島を組み合わせて、目標のレベルまでの日数を出す。ページの一番下の「厳選チェッカーで見る」から、選んでいるポケモンで厳選チェッカーを開ける。要件は [`docs/exp/requirements-v1.0.md`](docs/exp/requirements-v1.0.md)。計算は `exp/js/calc.js`（DOM非依存）、ゲームデータは `exp/js/data.js`、保存データ（`expsim`）の読み込みと確かめは `exp/js/store.js`
+- `tests/check-exp.mjs` — 育成日数シミュレーターの計算のテスト（wiki の表との照合）と、保存データの読み込み（壊れた項目の扱い）のテスト（`node tests/check-exp.mjs`）
 - `js/constants.js` — サブスキル・性格・げんきなどのゲームデータ（3タイプ共通）
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、おてつだい時間と確率の丸め、所持数の遷移、スキル抽選回数とストック、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数

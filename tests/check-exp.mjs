@@ -5,6 +5,7 @@ import { thresholds, useCandy, sleepDay, napMinutes, plan, dayKind, fullMoonMs, 
 import { NAP, NATURE_RATE, NAP_EVENING_MIN } from '../exp/js/data.js';
 import { TOTAL_EXP, SHARDS_PER_CANDY } from '../exp/js/data.js';
 import { checkerLink } from '../exp/js/link.js';
+import { loadState, DEFAULTS } from '../exp/js/store.js';
 import { typeOf } from '../checker/js/types.js';
 import { MONS as BERRY } from '../checker/js/berry/mons.js';
 import { MONS as ING } from '../checker/js/ingredient/mons.js';
@@ -348,6 +349,21 @@ ok('厳選チェッカーへのリンク', () => {
     assert.ok(typeOf(mon), mon); // チェッカーもそのポケモンで開く
   }
   assert.equal(checkerLink('butterfree').href, '../checker/?mon=butterfree');
+});
+
+// 保存データの読み込み。壊れた・範囲外の項目はその項目だけ既定の値にし、正しい項目は残す。
+ok('保存データの読み込み', () => {
+  const def = { ...DEFAULTS, gsd: {}, byMon: {} };
+  for (const text of [null, '', '{', 'null', '[]', '"x"', '42']) assert.deepEqual(loadState(text), def, String(text));
+  const good = { mon: 'flygon', expType: 900, nature: 'up', level: 45, toNext: 300, target: 60, candy: 120, shardCap: 50000, score: 88, bonus: 3, incense: 'gsd', tickets: 2, napMax: 21, boost: 'mini', boostLimit: 100,
+    gsd: { 20000: 'off', 20030: -2 }, byMon: { flygon: { level: 45, toNext: null, candy: 120, target: 60, nature: 'up' } } };
+  assert.deepEqual(loadState(JSON.stringify({ ...good, start: '2026-01-01' })), { ...good, start: '' });
+  const bad = loadState(JSON.stringify({
+    mon: 5, expType: '900', nature: 'x', level: 70, toNext: 0, target: 1, candy: -1, shardCap: 'a', score: 101, bonus: 1.5, incense: 'all', tickets: 100, napMax: 6, boost: true, boostLimit: 1e6,
+    gsd: { 20000: 'on', 20030: 4, 20060: 0, x: 'off', 20090: 1 }, byMon: { flygon: { level: 'a', candy: 5, extra: 1 }, mewtwo: 3, absol: null },
+  }));
+  assert.deepEqual(bad, { ...def, gsd: { 20090: 1 }, byMon: { flygon: { candy: 5 } } });
+  assert.deepEqual(loadState(JSON.stringify({ gsd: [1], byMon: [] })), def);
 });
 
 console.log(`${n} 件すべて通った`);

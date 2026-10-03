@@ -80,13 +80,7 @@ const loadDrafts = () => {
 function selectMon(m) {
   state.mon = m;
   state.type = typeOf(m);
-  if (state.type === 'ingredient') {
-    const t = load(KEYS.target, {});
-    const ings = TYPES.ingredient.MONS[m].ings;
-    state.target = t && typeof t === 'object' && Object.hasOwn(ings, t[m]) ? t[m] : 'A';
-  } else {
-    state.target = null;
-  }
+  state.target = state.type === 'ingredient' ? targetOf(m) : null;
   const d = loadDrafts()[m];
   applyInput(d && typeof d === 'object' && !Array.isArray(d) ? d : {});
   lastDraft = draftText();

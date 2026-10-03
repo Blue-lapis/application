@@ -2,6 +2,8 @@
 // ページには monDlg・monQ・monFilter・monGrid・monNone・monClose の要素を置く（checker/index.html と同じ形）。
 // groups は { タイプ: { label, short, MONS } }（並びは絞り込みのボタンの順）。計算のコードには依存しない。
 
+import { esc } from './dom.js';
+
 // 3タイプの表示名。checker/js/types.js もこれを使う。
 export const TYPE_LABELS = {
   berry: { label: 'きのみタイプ', short: 'きのみ' },
@@ -9,7 +11,6 @@ export const TYPE_LABELS = {
   skill: { label: 'スキルタイプ', short: 'スキル' },
 };
 
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 // 名前検索の正規化。全角半角・大文字小文字をそろえ、ひらがなはカタカナにする。
 // loose はさらに濁点・半濁点と小さい字の違い、長音記号を無視する。
 const SMALL = { ァ: 'ア', ィ: 'イ', ゥ: 'ウ', ェ: 'エ', ォ: 'オ', ッ: 'ツ', ャ: 'ヤ', ュ: 'ユ', ョ: 'ヨ', ヮ: 'ワ' };
