@@ -2,6 +2,9 @@
 // skillP はメインスキルの発動確率（基礎値）、ingP は食材確率。
 // evo は進化の回数（最大所持数は進化1回ごとに5増える。進化しない姿・伝説・イベント限定の姿は0）。
 // slots は食材スロット（Lv.1 / Lv.30 / Lv.60）ごとの候補 [食材, 個数]。食材は睡眠中の所持数を埋めるのに使う。
+import { NAT_AMPED, NAT_LOW_KEY } from '../../../js/constants.js';
+
+// nats はその姿に付く性格（ストリンダーだけ。ないポケモンは25種すべて）。
 export const MONS = {
   'sandslash': { name: 'サンドパン', time: 2800, skillP: 0.043, ingP: 0.108, cap: 17, evo: 1,
     ings: { A: 'ずっしりカボチャ', B: 'ワカクサコーン', C: 'ほっこりポテト' },
@@ -147,13 +150,13 @@ export const MONS = {
   'mimikyu': { name: 'ミミッキュ', time: 2500, skillP: 0.035, ingP: 0.153, cap: 19, evo: 0,
     ings: { A: 'とくせんリンゴ', B: 'めざましコーヒー', C: 'あじわいキノコ' },
     slots: [[['A', 1]], [['A', 2], ['B', 1]], [['A', 4], ['B', 2], ['C', 2]]] },
-  'toxtricity-amped': { name: 'ストリンダー(ハイなすがた)', time: 3100, skillP: 0.064, ingP: 0.239, cap: 18, evo: 1,
+  'toxtricity-amped': { name: 'ストリンダー(ハイなすがた)', time: 3100, skillP: 0.064, ingP: 0.239, cap: 18, evo: 1, nats: NAT_AMPED,
     ings: { A: 'モーモーミルク', B: 'とくせんリンゴ', C: 'ふといながねぎ' },
     slots: [[['A', 1]], [['A', 2], ['B', 2]], [['A', 4], ['B', 4], ['C', 2]]] },
   'pawmot': { name: 'パーモット', time: 2400, skillP: 0.039, ingP: 0.141, cap: 18, evo: 2,
     ings: { A: 'リラックスカカオ', B: 'モーモーミルク', C: 'とくせんエッグ' },
     slots: [[['A', 1]], [['A', 2], ['B', 3]], [['A', 4], ['B', 6], ['C', 5]]] },
-  'toxtricity-low-key': { name: 'ストリンダー(ローなすがた)', time: 3100, skillP: 0.064, ingP: 0.239, cap: 18, evo: 1,
+  'toxtricity-low-key': { name: 'ストリンダー(ローなすがた)', time: 3100, skillP: 0.064, ingP: 0.239, cap: 18, evo: 1, nats: NAT_LOW_KEY,
     ings: { A: 'モーモーミルク', B: 'とくせんリンゴ', C: 'ふといながねぎ' },
     slots: [[['A', 1]], [['A', 2], ['B', 2]], [['A', 4], ['B', 4], ['C', 2]]] },
   'pikachu-holiday': { name: 'ピカチュウ(ホリデー)', time: 2500, skillP: 0.042, ingP: 0.131, cap: 20, evo: 0,

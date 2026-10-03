@@ -69,6 +69,14 @@ export const NAT = [
   ['がんばりや', null, null], ['すなお', null, null], ['てれや', null, null], ['きまぐれ', null, null], ['まじめ', null, null],
 ];
 
+// ストリンダーは姿ごとに付く性格が決まっている（ハイなすがた13種・ローなすがたはそれ以外の12種）。ポケモンのデータの nats に持つ。
+export const NAT_AMPED = [
+  'がんばりや', 'ゆうかん', 'いじっぱり', 'やんちゃ', 'すなお', 'わんぱく', 'のうてんき', 'せっかち', 'ようき', 'むじゃき', 'うっかりや', 'なまいき', 'きまぐれ',
+];
+export const NAT_LOW_KEY = NAT.map(([name]) => name).filter((name) => !NAT_AMPED.includes(name));
+// ポケモン mon に付く性格（NAT の要素）。nats がなければ25種すべて。
+export const natsOf = (mon) => (mon && mon.nats ? NAT.filter(([name]) => mon.nats.includes(name)) : NAT);
+
 
 export function cat(s) {
   if (s === 'sp' || s === 'speed') return 'speed';

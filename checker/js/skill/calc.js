@@ -107,10 +107,10 @@ export function createEngine() {
   const value = (m, env) => metric(m, env) + team(m, env);
   const score = (subs, up, down, env) => value(mults(subs, up, down), env) / baseMetric(env);
 
-  // 上位%の分布は、サブスキル（色別抽選・重複なし）と性格25種をすべて数え上げる。
+  // 上位%の分布は、サブスキル（色別抽選・重複なし）と性格25種（ストリンダーは姿に付くものだけ）をすべて数え上げる。
   const store = distStore(envKey, (env) => {
     const b = baseMetric(env);
-    return buildDist(env.N, natCat, false, (e, u, d) => [[value(mk(e, u, d), env) / b, 1]]);
+    return buildDist(env.N, natCat, false, (e, u, d) => [[value(mk(e, u, d), env) / b, 1]], MONS[env.mon]);
   });
 
   return { metric, baseMetric, teamGain, team, score, daily, ...store };

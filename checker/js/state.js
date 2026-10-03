@@ -4,7 +4,7 @@
 // 共通の設定は ck 接頭辞で持ち、まだなければ統合前の設定を引き継ぐ。
 import { TYPES, DEFAULT_TYPE, DEFAULT_TAP, typeOf } from './types.js';
 import { natByName } from './picker.js';
-import { UNLOCK, LEVEL, LEVELS, SLOTS_AT, ingOpen, byId } from '../../js/constants.js';
+import { UNLOCK, LEVEL, LEVELS, SLOTS_AT, ingOpen, byId, natsOf } from '../../js/constants.js';
 import { HEALS, TAPS, HEAL_AMT, HEAL_TIMES, PARAM_LIMITS, FIELD_BONUS } from './berry/constants.js';
 import { TAPS as ING_TAPS, targetOpen } from './ingredient/constants.js';
 
@@ -228,8 +228,11 @@ function syncNature() {
   state.up = n ? c(n[1]) : null;
   state.down = n ? c(n[2]) : null;
 }
+// 今のポケモンに付く性格か（ストリンダーは姿ごとに付く性格が決まっている）。ポケモン未選択なら25種すべて。
+export const natAllowed = (name) => !!natByName(name) && (!hasMon() || natsOf(monData()).some(([n]) => n === name));
+// 付かない性格（保存した入力・記録を、ほかの姿のものとして戻したときなど）は未選択にする。
 export function setNature(name) {
-  state.nat = natByName(name) ? name : null;
+  state.nat = natAllowed(name) ? name : null;
   syncNature();
 }
 
@@ -323,7 +326,7 @@ export function removeLogEntry(t, type = state.type) {
 // 記録の食材配列は今までどおり枠ごとに見る（長さが違っても、合う枠は戻す）。
 export function restoreEntry(x) { applyInput(x, false); }
 
-// 記録・保存した入力 x を今のポケモンの入力にする。今のゲームデータにないサブスキル・性格はその部分だけ空にする。
+// 記録・保存した入力 x を今のポケモンの入力にする。今のゲームデータにないサブスキル・性格と、そのポケモンに付かない性格はその部分だけ空にする。
 // 食材配列は、候補の数（スロットの数）が合わなければ空、合えば範囲外の枠だけ空にする。
 // 性格の名前がないときは、上昇・下降の分類がそのタイプにあるものだけ使う。
 function applyInput(x, strictArr = true) {

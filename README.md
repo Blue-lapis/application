@@ -4,7 +4,7 @@
 
 ## バージョン
 
-`checker/`（厳選チェッカー）と `exp/`（育成日数シミュレーター）は別々に版を付けます。今の版は **厳選チェッカー v1.3**・**育成日数シミュレーター v1.6** です。
+`checker/`（厳選チェッカー）と `exp/`（育成日数シミュレーター）は別々に版を付けます。今の版は **厳選チェッカー v1.4**・**育成日数シミュレーター v1.6** です。
 
 ### 厳選チェッカー
 
@@ -12,6 +12,7 @@
 - v1.1 — 入力中のサブスキル・性格・食材配列をポケモンごとに端末に保存し、そのポケモンを選ぶと戻すようにした。初めて開いたときはポケモン未選択から始め、日中の受け取りの初期値を3タイプとも「3時間ごと」に変更（事前計算の分布もこの条件に合わせた）。保存済みの設定・記録はそのまま使う。設計は [`docs/checker/design-v1.10.md`](docs/checker/design-v1.10.md)。
 - v1.2 — 育成日数シミュレーターへのカード「育成日数を見る」を、独立したカードにしてページの一番下（2列のときは右の列の一番下）に移した。フッターの文字のリンクは、カードと重なるので外した。設計は [`docs/exp/design-v1.5.md`](docs/exp/design-v1.5.md)（育成日数シミュレーター v1.5 と同じ設計書）。
 - v1.3 — ログイン（4桁の暗証番号）をなくし、開けばすぐ使えるようにした。どのページも検索エンジンに載せない（`noindex`）。
+- v1.4 — ストリンダーの姿ごとに付く性格（ハイなすがた13種・ローなすがた12種）を考慮した。付かない性格は選べず、上位%の分布もその姿に付く性格だけを等確率で数える。
 
 ### 育成日数シミュレーター
 
@@ -47,7 +48,7 @@
 - `checker/js/version.js`・`exp/js/version.js` — それぞれのアプリの版（[バージョン](#版の表示と書き換える場所)）
 - `tests/check-version.mjs` — 版の番号がそろっていること（`version.js` と README の「今の版」・版の一覧の最後、`index.html` に版を直接書いていないこと）のテスト（`node tests/check-version.mjs`）
 - `tests/check-exp.mjs` — 育成日数シミュレーターの計算のテスト（wiki の表との照合）と、保存データの読み込み（壊れた項目の扱い）のテスト（`node tests/check-exp.mjs`）
-- `js/constants.js` — サブスキル・性格・げんきなどのゲームデータ（3タイプ共通）
+- `js/constants.js` — サブスキル・性格・げんきなどのゲームデータ（3タイプ共通）。ストリンダーの姿ごとに付く性格（`NAT_AMPED`・`NAT_LOW_KEY`）もここに持ち、ポケモンのデータの `nats` から使う
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、おてつだい時間と確率の丸め、所持数の遷移、スキル抽選回数とストック、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数
 - `css/style.css` — 土台のスタイル（見た目は `checker/css/theme.css` で上書き。色・文字・部品の形は theme.css にまとめている）
@@ -59,12 +60,13 @@
 - `tests/check-precomputed.mjs` — 事前計算の分布がそろっていて、計算した分布とビットまで一致し、版の違う・壊れたファイルを使わないことのテスト
 - `tests/check-ui-browser.mjs` — 厳選チェッカーの画面の動きを、変更前のコードと比べる（ヘッドレス Chromium で同じ操作をして、HTML・入力欄・localStorage が一致すること。Playwright が要る。CI では実行しない。使い方はファイルの先頭）
 - `tests/check-precomputed-browser.mjs` — 同じことをヘッドレス Chromium（スマートフォンの幅）の画面で確かめる（Playwright が要る。CI では実行しない）
+- `tests/check-nature.mjs` — ストリンダーの姿ごとの性格の表と、上位%の分布がその姿に付く性格だけを数えることのテスト（`node tests/check-nature.mjs`）
 - `tests/check-segs.mjs` — 所持数・ストック・天井込みの確率の境界テスト（`node tests/check-segs.mjs`）
 - `tests/check-boost.mjs` — きのみタイプのフィールドボーナス・好きなきのみの切り上げと、無補正比が変わらないことのテスト（`node tests/check-boost.mjs`）
 - `tests/compare-values.mjs`・`tests/bench-dist.mjs`・`tests/compare-dist.mjs` — 変更前後の値・分布・計算時間の比較（[実行手順](docs/checker/design-v1.4.md#5-再確認する手順)）
 - `tests/compare-nitoyon.mjs`・`tests/nitoyon/runner.ts` — にとよんツールとの値の比較（[実行手順](docs/checker/design-v1.5.md#5-再確認する手順)）
 - `index.html`・`ingredient/index.html`・`berry/index.html` — `checker/` へ移動するページ
-- `.github/workflows/test.yml` — `check-segs.mjs`・`check-dist.mjs`・`check-boost.mjs`・`check-exp.mjs`・`check-draft.mjs`・`check-version.mjs` を実行する。PR を作ったとき・更新したときに動き、`pages.yml` からも呼ばれる
+- `.github/workflows/test.yml` — `check-segs.mjs`・`check-dist.mjs`・`check-nature.mjs`・`check-boost.mjs`・`check-exp.mjs`・`check-draft.mjs`・`check-version.mjs` を実行する。PR を作ったとき・更新したときに動き、`pages.yml` からも呼ばれる
 - `.github/workflows/pages.yml` — `main` への push で、テスト（`test.yml`）と公開するファイルの作成を並べて走らせ、両方が通れば GitHub Pages に公開する。公開するのはアプリのファイルと事前計算の分布だけ。分布の事前計算（約3分）は、計算に関わるファイルが前回の公開と同じなら（キーは `scripts/dist-key.mjs`）、Actions のキャッシュから使い回して省く。使い回したときも `check-precomputed.mjs` で確かめる。`docs/`・`tests/`・リポジトリ直下の `README.md` だけを変えた push では動かない（公開し直すと版が変わり、利用者の端末に保存した分布を読み直させてしまうため。手で公開するときは Actions の画面から実行する）
 
 ## 共通の計算モデル
@@ -95,7 +97,7 @@
 ### 上位%の分布
 
 - サブスキルは1枠ごとに色を 金14% / 青33% / 白53% で抽選し、その色の中で未所持のものから均等に選ぶ（重複なし）。
-- 性格は25種を等確率とし、↑↓をタイプの計算に効く補正（おてスピ・食材・スキル・げんき回復）とその他に分類する。
+- 性格は25種を等確率とし（ストリンダーは姿に付く性格だけ。ハイなすがた13種・ローなすがた12種）、↑↓をタイプの計算に効く補正（おてスピ・食材・スキル・げんき回復）とその他に分類する。
 - すべての組み合わせの無補正比を数え上げて分布を作り、「その個体以上の無補正比になる確率」を同等以上の確率（その逆数を平均何匹に1匹）、「分布の中で自分より高い値の数 + 1」を性能値の順位（参考値。出やすさを考えないので確率とは一致しない）とする。無補正比の差が相対で 1e-7 以内のものは同じ性能として1行にまとめる。
 - フレンドメダルによる1枠目の金確定は考えない（金枠確定なしの推定値）。
 
