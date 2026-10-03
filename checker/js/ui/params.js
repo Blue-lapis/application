@@ -62,6 +62,7 @@ export function initParams({ refresh: redraw }) {
     setParam('healTimes', HEAL_TIMES);
     setParam('fieldBonus', FIELD_BONUS);
     setFav(false);
+    setIngBy('count');
     setRecipeBonus(RECIPE_BONUS);
     setParam('recipeLevel', RECIPE_LEVEL);
     refresh();
@@ -93,11 +94,12 @@ export function renderParams() {
   SEGS.forEach(([id, cur]) => $(id).querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(cur() === b.dataset.v))));
   // 詳細のダイアログにある設定の要約。
   const e = env();
+  // 食材タイプをエナジーで評価しているときは、いちばん前に出す（既定の狙い食材の個数と違うことがすぐわかるように）。
   $('paramSum').textContent = [
+    state.type === 'ingredient' && state.ingBy === 'energy' ? `エナジーで評価（${recipeText()}）` : null,
     e.heal === 'g80' ? healText(e) : `${healText(e)}・げんき${genkiText(energyAt(e, 100))}`,
     teamText(e),
     state.type === 'berry' ? boostText() : null,
-    state.type === 'ingredient' && state.ingBy === 'energy' ? recipeText() : null,
   ].filter(Boolean).join('・');
   if ($('paramDlg').open) renderParamDlg();
 }

@@ -12,7 +12,7 @@
 | `checker/js/ingredient/energy.js` | 評価のしかた `BYS = ['count', 'energy']`、平均レシピレベルの範囲 |
 | `checker/js/state.js` | 設定 `ingBy`（キー `ckingby`、既定 `'count'`）。`envFor` はエナジーのとき `target` の代わりに `by: 'energy'` を入れる。`targetClosed` はエナジーのとき常に false |
 | `checker/css/theme.css` | 詳細のレシピボーナスの選択欄 |
-| `checker/index.html` | 詳細に「料理による食材のエナジー」（レシピボーナス・平均レシピレベル）。条件の欄に「評価」（狙い食材の個数 / エナジー、`data-for="ingredient"`）。食材配列の見出しの添え書きに `id` |
+| `checker/index.html` | 詳細に「料理による食材のエナジー」（レシピボーナス・平均レシピレベル）。詳細の先頭に「評価」（狙い食材の個数 / エナジー、`data-for="ingredient"`。既定は狙い食材の個数なので、条件の欄には置かない。エナジーのときは詳細の横の要約の先頭に出す）。食材配列の見出しの添え書きに `id` |
 | `checker/js/ui/params.js` | 「評価」の切り替え。詳細の注記（チーム効果の説明）をエナジー用に |
 | `checker/js/ui/input.js` | エナジーのときは狙いの行と、食材配列の狙い食材の印を隠す。サブスキル・性格のダイアログの注記 |
 | `checker/js/ui/stats.js`・`checker/js/ui.js` | エナジーのときの結果（合計・日中・睡眠中・くわしい数値）。くわしい数値の行は `ROWS.ingredientEnergy`。ヘッダーの描き直しのキーに評価のしかたを入れる |
