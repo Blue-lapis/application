@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html lang="ja" class="locked">
+<html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 検索エンジンに載せない（リンクを知っている人だけが使う）。 -->
+<meta name="robots" content="noindex, nofollow">
 <title>厳選チェッカー</title>
 <!-- 表示テーマ（自動・ライト・ダーク）は描画の前に当てて、ちらつかないようにする。 -->
 <script>try{const t=JSON.parse(localStorage.getItem('cktheme'));if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;}catch(e){}</script>
@@ -13,16 +15,6 @@
 <link rel="stylesheet" href="css/theme.css">
 </head>
 <body>
-<form class="login" id="login" autocomplete="on">
-  <h1><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M8 21h8M5 6h14M5 6l-3 8a3 3 0 0 0 6 0zM19 6l-3 8a3 3 0 0 0 6 0z"/></svg>厳選チェッカー</h1>
-  <div class="dots" aria-hidden="true"><i class="d-berry"></i><i class="d-ingredient"></i><i class="d-skill"></i></div>
-  <label for="loginPw">暗証番号（数字4桁）</label>
-  <input type="password" id="loginPw" name="password" autocomplete="current-password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required>
-  <p class="loginmsg" id="loginMsg" role="status"></p>
-  <button type="submit">ログイン</button>
-  <p class="ver" data-ver></p>
-</form>
-
 <div class="appbar">
   <div class="appbar-in">
     <span class="brand"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M8 21h8M5 6h14M5 6l-3 8a3 3 0 0 0 6 0zM19 6l-3 8a3 3 0 0 0 6 0z"/></svg>厳選チェッカー</span>
@@ -119,7 +111,7 @@
 
     <footer class="foot">
       <p class="credit">ゲーム画像の著作権は ©Pokémon. ©Nintendo/Creatures Inc./GAME FREAK inc. ©SELECT BUTTON inc. に帰属します。</p>
-      <div class="foot-row"><span class="ver">厳選チェッカー <span data-ver></span></span><button class="logout" id="logout" type="button" hidden>ログアウト</button></div>
+      <div class="foot-row"><span class="ver">厳選チェッカー <span data-ver></span></span></div>
     </footer>
   </div>
 </main>

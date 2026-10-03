@@ -18,9 +18,9 @@ for (const [name, v, dir] of [['厳選チェッカー', CHECKER, 'checker'], ['�
   assert.match(v, /^v\d+\.\d+$/, `${dir}/js/version.js の形`);
   assert.ok(readme.includes(`**${name} ${v}**`), `README の「今の版」が ${name} ${v} でない`);
   assert.equal(listed(name).at(-1), v, `README の ${name} の版の一覧の最後が ${v} でない`);
-  // 画面には data-ver の2か所（ログイン画面とフッター）から出し、index.html に版を直接書かない。
+  // 画面には data-ver（フッター）から出し、index.html に版を直接書かない。
   const html = readFileSync(`${dir}/index.html`, 'utf8');
-  assert.equal(html.match(/data-ver/g)?.length, 2, `${dir}/index.html の data-ver が2か所でない`);
+  assert.equal(html.match(/data-ver/g)?.length, 1, `${dir}/index.html の data-ver が1か所でない`);
   assert.ok(!/class="ver"[^<]*v\d+\.\d+/.test(html), `${dir}/index.html に版が直接書いてある`);
   console.log(`ok ${name} ${v}`);
 }

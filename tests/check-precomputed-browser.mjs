@@ -84,8 +84,7 @@ async function open(name, { settings = {}, route, mon = 'flygon' } = {}) {
   const ctx = await browser.newContext(PHONE);
   const errors = [], gz = [];
   await ctx.addInitScript((settings) => {
-    // ログインを済ませ、設定を入れておく。
-    localStorage.setItem('ckauth', 'pbkdf2$600000$DioWOlYDbOlRsjyqxcl/IQ==$Lv6pjODmyB1uNO/YxKOxXSzgRRIWE/mPQU/QdgWgWtw=');
+    // 設定を入れておく。
     for (const [k, v] of Object.entries(settings)) localStorage.setItem(k, JSON.stringify(v));
     window.__log = [];
     const W = window.Worker;

@@ -1,5 +1,4 @@
 // 育成日数シミュレーターの画面。入力が変わるたびに計算し直す（計算は数ミリ秒）。
-import { requireLogin } from '../../checker/js/auth.js';
 import { MONS as BERRY } from '../../checker/js/berry/mons.js';
 import { MONS as ING } from '../../checker/js/ingredient/mons.js';
 import { MONS as SKILL } from '../../checker/js/skill/mons.js';
@@ -331,39 +330,38 @@ function update(writeInputs = true) {
   show(writeInputs);
 }
 
-requireLogin().then(() => {
-  initTheme($('themeBtn'));
-  initMon();
-  initGsd();
-  seg('typeSeg', 'expType', Number);
-  seg('natSeg', 'nature');
-  seg('incSeg', 'incense');
-  seg('boostSeg', 'boost');
-  seg('targetSeg', 'target', Number);
-  $('bonusDown').onclick = () => { st.bonus = Math.max(0, st.bonus - 1); update(); };
-  $('bonusUp').onclick = () => { st.bonus = Math.min(5, st.bonus + 1); update(); };
-  // 今のレベルを変えたら「次のレベルまで」はそのレベルの必要量（貯まっていない）に戻す。
-  $('level').addEventListener('input', () => { const v = Number($('level').value); if (Number.isInteger(v) && v >= 1 && v < MAX_LEVEL) { st.level = v; st.toNext = null; update(false); $('toNext').value = thresholds(st.expType)[v + 1] - thresholds(st.expType)[v]; } });
-  num('toNext', 'toNext', { min: 1, empty: null });
-  num('target', 'target', { min: 2, max: MAX_LEVEL });
-  num('candy', 'candy', { max: 9999 });
-  num('shardCap', 'shardCap', { empty: null });
-  num('boostLimit', 'boostLimit', { max: 99999, empty: null });
-  num('napMax', 'napMax', { min: 7, max: 365, empty: null });
-  num('score', 'score', { max: 100 });
-  num('tickets', 'tickets', { max: 99 });
-  $('start').onchange = () => { st.start = $('start').value; update(); };
-  $('lvxHead').onclick = () => { lvOpen = !lvOpen; show(false); };
-  $('lvxRows').onclick = (e) => { const b = e.target.closest('.lvx-row'); if (b) { st.target = Number(b.dataset.v); update(); } };
-  $('rtabs').onclick = (e) => { const b = e.target.closest('button[data-r]'); if (b) { route = b.dataset.r; planOpen = false; show(false); } };
-  $('routeBody').onclick = (e) => { if (e.target.closest('#planMore')) { planOpen = !planOpen; show(false); } };
-  const dlg = $('schedDlg');
-  $('schedTop').onclick = $('schedBtn').onclick = () => dlg.showModal();
-  $('schedClose').onclick = () => dlg.close();
-  dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // 外側を押したら閉じる
-  // 下の帯は、結果のカードが画面の外にあるときだけ出す（チェッカーと同じ）。
-  new IntersectionObserver(([e]) => $('bar').classList.toggle('away', e.isIntersecting)).observe($('outSec'));
-  if (st.mon && !Object.hasOwn(ALL_MONS, st.mon)) st.mon = '';
-  if (st.mon) st.expType = expOf(st.mon); // URL から来たときも、ポケモンの経験値タイプにそろえる
-  update();
-});
+// 画面の初期化。
+initTheme($('themeBtn'));
+initMon();
+initGsd();
+seg('typeSeg', 'expType', Number);
+seg('natSeg', 'nature');
+seg('incSeg', 'incense');
+seg('boostSeg', 'boost');
+seg('targetSeg', 'target', Number);
+$('bonusDown').onclick = () => { st.bonus = Math.max(0, st.bonus - 1); update(); };
+$('bonusUp').onclick = () => { st.bonus = Math.min(5, st.bonus + 1); update(); };
+// 今のレベルを変えたら「次のレベルまで」はそのレベルの必要量（貯まっていない）に戻す。
+$('level').addEventListener('input', () => { const v = Number($('level').value); if (Number.isInteger(v) && v >= 1 && v < MAX_LEVEL) { st.level = v; st.toNext = null; update(false); $('toNext').value = thresholds(st.expType)[v + 1] - thresholds(st.expType)[v]; } });
+num('toNext', 'toNext', { min: 1, empty: null });
+num('target', 'target', { min: 2, max: MAX_LEVEL });
+num('candy', 'candy', { max: 9999 });
+num('shardCap', 'shardCap', { empty: null });
+num('boostLimit', 'boostLimit', { max: 99999, empty: null });
+num('napMax', 'napMax', { min: 7, max: 365, empty: null });
+num('score', 'score', { max: 100 });
+num('tickets', 'tickets', { max: 99 });
+$('start').onchange = () => { st.start = $('start').value; update(); };
+$('lvxHead').onclick = () => { lvOpen = !lvOpen; show(false); };
+$('lvxRows').onclick = (e) => { const b = e.target.closest('.lvx-row'); if (b) { st.target = Number(b.dataset.v); update(); } };
+$('rtabs').onclick = (e) => { const b = e.target.closest('button[data-r]'); if (b) { route = b.dataset.r; planOpen = false; show(false); } };
+$('routeBody').onclick = (e) => { if (e.target.closest('#planMore')) { planOpen = !planOpen; show(false); } };
+const dlg = $('schedDlg');
+$('schedTop').onclick = $('schedBtn').onclick = () => dlg.showModal();
+$('schedClose').onclick = () => dlg.close();
+dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); }); // 外側を押したら閉じる
+// 下の帯は、結果のカードが画面の外にあるときだけ出す（チェッカーと同じ）。
+new IntersectionObserver(([e]) => $('bar').classList.toggle('away', e.isIntersecting)).observe($('outSec'));
+if (st.mon && !Object.hasOwn(ALL_MONS, st.mon)) st.mon = '';
+if (st.mon) st.expType = expOf(st.mon); // URL から来たときも、ポケモンの経験値タイプにそろえる
+update();

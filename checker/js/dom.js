@@ -8,7 +8,7 @@ export const icon = (d, size = 20, width = 2) => `<svg width="${size}" height="$
 // カードの右端などに置く ＞。
 export const CHEV = icon('<path d="M9 6l6 6-6 6"/>', 14, 2.4);
 
-// 版（それぞれの version.js）を、data-ver の付いた要素（ログイン画面とフッター）に出す。
+// 版（それぞれの version.js）を、data-ver の付いた要素（フッター）に出す。
 export function showVersion(v) {
   document.querySelectorAll('[data-ver]').forEach((el) => { el.textContent = v; });
 }
