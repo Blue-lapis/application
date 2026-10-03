@@ -53,6 +53,7 @@
 - `css/style.css` — 土台のスタイル（見た目は `checker/css/theme.css` で上書き。色・文字・部品の形は theme.css にまとめている）
 - `docs/` — 要件定義書・設計書。一覧と番号の数え方は [`docs/README.md`](docs/README.md)。`docs/checker/` はチェッカーの ver1.1〜ver1.11（最新: [要件定義](docs/checker/requirements-v1.9.md)・[設計書](docs/checker/design-v1.11.md)）、`docs/exp/` は育成日数シミュレーター。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない。ver1.9 は上位%の分布の事前計算（あわせて、レベル別の一覧と、Lv.50 でまだ出ない狙い食材を押せなくする変更。どちらも要件定義はない）。ver1.10 は入力のポケモンごとの保存と初期値の変更、ver1.11 は画面のコード（`ui.js`）の分割と設計書の置き場所の整理（どちらも要件定義はない）
 - `scripts/precompute-dist.mjs` — 既定の条件の上位%の分布を事前計算し、`checker/dist/` に書き出す（公開時に実行。[ローカルでの実行手順](#事前計算した分布)）
+- `scripts/dist-key.mjs` — 事前計算した分布を使い回してよいかを決めるキー（`precompute-dist.mjs` から import をたどったファイルの中身と Node の版から作る。画面だけのファイルを変えても変わらない。`--list` で対象のファイルを出す）
 - `tests/check-dist.mjs` — 上位%の分布の整合性テスト（`node tests/check-dist.mjs`）
 - `tests/check-draft.mjs` — 入力のポケモンごとの保存（`ckdraft`）・壊れたデータの扱い・初期値（ポケモン未選択・受け取り3時間ごと）のテスト（`node tests/check-draft.mjs`）
 - `tests/check-precomputed.mjs` — 事前計算の分布がそろっていて、計算した分布とビットまで一致し、版の違う・壊れたファイルを使わないことのテスト
@@ -64,7 +65,7 @@
 - `tests/compare-nitoyon.mjs`・`tests/nitoyon/runner.ts` — にとよんツールとの値の比較（[実行手順](docs/checker/design-v1.5.md#5-再確認する手順)）
 - `index.html`・`ingredient/index.html`・`berry/index.html` — `checker/` へ移動するページ
 - `.github/workflows/test.yml` — `check-segs.mjs`・`check-dist.mjs`・`check-boost.mjs`・`check-exp.mjs`・`check-draft.mjs`・`check-version.mjs` を実行する。PR を作ったとき・更新したときに動き、`pages.yml` からも呼ばれる
-- `.github/workflows/pages.yml` — `main` への push で `test.yml` のテストを実行し、通れば分布を事前計算して `check-precomputed.mjs` で確かめ、アプリのファイルと事前計算の分布だけを GitHub Pages に公開する。`docs/`・`tests/`・リポジトリ直下の `README.md` だけを変えた push では動かない（公開し直すと版が変わり、利用者の端末に保存した分布を読み直させてしまうため。手で公開するときは Actions の画面から実行する）
+- `.github/workflows/pages.yml` — `main` への push で、テスト（`test.yml`）と公開するファイルの作成を並べて走らせ、両方が通れば GitHub Pages に公開する。公開するのはアプリのファイルと事前計算の分布だけ。分布の事前計算（約3分）は、計算に関わるファイルが前回の公開と同じなら（キーは `scripts/dist-key.mjs`）、Actions のキャッシュから使い回して省く。使い回したときも `check-precomputed.mjs` で確かめる。`docs/`・`tests/`・リポジトリ直下の `README.md` だけを変えた push では動かない（公開し直すと版が変わり、利用者の端末に保存した分布を読み直させてしまうため。手で公開するときは Actions の画面から実行する）
 
 ## 共通の計算モデル
 
