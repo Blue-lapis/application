@@ -118,7 +118,7 @@ export function initUI(engines) {
 
   initDialogs(engines);
 
-  // 記録は、下の帯の「記録」と判定のカードの「記録する」のどちらからでもできる。
+  // 記録は下の帯の「記録」からする。
   const saveEntry = () => {
     if (!canRate()) return;
     // サブスキルは今のレベルの枠より多く入れてあればその分も残し、ほかのレベルでも一覧に出せるようにする。
@@ -924,7 +924,7 @@ function renderLog(engines) {
       return `<li class="lgrp"><img src="${monSrc(x0.mon)}" alt="" width="36" height="36" loading="lazy"><span><i class="d-${x0.type}"></i>${esc(base)}${form ? `<small>${esc(form)}</small>` : ''}</span><small>${list.length}件</small></li>`
         + sorted.map(rowHtml).join('');
     }).join('')
-    : `<li class="empty">${all.length ? `${TYPES[logFilter]?.label ?? ''}の記録はまだありません` : 'まだ記録はありません。判定のカードの「記録する」で残せます'}</li>`;
+    : `<li class="empty">${all.length ? `${TYPES[logFilter]?.label ?? ''}の記録はまだありません` : 'まだ記録はありません。下の帯の「記録」で残せます'}</li>`;
 
   // 行をタップすると、その個体を入力に戻して今の入力と見比べられるようにする。ほかのポケモンの記録なら、そのポケモン（とタイプ）に切り替える。
   // 評価したレベルが今と違うときは、そのレベルにする。削除ボタンは除く。
