@@ -16,7 +16,7 @@ import {
 import { $, monSrc, def, withUnit, syncUrl, toast, hideToast, initToast } from './ui/common.js';
 import { initInput, renderInput } from './ui/input.js';
 import { initParams, renderParams } from './ui/params.js';
-import { rowsHtml, renderStats, renderRankNote } from './ui/stats.js';
+import { rowsHtml, rowsKey, renderStats, renderRankNote } from './ui/stats.js';
 import { initLog, renderLog, logJobs } from './ui/log.js';
 import { initDist, requestDist, isComputing } from './ui/dist.js';
 
@@ -100,7 +100,7 @@ function renderToExp() {
 }
 
 function renderHeader() {
-  const key = `${state.type}|${state.mon}`;
+  const key = `${state.type}|${state.mon}|${rowsKey()}`;
   if (key === shownHeader) return;
   shownHeader = key;
   const mm = monData(), d = def();
@@ -126,7 +126,7 @@ function renderHeader() {
   $('arrSec').hidden = state.type !== 'ingredient';
   $('reset').textContent = state.type === 'ingredient' ? '食材配列・サブスキル・性格を消す' : 'サブスキル・性格を消す';
   // くわしい数値の枠（ui/stats.js）。
-  $('rows').innerHTML = rowsHtml(state.type);
+  $('rows').innerHTML = rowsHtml(rowsKey());
 }
 
 function renderTabs() {

@@ -1,7 +1,7 @@
 // 上位%の分布の依頼（ver1.11 で ui.js から分けた）。分布の計算は Worker（../worker.js）で1つずつ行う。
 // 画面のほかのファイルには、initDist・requestDist・isComputing だけを出す。
 import { LEVELS } from '../../../js/constants.js';
-import { state, hasMon, canRate, env } from '../state.js';
+import { state, hasMon, canRate, env, distReady } from '../state.js';
 
 let worker = null;
 // Worker で計算している分布 { type, env }。
@@ -59,7 +59,8 @@ export function requestDist() {
   }
   // そのあとに、レベル別の一覧で使うほかのレベルの分布（確率を出せるレベルだけ）。
   const others = LEVELS.filter((lv) => lv !== state.lv && canRate(lv)).map((lv) => env(lv));
-  const next = [cur, { ...cur, camp: !cur.camp }, ...others].find((e) => !engine.ready(e));
+  // エナジーで評価するときは、食材配列がそろうまで分布を頼まない（同じ食材配列の個体の分布なので）。
+  const next = [cur, { ...cur, camp: !cur.camp }, ...others].find((e) => distReady(e) && !engine.ready(e));
   if (next) {
     inFlight = { type, env: next };
     worker.postMessage({ type, env: next });

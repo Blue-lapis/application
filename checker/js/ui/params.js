@@ -1,8 +1,9 @@
 // 条件（ver1.11 で ui.js から分けた）。条件の欄の切り替え、詳細のダイアログ、条件の文言。
-import { HEAL_AMT, HEAL_TIMES, TEAM_OTHERS, FIELD_BONUS, PARAM_LIMITS } from '../berry/constants.js';
+import { HEAL_AMT, HEAL_TIMES, TEAM_OTHERS, FIELD_BONUS } from '../berry/constants.js';
 import { energyAt } from '../engine.js';
+import { RECIPE_BONUSES, RECIPE_BONUS, RECIPE_LEVEL, RECIPE_LEVEL_BONUS, recipeMul } from '../ingredient/energy.js';
 import {
-  state, monData, hasMon, env, setCamp, setLevel, setHeal, setTap, setIngTap, setTeam, setFav, setParam,
+  state, monData, hasMon, env, PARAM_LIMITS, setCamp, setLevel, setHeal, setTap, setIngTap, setTeam, setFav, setParam, setIngBy, setRecipeBonus,
 } from '../state.js';
 import { $ } from './common.js';
 
@@ -22,6 +23,9 @@ export const boostText = () => {
   const t = [state.fieldBonus ? `フィールドボーナス+${state.fieldBonus}%` : '', state.fav ? '好きなきのみ' : ''].filter(Boolean);
   return t.length ? t.join('・') : null;
 };
+// 料理の倍率（食材タイプをエナジーで評価するときだけ）。
+export const recipeText = () => (state.recipeBonus === 0 ? 'レシピボーナスなし（ミックス料理）'
+  : `レシピボーナス${state.recipeBonus}%・レシピLv.${state.recipeLevel}`);
 
 // パラメーターの切り替え。[要素の id, 今の値をボタンの data-v と同じ文字列にする関数, data-v から値を設定する関数]。
 const SEGS = [
@@ -29,6 +33,7 @@ const SEGS = [
   ['healSeg', () => String(state.heal), (v) => setHeal(v === 'g80' ? v : +v)],
   ['tapSeg', () => state.tap, setTap],
   ['ingTapSeg', () => state.ingTap, setIngTap],
+  ['ingBySeg', () => state.ingBy, setIngBy],
   ['campSeg', () => (state.camp ? '1' : '0'), (v) => setCamp(v === '1')],
   ['teamSeg', () => (state.team ? '1' : '0'), (v) => setTeam(v === '1')],
   ['favSeg', () => (state.fav ? '1' : '0'), (v) => setFav(v === '1')],
@@ -44,7 +49,9 @@ export function initParams({ refresh: redraw }) {
   $('paramClose').onclick = () => $('paramDlg').close();
   $('paramDlg').addEventListener('click', (e) => { if (e.target === $('paramDlg')) $('paramDlg').close(); });
   // 範囲外の値は受け付けず、入力欄を今の値に戻す。
-  ['healAmt', 'healTimes', 'fieldBonus'].forEach((k) => {
+  $('recipeBonus').innerHTML = RECIPE_BONUSES.map(([v, t]) => `<option value="${v}">${v}%（${t}）</option>`).join('');
+  $('recipeBonus').addEventListener('change', () => { setRecipeBonus(Number($('recipeBonus').value)); refresh(); });
+  ['healAmt', 'healTimes', 'fieldBonus', 'recipeLevel'].forEach((k) => {
     $(k).addEventListener('change', () => {
       if (!setParam(k, Number($(k).value))) $(k).value = state[k];
       refresh();
@@ -55,10 +62,12 @@ export function initParams({ refresh: redraw }) {
     setParam('healTimes', HEAL_TIMES);
     setParam('fieldBonus', FIELD_BONUS);
     setFav(false);
+    setRecipeBonus(RECIPE_BONUS);
+    setParam('recipeLevel', RECIPE_LEVEL);
     refresh();
   };
-  // 回復量と発動回数の −／＋ は1ずつ動かす（発動回数の小数はそのまま残す）。範囲の端で止める。
-  ['healAmt', 'healTimes'].forEach((k) => {
+  // 回復量・発動回数・レシピレベルの −／＋ は1ずつ動かす（発動回数の小数はそのまま残す）。範囲の端で止める。
+  ['healAmt', 'healTimes', 'recipeLevel'].forEach((k) => {
     const [lo, hi] = PARAM_LIMITS[k];
     [['Down', -1], ['Up', 1]].forEach(([id, d]) => {
       $(k + id).onclick = () => {
@@ -88,15 +97,21 @@ export function renderParams() {
     e.heal === 'g80' ? healText(e) : `${healText(e)}・げんき${genkiText(energyAt(e, 100))}`,
     teamText(e),
     state.type === 'berry' ? boostText() : null,
+    state.type === 'ingredient' && state.ingBy === 'energy' ? recipeText() : null,
   ].filter(Boolean).join('・');
   if ($('paramDlg').open) renderParamDlg();
 }
 
 function renderParamDlg() {
-  ['healAmt', 'healTimes', 'fieldBonus'].forEach((k) => {
+  ['healAmt', 'healTimes', 'fieldBonus', 'recipeLevel'].forEach((k) => {
     if (document.activeElement !== $(k)) $(k).value = state[k];
   });
-  ['healAmt', 'healTimes'].forEach((k) => {
+  $('recipeBonus').value = String(state.recipeBonus);
+  $('recipeLevel').disabled = state.recipeBonus === 0;
+  $('recipeNote').textContent = `食材1個のエナジーを ((1＋レシピボーナス) × (1＋レシピレベルのボーナス${state.recipeBonus === 0 ? '' : ` ${RECIPE_LEVEL_BONUS[state.recipeLevel]}%`}) × 0.8 ＋ 0.2) 倍します`
+    + `（料理に使う食材を8割とみなす。にとよんツールと同じ）。今は ${recipeMul(state.recipeBonus, state.recipeLevel).toFixed(3)} 倍。`
+    + `きのみのエナジーには掛からないので、食材ときのみの比率が変わり、無補正比・確率も変わります。${state.ingBy === 'energy' ? '' : '「評価」が「狙い食材の個数」のときは使いません。'}`;
+  ['healAmt', 'healTimes', 'recipeLevel'].forEach((k) => {
     $(k + 'Down').disabled = state[k] <= PARAM_LIMITS[k][0];
     $(k + 'Up').disabled = state[k] >= PARAM_LIMITS[k][1];
   });
@@ -108,7 +123,9 @@ function renderParamDlg() {
     $('bonusDown').disabled = state.fieldBonus <= bMin;
     $('bonusUp').disabled = state.fieldBonus >= bMax;
   }
-  const teamNote = state.type === 'ingredient'
+  const teamNote = state.type === 'ingredient' && state.ingBy === 'energy'
+    ? `。おてボのチーム効果は、ほかの${TEAM_OTHERS}匹を同じポケモン（同じ食材配列・サブスキルなし・無補正性格）として、おてつだいボーナスで増えるエナジーを足します。ヒーラーの設定は3タイプで共通です。`
+    : state.type === 'ingredient'
     ? `。おてボのチーム効果は、ほかの${TEAM_OTHERS}匹を同じポケモン（狙い食材が最も多い食材配列・サブスキルなし・無補正性格）として、おてつだいボーナスで増える狙い食材の個数を足します。ヒーラーの設定は3タイプで共通です。`
     : state.type === 'skill'
       ? `。おてボのチーム効果は、ほかの${TEAM_OTHERS}匹を同じポケモン（サブスキルなし・無補正性格・食材配列は出現率で平均）として、おてつだいボーナスで増える発動回数を足します。ヒーラーの設定は3タイプで共通です。`

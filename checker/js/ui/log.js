@@ -73,8 +73,9 @@ function rateLog(engines, x) {
   if (lv == null) return { lv, r: null };
   const here = x.type === state.type && x.mon === state.mon;
   const target = x.type === 'ingredient' ? (x.target || (here ? state.target : targetOf(x.mon))) : undefined;
-  if (x.type === 'ingredient' && !targetOpen(TYPES.ingredient.MONS[x.mon], lv, target)) return { lv, r: null, closed: true };
-  const e = envFor(x.type, x.mon, lv, target), engine = engines[x.type], N = slotCount(lv);
+  // エナジーで評価するとき（state.ingBy）は狙い食材を使わないので、狙い食材がまだ出ないレベルでも評価する。
+  if (x.type === 'ingredient' && state.ingBy !== 'energy' && !targetOpen(TYPES.ingredient.MONS[x.mon], lv, target)) return { lv, r: null, closed: true };
+  const e = envFor(x.type, x.mon, lv, target, x.arr), engine = engines[x.type], N = slotCount(lv);
   const subs = x.subs.slice(0, N);
   const r = x.type === 'ingredient' ? engine.score(subs, x.up, x.down, x.arr, e) : engine.score(subs, x.up, x.down, e);
   const ready = engine.ready(e);

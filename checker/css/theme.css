@@ -420,3 +420,5 @@ dialog.sheet::backdrop{background:var(--scrim)}
 .bcol small{display:block;font-size:.62rem;font-weight:700;color:var(--night-muted);white-space:nowrap}
 .bcol b{display:block;font-size:clamp(1.05rem,5vw,1.35rem);font-weight:700;white-space:nowrap}
 .bcol b.dim{color:var(--night-faint)}
+/* 条件の詳細の選択（レシピボーナス）。数値の入力欄と同じ形にする。 */
+#paramDlg .num select{font:inherit;font-size:.85rem;height:36px;padding:0 8px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;max-width:60%}

@@ -5,20 +5,24 @@
 import { TYPES, DEFAULT_TYPE, DEFAULT_TAP, typeOf } from './types.js';
 import { natByName } from './picker.js';
 import { UNLOCK, LEVEL, LEVELS, SLOTS_AT, ingOpen, byId, natsOf } from '../../js/constants.js';
-import { HEALS, TAPS, HEAL_AMT, HEAL_TIMES, PARAM_LIMITS, FIELD_BONUS } from './berry/constants.js';
+import { HEALS, TAPS, HEAL_AMT, HEAL_TIMES, PARAM_LIMITS as BERRY_LIMITS, FIELD_BONUS } from './berry/constants.js';
 import { TAPS as ING_TAPS, targetOpen } from './ingredient/constants.js';
+import { RECIPE_BONUSES, RECIPE_BONUS, RECIPE_LEVEL, RECIPE_LEVEL_LIMITS, BYS as ING_BYS } from './ingredient/energy.js';
+
+// 詳細画面の数値の範囲。平均レシピレベルは食材タイプをエナジーで評価するときだけ使う。
+export const PARAM_LIMITS = { ...BERRY_LIMITS, recipeLevel: RECIPE_LEVEL_LIMITS };
 
 const KEYS = {
   camp: 'ckcamp', g80: 'ckg80', mode: 'ckmode', lv: 'cklv', mon: 'ckmon', mons: 'ckmons', target: 'igtarget',
   heal: 'ckheal', tap: 'cktap', team: 'ckteam', healAmt: 'ckhealamt', healTimes: 'ckhealtimes', ingTap: 'ckingtap',
-  fieldBonus: 'ckfieldbonus', fav: 'ckfav', lvOpen: 'cklvopen',
+  fieldBonus: 'ckfieldbonus', fav: 'ckfav', lvOpen: 'cklvopen', ingBy: 'ckingby', recipeBonus: 'ckrecipebonus', recipeLevel: 'ckrecipelv',
 };
 // 入力中のサブスキル・性格・食材配列（ポケモンごと）。{ ポケモン: { subs, nat, up, down, arr? } }
 const DRAFT_KEY = 'ckdraft';
 const LOG_KEYS = { ingredient: 'iglog', berry: 'bflog', skill: 'sklog' };
 const OLD = {
   camp: ['igcamp', 'bfcamp'], g80: ['igg80', 'bfg80'], mode: ['igmode', 'bfmode'], lv: [], mon: ['igmon', 'bfmon'],
-  heal: [], tap: [], team: [], healAmt: [], healTimes: [], ingTap: [], fieldBonus: [], fav: [], lvOpen: [],
+  heal: [], tap: [], team: [], healAmt: [], healTimes: [], ingTap: [], fieldBonus: [], fav: [], lvOpen: [], ingBy: [], recipeBonus: [], recipeLevel: [],
 };
 
 const load = (key, def) => {
@@ -65,6 +69,11 @@ export const state = {
   fav: false,
   // レベル別の一覧（性能の欄）を開いているか。
   lvOpen: false,
+  // 食材タイプの評価のしかた。'count' は狙い食材の個数、'energy' はすべての食材ときのみのエナジー（ver1.12）。
+  ingBy: 'count',
+  // エナジーで評価するときの料理の倍率。レシピボーナス（%）と平均レシピレベル。
+  recipeBonus: RECIPE_BONUS,
+  recipeLevel: RECIPE_LEVEL,
 };
 
 export const hasMon = () => state.mon !== null;
@@ -146,6 +155,11 @@ export function loadSettings() {
   state.fieldBonus = paramOr('fieldBonus', loadSetting('fieldBonus', FIELD_BONUS), FIELD_BONUS);
   state.fav = loadSetting('fav', false) === true;
   state.lvOpen = loadSetting('lvOpen', false) === true;
+  const ingBy = loadSetting('ingBy', 'count');
+  state.ingBy = ING_BYS.includes(ingBy) ? ingBy : 'count';
+  const rb = loadSetting('recipeBonus', RECIPE_BONUS);
+  state.recipeBonus = RECIPE_BONUSES.some(([v]) => v === rb) ? rb : RECIPE_BONUS;
+  state.recipeLevel = paramOr('recipeLevel', loadSetting('recipeLevel', RECIPE_LEVEL), RECIPE_LEVEL);
   // レベルの設定がまだなければ、以前の対象レベルの切り替え（枠の数）から引き継ぐ（Lv.50まで→60・Lv.70まで→70・Lv.80まで→80）。
   const n = loadSetting('mode', 3);
   const lv = loadSetting('lv', LEVEL[n] ?? 60);
@@ -185,9 +199,13 @@ export function setTap(v) { if (TAPS.includes(v)) { state.tap = v; save(KEYS.tap
 export function setIngTap(v) { if (ING_TAPS.includes(v)) { state.ingTap = v; save(KEYS.ingTap, v); } }
 export function setTeam(v) { state.team = v; save(KEYS.team, v); }
 export function setFav(v) { state.fav = v; save(KEYS.fav, v); }
+export function setRecipeBonus(v) { if (RECIPE_BONUSES.some(([b]) => b === v)) { state.recipeBonus = v; save(KEYS.recipeBonus, v); } }
+export function setIngBy(v) { if (ING_BYS.includes(v)) { state.ingBy = v; save(KEYS.ingBy, v); } }
+// 食材タイプをエナジーで評価しているか。
+export const ingByEnergy = () => state.type === 'ingredient' && state.ingBy === 'energy';
 
 // 詳細画面の数値。回復量とフィールドボーナスは整数、発動回数は小数第2位まで。範囲外や桁の多い値は受け付けない（false を返す）。
-const PARAM_DIGITS = { healAmt: 0, healTimes: 2, fieldBonus: 0 };
+const PARAM_DIGITS = { healAmt: 0, healTimes: 2, fieldBonus: 0, recipeLevel: 0 };
 const paramOk = (k, v) => {
   if (typeof v !== 'number' || !Number.isFinite(v) || v < PARAM_LIMITS[k][0] || v > PARAM_LIMITS[k][1]) return false;
   const s = 10 ** PARAM_DIGITS[k];
@@ -266,8 +284,8 @@ export const currentArr = (lv = state.lv) => state.arr.slice(0, ingOpen(lv));
 // 確率を出せるか。レベル lv で開いているサブスキルの枠・性格・食材の枠がすべて入っていること。
 export const isComplete = (lv = state.lv) => hasMon() && currentSubs(lv).every(Boolean) && state.up && state.down && !currentArr(lv).includes(null);
 // 食材タイプで、狙い食材がレベル lv で開いている食材の枠に出ない（Lv.50 で Lv.60 の枠だけに出る食材）。
-// 無補正の個体も0個なので、無補正比・確率・順位は出さず、記録もしない。
-export const targetClosed = (lv = state.lv) => hasMon() && state.type === 'ingredient' && !!state.target && !targetOpen(monData(), lv, state.target);
+// 無補正の個体も0個なので、無補正比・確率・順位は出さず、記録もしない。エナジーで評価するときは狙い食材を使わないので、閉じていても評価する。
+export const targetClosed = (lv = state.lv) => hasMon() && state.type === 'ingredient' && !ingByEnergy() && !!state.target && !targetOpen(monData(), lv, state.target);
 // 無補正比・確率・順位を出せるか。入力がそろっていて、狙い食材がレベル lv で出ること。
 export const canRate = (lv = state.lv) => isComplete(lv) && !targetClosed(lv);
 // 入力してあるサブスキル（低いレベルから続けて入っている分）。記録にはこれを保存する。
@@ -276,15 +294,25 @@ export const filledSubs = () => {
   return state.subs.slice(0, i < 0 ? state.subs.length : i);
 };
 // タイプ type・ポケモン mon・レベル lv の計算条件。共通の設定（チケット・ヒーラー・受け取りなど）は今のものを使う。
-// 食材タイプは狙い食材 target も条件に入る。
-export const envFor = (type, mon, lv, target) => {
-  const { camp, heal, tap, ingTap, team, healAmt, healTimes } = state;
+// 食材タイプは狙い食材 target も条件に入る。エナジーで評価するときは target の代わりに by: 'energy' と、
+// 食材配列 arr（開いている枠の候補の番号をつないだ文字列。例 '012'。そろっていなければ null）を入れる。
+// エナジーの確率・順位は、同じ食材配列の個体だけを母集団にして数えるため。
+// （狙い食材の個数で評価する条件は以前と同じ形なので、保存した分布・事前計算の分布をそのまま使う）。
+const arrKey = (arr, lv) => {
+  const a = (arr || []).slice(0, ingOpen(lv));
+  return a.length === ingOpen(lv) && a.every(Number.isInteger) ? a.join('') : null;
+};
+export const envFor = (type, mon, lv, target, arr) => {
+  const { camp, heal, tap, ingTap, team, healAmt, healTimes, recipeBonus, recipeLevel } = state;
   const N = slotCount(lv);
   if (type === 'berry') return { lv, N, camp, mon, heal, tap, team, healAmt, healTimes };
+  if (type === 'ingredient' && state.ingBy === 'energy') return { lv, N, camp, mon, by: 'energy', arr: arrKey(arr, lv), heal, tap: ingTap, team, healAmt, healTimes, recipeBonus, recipeLevel };
   if (type === 'ingredient') return { lv, N, camp, mon, target, heal, tap: ingTap, team, healAmt, healTimes };
   return { lv, N, camp, mon, heal, tap: ingTap, team, healAmt, healTimes };
 };
-export const env = (lv = state.lv) => envFor(state.type, state.mon, lv, state.target);
+export const env = (lv = state.lv) => envFor(state.type, state.mon, lv, state.target, state.arr);
+// 分布を求められる条件か（エナジーで評価するときは食材配列がそろっていること）。
+export const distReady = (e) => !(e.by === 'energy' && !e.arr);
 // 食材タイプのポケモンで前に選んだ狙い食材（なければ A）。
 export const targetOf = (mon) => {
   const t = load(KEYS.target, {});

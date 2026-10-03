@@ -4,13 +4,14 @@ import { trunc, mmss } from '../../../js/format.js';
 import { eff } from '../../../js/calc.js';
 import { arrName } from '../ingredient/constants.js';
 import { slotsOf } from '../ingredient/calc.js';
+import { ingEnergy, recipeMulOf } from '../ingredient/energycalc.js';
 import { TEAM_OTHERS } from '../berry/constants.js';
 import { boostedEnergy } from '../berry/calc.js';
 import { ingIcon } from '../ingicons.js';
 import { icon } from '../dom.js';
-import { state, hasMon, monData, currentSubs, currentArr, isComplete, canRate, env } from '../state.js';
+import { state, hasMon, monData, currentSubs, currentArr, isComplete, canRate, env, ingByEnergy } from '../state.js';
 import { $, def, withUnit } from './common.js';
-import { healText, tapText, genkiText, boostText } from './params.js';
+import { healText, tapText, genkiText, boostText, recipeText } from './params.js';
 
 // 性能の行。'grp' は見出し行。
 const ROWS = {
@@ -20,6 +21,14 @@ const ROWS = {
     ['rIngList', '1日の食材の個数'], ['rCap', '最大所持数'], ['rFull', '睡眠中に満タンになる確率'],
     ['grp', '狙い食材の内訳'], ['rSelf', '自分の狙い食材'], ['rTeam', `おてボによるほかの${TEAM_OTHERS}匹の増加`],
     ['grp', '無補正個体との比較'], ['rBase', '無補正個体の1日個数'], ['rDRatio', '1日の個数の比（評価の基準）'], ['rGe', '同等以上の個体になる確率'], ['rOdds', '平均何匹に1匹'], ['rPos', '性能値の順位（参考）'],
+  ],
+  // 食材タイプをエナジーで評価するとき（ver1.12）。食材の行は同じで、内訳と比較をエナジーにする。
+  ingredientEnergy: [
+    ['grp', 'おてつだい'], ['rTime', 'おてつだい時間'], ['rCut', '時間の短縮'], ['rHelps', '1日のおてつだい回数'], ['rGenki', 'げんき'],
+    ['grp', '食材・きのみ'], ['rIng', '食材確率'], ['rAmt', '1回あたりの食材'], ['rIngHelps', '1日の食材おてつだい回数'],
+    ['rIngList', '1日の食材の個数'], ['rBerryN', '1日のきのみの個数'], ['rCap', '最大所持数'], ['rFull', '睡眠中に満タンになる確率'],
+    ['grp', 'エナジーの内訳'], ['rIngE', '食材のエナジー'], ['rBerryE', 'きのみのエナジー'], ['rSelf', '自分のエナジー'], ['rTeam', `おてボによるほかの${TEAM_OTHERS}匹の増加`],
+    ['grp', '無補正個体との比較'], ['rBase', '無補正個体の1日エナジー'], ['rDRatio', '1日のエナジーの比（評価の基準）'], ['rGe', '同等以上の個体になる確率'], ['rOdds', '平均何匹に1匹'], ['rPos', '性能値の順位（参考）'],
   ],
   berry: [
     ['grp', 'おてつだい'], ['rTime', 'おてつだい時間'], ['rCut', '時間の短縮'], ['rHelps', '1日のおてつだい回数'], ['rGenki', 'げんき'],
@@ -39,6 +48,8 @@ const ROWS = {
 };
 
 // くわしい数値の枠（見出しごとに開閉する）。最初の見出しだけ開いておく。値は render*Stats が入れる。
+// type は ROWS のキー（rowsKey）。
+export const rowsKey = () => (ingByEnergy() ? 'ingredientEnergy' : state.type);
 export function rowsHtml(type) {
   const groups = [];
   ROWS[type].forEach(([id, label]) => {
@@ -84,14 +95,17 @@ function renderIngStats(engine) {
   const m = def().mults(currentSubs(), state.up, state.down);
   const tName = mm.ings[state.target];
 
-  const ref = engine.reference(e);
-  $('rBase').innerHTML = `${ref.v.toFixed(1)}個<span>${arrName(mm, ref.arr)}・無補正</span>`;
+  // 食材配列が決まっていれば、エナジーで評価するときの基準はその配列の無補正個体。
+  const arrOk = !currentArr().includes(null);
+  const ref = engine.reference(e, arrOk ? state.arr : undefined);
+  const byE = ingByEnergy();
+  $('rBase').innerHTML = byE ? `${Math.round(ref.v).toLocaleString()}<span>${arrName(mm, ref.arr)}・無補正</span>`
+    : `${ref.v.toFixed(1)}個<span>${arrName(mm, ref.arr)}・無補正</span>`;
 
   // 食材配列が決まるまでは、無補正基準の配列で時間・確率などを表示する。
-  const arrOk = !currentArr().includes(null);
   const r = engine.daily(m, arrOk ? state.arr : ref.arr, e);
   $('cond').textContent = condText(m, e, r);
-  $('hLabel').textContent = `1日の${mm.short[state.target]}`;
+  $('hLabel').textContent = byE ? '1日のエナジー（食材＋きのみ）' : `1日の${mm.short[state.target]}`;
   timeRows(r, m, e);
   $('rGenki').innerHTML = genkiRow(r, e);
   $('rIng').innerHTML = `${(r.ingP * 100).toFixed(1)}%<span>基礎${+(mm.ingP * 100).toFixed(2)}% × ${m.ingMul.toFixed(3)}</span>`;
@@ -99,7 +113,7 @@ function renderIngStats(engine) {
   $('rCap').innerHTML = `${r.cap}個<span>基礎${mm.cap}＋進化${mm.evo}回×5＋サブスキル${e.camp ? '・チケット込み' : ''}・きのみ${m.berry}個</span>`;
 
   if (!arrOk) {
-    ['hAll', 'hDay', 'hNight', 'rAmt', 'rIngList', 'rFull', 'rSelf', 'rTeam'].forEach((id) => { $(id).textContent = '—'; });
+    ['hAll', 'hDay', 'hNight', 'rAmt', 'rIngList', 'rFull', 'rSelf', 'rTeam', 'rBerryN', 'rIngE', 'rBerryE'].forEach((id) => { if ($(id)) $(id).textContent = '—'; });
     setSplit(0, 0);
     $('rDRatio').textContent = '—';
     return;
@@ -108,8 +122,12 @@ function renderIngStats(engine) {
   const tAmt = slots.reduce((s, [ing, a]) => s + (ing === state.target ? a : 0), 0) / slots.length;
   const allAmt = slots.reduce((s, [, a]) => s + a, 0) / slots.length;
   const tDay = r.day[tName] || 0, tNight = r.night[tName] || 0, self = tDay + tNight;
-  const team = engine.team(m, e);
+  const team = engine.team(m, e, state.arr);
   const showTeam = e.team && m.hb;
+  if (byE) {
+    renderIngEnergy(r, m, e, mm, slots, ref, team, showTeam);
+    return;
+  }
 
   $('hAll').innerHTML = withUnit(self.toFixed(1), '個');
   $('hDay').textContent = tDay.toFixed(1);
@@ -128,6 +146,36 @@ function renderIngStats(engine) {
   $('rTeam').innerHTML = !e.team ? '—<span>含めない設定</span>'
     : !m.hb ? '0個<span>おてつだいボーナスなし</span>'
       : `+${team.toFixed(1)}個<span>1匹あたり+${(team / TEAM_OTHERS).toFixed(1)}個（同じポケモン・${arrName(mm, ref.arr)}・無補正）</span>`;
+  $('rDRatio').textContent = canRate() ? `${((self + team) / ref.v).toFixed(2)}倍` : '—';
+}
+// 食材タイプをエナジーで評価するとき（ver1.12）。すべての食材のエナジーと、きのみのエナジー（フィールドボーナスなし）の合計。
+function renderIngEnergy(r, m, e, mm, slots, ref, team, showTeam) {
+  const be = r.berryInfo.energy, mul = recipeMulOf(e);
+  const ingDay = ingEnergy(r.day, mul), ingNight = ingEnergy(r.night, mul);
+  const day = ingDay + r.berryDay * be, night = ingNight + r.berryNight * be, self = day + night;
+  const berries = r.berryDay + r.berryNight;
+  const fmt = (x) => Math.round(x).toLocaleString();
+  $('hAll').textContent = fmt(self);
+  $('hDay').textContent = fmt(day);
+  $('hNight').textContent = fmt(night);
+  setSplit(day, night);
+  heroTeam(showTeam ? `+${fmt(team)}` : null);
+
+  const allAmt = slots.reduce((s, [, a]) => s + a, 0) / slots.length;
+  $('rAmt').innerHTML = `${allAmt.toFixed(2)}個<span>開いている${slots.length}枠の平均</span>`;
+  const names = [...new Set(slots.map(([k]) => mm.ings[k]))];
+  $('rIngList').innerHTML = names.map((n) => {
+    const k = Object.keys(mm.ings).find((x) => mm.ings[x] === n);
+    return `${ingIcon(n)}${mm.short[k]} ${((r.day[n] || 0) + (r.night[n] || 0)).toFixed(1)}個`;
+  }).join('<br>');
+  $('rBerryN').innerHTML = `${berries.toFixed(1)}個<span>1回${r.berry}個${m.berry > 1 ? '（きのみの数S）' : ''}・満タン後もきのみを拾う</span>`;
+  $('rFull').innerHTML = `${(r.full * 100).toFixed(1)}%<span>あふれた食材 平均${r.lost.toFixed(1)}個</span>`;
+  $('rIngE').innerHTML = `${fmt(ingDay + ingNight)}<span>${recipeText()}（料理の倍率${mul.toFixed(3)}倍）</span>`;
+  $('rBerryE').innerHTML = `${fmt(berries * be)}<span>${r.berryInfo.name} Lv.${r.LV} 1個${be}</span>`;
+  $('rSelf').innerHTML = `${fmt(self)}<span>日中${fmt(day)}・睡眠中${fmt(night)}</span>`;
+  $('rTeam').innerHTML = !e.team ? '—<span>含めない設定</span>'
+    : !m.hb ? '0<span>おてつだいボーナスなし</span>'
+      : `+${fmt(team)}<span>1匹あたり+${fmt(team / TEAM_OTHERS)}（同じポケモン・${arrName(mm, ref.arr)}・無補正）</span>`;
   $('rDRatio').textContent = canRate() ? `${((self + team) / ref.v).toFixed(2)}倍` : '—';
 }
 function renderBerryStats(engine) {
@@ -219,7 +267,8 @@ export function renderStats(engine) {
 // 同等以上の確率・平均何匹に1匹・性能値の順位の意味と、確率の前提（抽選条件）。
 export function renderRankNote() {
   const lv60 = ingOpen(state.lv) >= 3 ? '、Lv.60 は3候補を等確率' : '。Lv.60 の枠はまだ開いていないので使わない';
-  const arr = state.type === 'ingredient' ? `食材配列は捕獲時の出現率（Lv.30 は A 1/3・B 2/3${lv60}）、` : `食材配列は捕獲時の出現率で平均${ingOpen(state.lv) >= 3 ? '' : '（Lv.60 の枠は使わない）'}、`;
+  const arr = ingByEnergy() ? '食材配列はこの個体と同じものだけ（同じ食材配列の個体の中での確率）、'
+    : state.type === 'ingredient' ? `食材配列は捕獲時の出現率（Lv.30 は A 1/3・B 2/3${lv60}）、` : `食材配列は捕獲時の出現率で平均${ingOpen(state.lv) >= 3 ? '' : '（Lv.60 の枠は使わない）'}、`;
   // ストリンダーは姿に付く性格だけを数える。
   const k = hasMon() ? natsOf(monData()).length : NAT.length;
   const natText = k < NAT.length ? `は${monData().name}に付く${k}種` : `${NAT.length}種`;

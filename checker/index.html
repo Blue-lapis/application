@@ -42,7 +42,7 @@
     </section>
 
     <section id="arrSec">
-      <div class="sec-head"><h2>食材配列</h2><span class="hint">狙い食材を選ぶ</span></div>
+      <div class="sec-head"><h2>食材配列</h2><span class="hint" id="arrHint">狙い食材を選ぶ</span></div>
       <div class="slot tgt-row"><span>狙い</span><div class="chips" id="target"></div></div>
       <div id="arr"></div>
     </section>
@@ -70,6 +70,7 @@
         <div class="lvrow"><span>レベル</span><div class="lvseg" role="group" aria-label="レベル" id="lvSeg"><button data-v="50" aria-label="Lv.50">50</button><button data-v="60" aria-label="Lv.60">60</button><button data-v="70" aria-label="Lv.70">70</button><button data-v="80" aria-label="Lv.80">80</button></div></div>
         <div class="prow2">
           <div data-for="berry"><span>日中の受け取り</span><div class="seg" role="group" aria-label="日中の受け取り" id="tapSeg"><button data-v="none">なし（いつ育）</button><button data-v="3h">3時間ごと</button></div></div>
+          <div data-for="ingredient"><span>評価</span><div class="seg" role="group" aria-label="評価のしかた" id="ingBySeg"><button data-v="count">狙い食材の個数</button><button data-v="energy">エナジー</button></div></div>
           <div data-for="ingredient skill"><span>日中の受け取り</span><div class="seg" role="group" aria-label="日中の受け取り" id="ingTapSeg"><button data-v="always">常にタップ</button><button data-v="3h">3時間ごと</button></div></div>
           <div><span>いいキャンプチケット</span><div class="seg" role="group" aria-label="いいキャンプチケット" id="campSeg"><button data-v="0">なし</button><button data-v="1">あり</button></div></div>
         </div>
@@ -192,6 +193,15 @@
         <div class="prow"><span id="favLbl" class="fav">好きなきのみ</span><div class="seg" role="group" aria-label="好きなきのみ（エナジー2倍）" id="favSeg"><button data-v="0">OFF</button><button data-v="1">ON（2倍）</button></div></div>
       </div>
       <p class="note">きのみ1個のエナジーを（1＋ボーナス）倍し、好きなきのみはさらに2倍します（それぞれ切り上げ）。自分・ほかの4匹・無補正の個体に同じだけ掛かるので、無補正比と確率は変わりません。</p>
+    </div>
+    <!-- 食材タイプをエナジーで評価するときの、食材のエナジーに掛ける料理の倍率。 -->
+    <div data-for="ingredient">
+      <h3>料理による食材のエナジー <span class="only">食材タイプ・エナジーで評価するとき</span></h3>
+      <div class="nums">
+        <div class="num"><label for="recipeBonus">レシピボーナス</label><select id="recipeBonus"></select></div>
+        <div class="num"><label for="recipeLevel">平均レシピレベル</label><div class="step"><button type="button" id="recipeLevelDown" aria-label="レシピレベルを1下げる">−</button><input type="number" id="recipeLevel" min="1" max="70" step="1" inputmode="numeric"><button type="button" id="recipeLevelUp" aria-label="レシピレベルを1上げる">＋</button></div></div>
+      </div>
+      <p class="note" id="recipeNote"></p>
     </div>
     <p class="note" id="paramNote"></p>
     <div class="dlg-foot"><button class="txt" id="paramReset" data-for="berry ingredient skill">初期値に戻す</button><button class="primary" id="paramClose">閉じる</button></div>

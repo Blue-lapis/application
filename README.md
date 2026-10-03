@@ -4,7 +4,7 @@
 
 ## バージョン
 
-`checker/`（厳選チェッカー）と `exp/`（育成日数シミュレーター）は別々に版を付けます。今の版は **厳選チェッカー v1.4**・**育成日数シミュレーター v1.6** です。
+`checker/`（厳選チェッカー）と `exp/`（育成日数シミュレーター）は別々に版を付けます。今の版は **厳選チェッカー v1.5**・**育成日数シミュレーター v1.6** です。
 
 ### 厳選チェッカー
 
@@ -13,6 +13,7 @@
 - v1.2 — 育成日数シミュレーターへのカード「育成日数を見る」を、独立したカードにしてページの一番下（2列のときは右の列の一番下）に移した。フッターの文字のリンクは、カードと重なるので外した。設計は [`docs/exp/design-v1.5.md`](docs/exp/design-v1.5.md)（育成日数シミュレーター v1.5 と同じ設計書）。
 - v1.3 — ログイン（4桁の暗証番号）をなくし、開けばすぐ使えるようにした。どのページも検索エンジンに載せない（`noindex`）。
 - v1.4 — ストリンダーの姿ごとに付く性格（ハイなすがた13種・ローなすがた12種）を考慮した。付かない性格は選べず、上位%の分布もその姿に付く性格だけを等確率で数える。
+- v1.5 — 食材タイプの評価を「狙い食材の個数」と「エナジー」で切り替えられるようにした（条件の欄の「評価」）。エナジーは、すべての食材のエナジーときのみのエナジーの合計で比べるので、きのみSなど、きのみを増やすサブスキルも評価に入る。設計は [`docs/checker/design-v1.12.md`](docs/checker/design-v1.12.md)。
 
 ### 育成日数シミュレーター
 
@@ -30,7 +31,7 @@
 
 版はアプリごとに1つのファイル（厳選チェッカーは `checker/js/version.js`、育成日数シミュレーターは `exp/js/version.js`）にだけ書き、画面の一番下（フッター）には、そこから出します（`index.html` の `data-ver`）。上げるときは、その `version.js` と、この README の「今の版」・版の一覧を書き換えます。README と `version.js` がそろっていることは `tests/check-version.mjs` で確かめます（PR のテストでも動きます）。
 
-`docs/checker/` の設計書・要件定義書の番号（チェッカーの ver1.1〜ver1.11）は計算と機能の設計の版で、リリースの番号とは別です。番号の対応は [`docs/README.md`](docs/README.md) にまとめています。
+`docs/checker/` の設計書・要件定義書の番号（チェッカーの ver1.1〜ver1.12）は計算と機能の設計の版で、リリースの番号とは別です。番号の対応は [`docs/README.md`](docs/README.md) にまとめています。
 
 ## 公開ページ
 
@@ -52,7 +53,7 @@
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、おてつだい時間と確率の丸め、所持数の遷移、スキル抽選回数とストック、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数
 - `css/style.css` — 土台のスタイル（見た目は `checker/css/theme.css` で上書き。色・文字・部品の形は theme.css にまとめている）
-- `docs/` — 要件定義書・設計書。一覧と番号の数え方は [`docs/README.md`](docs/README.md)。`docs/checker/` はチェッカーの ver1.1〜ver1.11（最新: [要件定義](docs/checker/requirements-v1.9.md)・[設計書](docs/checker/design-v1.11.md)）、`docs/exp/` は育成日数シミュレーター。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない。ver1.9 は上位%の分布の事前計算（あわせて、レベル別の一覧と、Lv.50 でまだ出ない狙い食材を押せなくする変更。どちらも要件定義はない）。ver1.10 は入力のポケモンごとの保存と初期値の変更、ver1.11 は画面のコード（`ui.js`）の分割と設計書の置き場所の整理（どちらも要件定義はない）
+- `docs/` — 要件定義書・設計書。一覧と番号の数え方は [`docs/README.md`](docs/README.md)。`docs/checker/` はチェッカーの ver1.1〜ver1.12（最新: [要件定義](docs/checker/requirements-v1.9.md)・[設計書](docs/checker/design-v1.12.md)）、`docs/exp/` は育成日数シミュレーター。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない。ver1.9 は上位%の分布の事前計算（あわせて、レベル別の一覧と、Lv.50 でまだ出ない狙い食材を押せなくする変更。どちらも要件定義はない）。ver1.10 は入力のポケモンごとの保存と初期値の変更、ver1.11 は画面のコード（`ui.js`）の分割と設計書の置き場所の整理（どちらも要件定義はない）。ver1.12 は食材タイプをエナジーで評価する切り替え（要件定義はない）
 - `scripts/precompute-dist.mjs` — 既定の条件の上位%の分布を事前計算し、`checker/dist/` に書き出す（公開時に実行。[ローカルでの実行手順](#事前計算した分布)）
 - `scripts/dist-key.mjs` — 事前計算した分布を使い回してよいかを決めるキー（`precompute-dist.mjs` から import をたどったファイルの中身と Node の版から作る。画面だけのファイルを変えても変わらない。`--list` で対象のファイルを出す）
 - `tests/check-dist.mjs` — 上位%の分布の整合性テスト（`node tests/check-dist.mjs`）
@@ -63,10 +64,11 @@
 - `tests/check-nature.mjs` — ストリンダーの姿ごとの性格の表と、上位%の分布がその姿に付く性格だけを数えることのテスト（`node tests/check-nature.mjs`）
 - `tests/check-segs.mjs` — 所持数・ストック・天井込みの確率の境界テスト（`node tests/check-segs.mjs`）
 - `tests/check-boost.mjs` — きのみタイプのフィールドボーナス・好きなきのみの切り上げと、無補正比が変わらないことのテスト（`node tests/check-boost.mjs`）
+- `tests/check-ingenergy.mjs` — 食材タイプをエナジーで評価するモードのテスト（データ・評価の値と表示の値の一致・狙い食材によらないこと・きのみSの効き方。`node tests/check-ingenergy.mjs`）
 - `tests/compare-values.mjs`・`tests/bench-dist.mjs`・`tests/compare-dist.mjs` — 変更前後の値・分布・計算時間の比較（[実行手順](docs/checker/design-v1.4.md#5-再確認する手順)）
 - `tests/compare-nitoyon.mjs`・`tests/nitoyon/runner.ts` — にとよんツールとの値の比較（[実行手順](docs/checker/design-v1.5.md#5-再確認する手順)）
 - `index.html`・`ingredient/index.html`・`berry/index.html` — `checker/` へ移動するページ
-- `.github/workflows/test.yml` — `check-segs.mjs`・`check-dist.mjs`・`check-nature.mjs`・`check-boost.mjs`・`check-exp.mjs`・`check-draft.mjs`・`check-version.mjs` を実行する。PR を作ったとき・更新したときに動き、`pages.yml` からも呼ばれる
+- `.github/workflows/test.yml` — `check-segs.mjs`・`check-dist.mjs`・`check-nature.mjs`・`check-boost.mjs`・`check-ingenergy.mjs`・`check-exp.mjs`・`check-draft.mjs`・`check-version.mjs` を実行する。PR を作ったとき・更新したときに動き、`pages.yml` からも呼ばれる
 - `.github/workflows/pages.yml` — `main` への push で、テスト（`test.yml`）と公開するファイルの作成を並べて走らせ、両方が通れば GitHub Pages に公開する。公開するのはアプリのファイルと事前計算の分布だけ。分布の事前計算（約3分）は、計算に関わるファイルが前回の公開と同じなら（キーは `scripts/dist-key.mjs`）、Actions のキャッシュから使い回して省く。使い回したときも `check-precomputed.mjs` で確かめる。`docs/`・`tests/`・リポジトリ直下の `README.md` だけを変えた push では動かない（公開し直すと版が変わり、利用者の端末に保存した分布を読み直させてしまうため。手で公開するときは Actions の画面から実行する）
 
 ## 共通の計算モデル

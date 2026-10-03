@@ -4,7 +4,7 @@
 
 | 置き場所 | アプリ | 番号の意味 |
 |---|---|---|
-| `docs/checker/` | 厳選チェッカー（`checker/`） | 計算と機能の設計の版（ver1.1〜ver1.11）。画面に出すリリースの番号（v1.0〜v1.2）とは別 |
+| `docs/checker/` | 厳選チェッカー（`checker/`） | 計算と機能の設計の版（ver1.1〜ver1.12）。画面に出すリリースの番号（v1.0〜v1.2）とは別 |
 | `docs/exp/` | 育成日数シミュレーター（`exp/`） | リリースの番号（画面に出す v1.0〜v1.5）と同じ |
 
 そのため `docs/checker/design-v1.4.md`（チェッカーの ver1.4）と `docs/exp/design-v1.4.md`（育成日数シミュレーターの v1.4）は、名前は似ていても別のものです。
@@ -26,6 +26,7 @@
 | ver1.9 | 上位%の分布の事前計算（あわせて、レベル別の一覧と、Lv.50 でまだ出ない狙い食材を押せなくする変更） | [requirements-v1.9.md](checker/requirements-v1.9.md) | [design-v1.9.md](checker/design-v1.9.md) |
 | ver1.10 | 入力のポケモンごとの保存と初期値の変更（リリースの v1.1） | — | [design-v1.10.md](checker/design-v1.10.md) |
 | ver1.11 | 画面のコード（`ui.js`）の分割と、設計書を `docs/checker/` に移す（見た目・動きは変えない） | — | [design-v1.11.md](checker/design-v1.11.md) |
+| ver1.12 | 食材タイプをエナジーで評価する切り替え（リリースの v1.5） | — | [design-v1.12.md](checker/design-v1.12.md) |
 
 リリースの v1.2（他アプリへのカードをページの一番下に移す）は、育成日数シミュレーター v1.5 と同じ設計書 [exp/design-v1.5.md](exp/design-v1.5.md) にあります。
 
