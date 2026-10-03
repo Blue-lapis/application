@@ -22,26 +22,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 計算の整合性テスト（test.yml。PR でも同じものが動く）。通らなければ公開しない。
+  # 計算の整合性テスト（test.yml。PR でも同じものが動く）。build と並べて走らせ、通らなければ公開しない（deploy が両方を待つ）。
   test:
     uses: ./.github/workflows/test.yml
 
-  deploy:
-    needs: test
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  # 公開するファイルを作る。分布の事前計算はいちばん時間がかかる（約3分）ので、計算に関わるファイルが前回と同じなら使い回す。
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # 分布の計算に関わるファイル（precompute-dist.mjs から import をたどったもの）の中身と Node の版から作るキー。
+      # 画面だけの変更ならキーは変わらない（scripts/dist-key.mjs）。版を付ける前に作る。
+      - name: Key of precomputed distributions
+        id: distkey
+        run: echo "key=$(node scripts/dist-key.mjs --list)" >> "$GITHUB_OUTPUT"
+      - name: Restore precomputed distributions
+        id: distcache
+        uses: actions/cache@v4
+        with:
+          path: checker/dist
+          key: checker-dist-${{ steps.distkey.outputs.key }}
       # 既定の条件の上位%の分布を事前計算して checker/dist/ に置き、公開物に含める（ver1.9）。
-      # 毎回今のコードで作り直す。版を付ける前（?v= のない import）で実行する。
+      # 使い回せないとき（キーが変わったとき）だけ、今のコードで作り直す。版を付ける前（?v= のない import）で実行する。
       - name: Precompute distributions
+        if: steps.distcache.outputs.cache-hit != 'true'
         run: node scripts/precompute-dist.mjs
-      # ファイルがそろっていることと、抜き取りで計算した分布とビットまで一致することを確かめる。
+      # ファイルがそろっていることと、抜き取りで計算した分布とビットまで一致することを、使い回したときも確かめる。
       - name: Check precomputed distributions
         run: node tests/check-precomputed.mjs
       - uses: actions/configure-pages@v5
@@ -63,5 +72,13 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+
+  deploy:
+    needs: [test, build]
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
