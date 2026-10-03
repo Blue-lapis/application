@@ -110,7 +110,7 @@ function renderParamDlg() {
     $('bonusUp').disabled = state.fieldBonus >= bMax;
   }
   const teamNote = state.type === 'ingredient' && state.ingBy === 'energy'
-    ? `。おてボのチーム効果は、ほかの${TEAM_OTHERS}匹を同じポケモン（エナジーが最も高い食材配列・サブスキルなし・無補正性格）として、おてつだいボーナスで増えるエナジーを足します。ヒーラーの設定は3タイプで共通です。`
+    ? `。おてボのチーム効果は、ほかの${TEAM_OTHERS}匹を同じポケモン（同じ食材配列・サブスキルなし・無補正性格）として、おてつだいボーナスで増えるエナジーを足します。ヒーラーの設定は3タイプで共通です。`
     : state.type === 'ingredient'
     ? `。おてボのチーム効果は、ほかの${TEAM_OTHERS}匹を同じポケモン（狙い食材が最も多い食材配列・サブスキルなし・無補正性格）として、おてつだいボーナスで増える狙い食材の個数を足します。ヒーラーの設定は3タイプで共通です。`
     : state.type === 'skill'

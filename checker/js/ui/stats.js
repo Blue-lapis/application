@@ -94,13 +94,14 @@ function renderIngStats(engine) {
   const m = def().mults(currentSubs(), state.up, state.down);
   const tName = mm.ings[state.target];
 
-  const ref = engine.reference(e);
+  // 食材配列が決まっていれば、エナジーで評価するときの基準はその配列の無補正個体。
+  const arrOk = !currentArr().includes(null);
+  const ref = engine.reference(e, arrOk ? state.arr : undefined);
   const byE = ingByEnergy();
   $('rBase').innerHTML = byE ? `${Math.round(ref.v).toLocaleString()}<span>${arrName(mm, ref.arr)}・無補正</span>`
     : `${ref.v.toFixed(1)}個<span>${arrName(mm, ref.arr)}・無補正</span>`;
 
   // 食材配列が決まるまでは、無補正基準の配列で時間・確率などを表示する。
-  const arrOk = !currentArr().includes(null);
   const r = engine.daily(m, arrOk ? state.arr : ref.arr, e);
   $('cond').textContent = condText(m, e, r);
   $('hLabel').textContent = byE ? '1日のエナジー（食材＋きのみ）' : `1日の${mm.short[state.target]}`;
@@ -120,7 +121,7 @@ function renderIngStats(engine) {
   const tAmt = slots.reduce((s, [ing, a]) => s + (ing === state.target ? a : 0), 0) / slots.length;
   const allAmt = slots.reduce((s, [, a]) => s + a, 0) / slots.length;
   const tDay = r.day[tName] || 0, tNight = r.night[tName] || 0, self = tDay + tNight;
-  const team = engine.team(m, e);
+  const team = engine.team(m, e, state.arr);
   const showTeam = e.team && m.hb;
   if (byE) {
     renderIngEnergy(r, m, e, mm, slots, ref, team, showTeam);

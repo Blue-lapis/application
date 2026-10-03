@@ -138,41 +138,46 @@ export function createEngine() {
   }
 
   // 比較の基準は、無補正個体（サブスキルなし・無補正性格）のうち狙い食材が最も多く取れる食材配列（狙いが A なら AAA）。
-  // エナジーで評価するときは、無補正個体のうちエナジーが最も高い食材配列。
+  // エナジーで評価するときは、同じ食材配列 arr の無補正個体（食材配列の良し悪しを無補正比に入れず、サブスキル・性格だけで比べる）。
+  // arr を渡さないとき（食材配列が決まっていないとき）は、無補正個体のうちエナジーが最も高い食材配列。
   // 配列は開いている枠の分だけ（Lv.50 なら AA）。
-  function reference(env) {
+  function reference(env, arr) {
     const m = mk(NO_SUBS, null, null);
+    if (byEnergy(env) && arr) {
+      const a = arr.slice(0, ingSlotsOf(env));
+      return { arr: a, v: metric(m, a, env) };
+    }
     return allArrs(MONS[env.mon], ingSlotsOf(env))
       .map(({ arr }) => ({ arr, v: metric(m, arr, env) }))
       .reduce((a, b) => (b.v > a.v ? b : a));
   }
-  const baseMetric = (env) => reference(env).v;
+  const baseMetric = (env, arr) => reference(env, arr).v;
 
   // ほかのメンバー TEAM_OTHERS 匹（同じポケモン・基準の食材配列・サブスキルなし・無補正性格）が、
   // おてつだいボーナスでおてつだいスピードが HB_SPEED 上がって増やす狙い食材の個数（エナジーで評価するときはエナジー）の合計。
+  // エナジーで評価するときのほかのメンバーは、自分と同じ食材配列 arr。
   const gainCache = new Map();
-  function teamGain(env) {
-    const k = envKey(env);
+  function teamGain(env, arr) {
+    const ref = reference(env, arr);
+    const k = `${envKey(env)}|${ref.arr.join('')}`;
     if (!gainCache.has(k)) {
-      const arr = reference(env).arr;
-      gainCache.set(k, TEAM_OTHERS * (metric(mk({ ...NO_SUBS, sp: HB_SPEED }, null, null), arr, env) - baseMetric(env)));
+      gainCache.set(k, TEAM_OTHERS * (metric(mk({ ...NO_SUBS, sp: HB_SPEED }, null, null), ref.arr, env) - ref.v));
     }
     return gainCache.get(k);
   }
   // チームへの効果。おてつだいボーナスを持たないか、含めない設定なら0。
-  const team = (m, env) => (env.team && m.hb ? teamGain(env) : 0);
+  const team = (m, env, arr) => (env.team && m.hb ? teamGain(env, arr) : 0);
   // 順位の基準の値 = 自分の狙い食材の個数 + チームへの効果。
-  const value = (m, arr, env) => metric(m, arr, env) + team(m, env);
-  const score = (subs, up, down, arr, env) => value(mults(subs, up, down), arr, env) / baseMetric(env);
+  const value = (m, arr, env) => metric(m, arr, env) + team(m, env, arr);
+  const score = (subs, up, down, arr, env) => value(mults(subs, up, down), arr, env) / baseMetric(env, arr);
 
   // 上位%の分布は、サブスキル・性格・食材配列（捕獲時の配列の確率 slotWeights）をすべて数え上げる。
   // スキル確率アップは食材に影響しないので、それ以外の効果が同じ組み合わせをまとめる。
   const store = distStore(envKey, (env) => {
     const arrs = allArrs(MONS[env.mon], ingSlotsOf(env));
-    const b = baseMetric(env);
     return buildDist(env.N, natCat, true, (e, u, d) => {
       const m = mk(e, u, d);
-      return arrs.map((a) => [value(m, a.arr, env) / b, a.p]);
+      return arrs.map((a) => [value(m, a.arr, env) / baseMetric(env, a.arr), a.p]);
     }, MONS[env.mon]);
   });
 

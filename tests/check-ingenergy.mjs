@@ -4,6 +4,7 @@
 // - 評価の値（metric）が、表示用の値（daily）の食材のエナジー＋きのみのエナジーと一致する。
 // - 「常にタップ」の日中のきのみは おてつだい回数 × 1回の個数 × (1 − 食材確率) と一致する。
 // - エナジーの評価は狙い食材によらない。個数の評価の条件のキーは以前と同じ形。
+// - エナジーの無補正比は同じ食材配列の無補正個体で割るので、どの食材配列でも無補正個体は1倍。
 // - きのみの数Sは、エナジーでは無補正比を上げ、個数では上げない。分布の確率の合計は1。
 import assert from 'node:assert/strict';
 import { createEngine, mults, envKey, ingEnergy, berryOf } from '../checker/js/ingredient/calc.js';
@@ -67,6 +68,18 @@ for (const mon of ['flygon', 'farfetchd']) {
 }
 assert.equal(envKey({ ...envs[0], mon: 'flygon', target: 'A' }), '60|3|true|flygon|A|1|3h|true|18|5', '個数の評価のキー');
 ok('エナジーの評価は狙い食材によらない・個数の評価のキーは以前と同じ');
+
+// 同じ食材配列の無補正個体が基準。
+for (const mon of Object.keys(MONS)) for (const e0 of envs) {
+  const env = { ...e0, mon, by: 'energy' };
+  for (const { arr } of allArrs(MONS[mon], 3)) {
+    close(eng.score([], null, null, arr, env), 1, `無補正/${mon}/${env.lv}/${arr}`);
+    // おてボの効果も同じ食材配列のほかのメンバーで数えるので、配列によらずほぼ同じ比になる（げんき・所持数で少しずれる）。
+    const hb = eng.score(['hb'], null, null, arr, env);
+    assert.ok(hb > 1, `おてボ/${mon}/${arr}`);
+  }
+}
+ok('エナジーでは、どの食材配列でも無補正個体が1倍');
 
 // きのみの数S
 for (const mon of Object.keys(MONS)) {
