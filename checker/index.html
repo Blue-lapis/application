@@ -194,6 +194,15 @@
       </div>
       <p class="note">きのみ1個のエナジーを（1＋ボーナス）倍し、好きなきのみはさらに2倍します（それぞれ切り上げ）。自分・ほかの4匹・無補正の個体に同じだけ掛かるので、無補正比と確率は変わりません。</p>
     </div>
+    <!-- 食材タイプをエナジーで評価するときの、食材のエナジーに掛ける料理の倍率。 -->
+    <div data-for="ingredient">
+      <h3>料理による食材のエナジー <span class="only">食材タイプ・エナジーで評価するとき</span></h3>
+      <div class="nums">
+        <div class="num"><label for="recipeBonus">レシピボーナス</label><select id="recipeBonus"></select></div>
+        <div class="num"><label for="recipeLevel">平均レシピレベル</label><div class="step"><button type="button" id="recipeLevelDown" aria-label="レシピレベルを1下げる">−</button><input type="number" id="recipeLevel" min="1" max="70" step="1" inputmode="numeric"><button type="button" id="recipeLevelUp" aria-label="レシピレベルを1上げる">＋</button></div></div>
+      </div>
+      <p class="note" id="recipeNote"></p>
+    </div>
     <p class="note" id="paramNote"></p>
     <div class="dlg-foot"><button class="txt" id="paramReset" data-for="berry ingredient skill">初期値に戻す</button><button class="primary" id="paramClose">閉じる</button></div>
   </div>

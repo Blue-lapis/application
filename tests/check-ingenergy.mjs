@@ -7,9 +7,9 @@
 // - エナジーの無補正比は同じ食材配列の無補正個体で割るので、どの食材配列でも無補正個体は1倍。
 // - きのみの数Sは、エナジーでは無補正比を上げ、個数では上げない。分布の確率の合計は1。
 import assert from 'node:assert/strict';
-import { createEngine, mults, envKey, ingEnergy, berryOf } from '../checker/js/ingredient/calc.js';
+import { createEngine, mults, envKey, ingEnergy, berryOf, recipeMulOf } from '../checker/js/ingredient/calc.js';
 import { MONS, allArrs } from '../checker/js/ingredient/constants.js';
-import { ING_ENERGY, BERRY_BASE, BERRY_OF } from '../checker/js/ingredient/energy.js';
+import { ING_ENERGY, BERRY_BASE, BERRY_OF, recipeMul } from '../checker/js/ingredient/energy.js';
 import { MONS as BERRY_MONS } from '../checker/js/berry/mons.js';
 
 const ok = (name) => console.log(`ok ${name}`);
@@ -24,11 +24,17 @@ assert.deepEqual(Object.keys(BERRY_OF).sort(), Object.keys(MONS).sort(), 'きの
 for (const m of Object.values(BERRY_MONS)) assert.equal(BERRY_BASE[m.berry], m.berryBase, `${m.berry} の Lv.1 のエナジー`);
 ok('データ');
 
-const base = { camp: true, heal: 1, team: true, healAmt: 18, healTimes: 5 };
+// 料理の倍率（にとよんツールの IngHelpDialog と同じ式。25%・Lv.30 で 1.81 倍、0% は1倍）。
+assert.equal(recipeMul(0, 30), 1);
+close(recipeMul(25, 30), 1.25 * 1.61 * 0.8 + 0.2, '25%・Lv.30');
+close(recipeMul(78, 70), 1.78 * 3.58 * 0.8 + 0.2, '78%・Lv.70');
+ok('料理の倍率');
+
+const base = { camp: true, heal: 1, team: true, healAmt: 18, healTimes: 5, recipeBonus: 25, recipeLevel: 30 };
 const envs = [
   { ...base, lv: 60, N: 3, tap: '3h' },
-  { ...base, lv: 80, N: 5, tap: 'always', camp: false },
-  { ...base, lv: 50, N: 3, tap: '3h', heal: 'g80' },
+  { ...base, lv: 80, N: 5, tap: 'always', camp: false, recipeBonus: 0 },
+  { ...base, lv: 50, N: 3, tap: '3h', heal: 'g80', recipeBonus: 78, recipeLevel: 55 },
   { ...base, lv: 70, N: 4, tap: '3h', heal: 1, healTimes: 2.5, team: false },
 ];
 const SUBS = [[], ['berry'], ['berry', 'ingM', 'spM'], ['invL', 'hb', 'erb', 'ingS', 'spS']];
@@ -45,7 +51,8 @@ for (const mon of ['flygon', 'charizard', 'ditto', 'gourgeist-jumbo', 'toxicroak
       const m = mults(subs, up, down);
       const d = eng.daily(m, arr, env);
       const be = berryOf(mon, d.LV).energy;
-      const fromDaily = ingEnergy(d.day) + ingEnergy(d.night) + (d.berryDay + d.berryNight) * be;
+      const mul = recipeMulOf(env);
+      const fromDaily = ingEnergy(d.day, mul) + ingEnergy(d.night, mul) + (d.berryDay + d.berryNight) * be;
       close(eng.metric(m, arr, env), fromDaily, `metric/${mon}/${env.lv}/${subs}/${up}/${down}/${arr}`);
       if (env.tap === 'always' && env.heal === 1 && Number.isInteger(env.healTimes)) {
         close(d.berryDay, d.Ha * m.berry * (1 - d.ingP), `日中のきのみ/${mon}/${subs}/${arr}`);
@@ -66,7 +73,9 @@ for (const mon of ['flygon', 'farfetchd']) {
       eng.score(['berry', 'spM', 'ingM'], 'speed', 'ing', [0, 1, 2], env), `${mon}/${target}`);
   }
 }
-assert.equal(envKey({ ...envs[0], mon: 'flygon', target: 'A' }), '60|3|true|flygon|A|1|3h|true|18|5', '個数の評価のキー');
+assert.equal(envKey({ camp: true, heal: 1, team: true, healAmt: 18, healTimes: 5, lv: 60, N: 3, tap: '3h', mon: 'flygon', target: 'A' }),
+  '60|3|true|flygon|A|1|3h|true|18|5', '個数の評価のキー');
+assert.notEqual(envKey({ ...envs[0], mon: 'flygon', by: 'energy' }), envKey({ ...envs[0], mon: 'flygon', by: 'energy', recipeLevel: 31 }), 'レシピレベルでキーが変わる');
 ok('エナジーの評価は狙い食材によらない・個数の評価のキーは以前と同じ');
 
 // 同じ食材配列の無補正個体が基準。
@@ -90,6 +99,14 @@ for (const mon of Object.keys(MONS)) {
   assert.ok(eng.score(['berry'], null, null, arr, cnt) <= eng.score([], null, null, arr, cnt), `${mon} 個数ではきのみの数Sで増えない`);
 }
 ok('きのみの数Sはエナジーでだけ無補正比を上げる');
+
+// レシピボーナスが高いほど食材の比重が上がり、きのみの数Sの効きは下がり、食材確率アップの効きは上がる。
+for (const mon of Object.keys(MONS)) {
+  const at = (recipeBonus, subs) => eng.score(subs, null, null, [0, 0, 0], { ...envs[0], mon, by: 'energy', recipeBonus });
+  assert.ok(at(0, ['berry']) > at(25, ['berry']) && at(25, ['berry']) > at(78, ['berry']), `${mon} きのみの数S`);
+  assert.ok(at(0, ['ingM']) < at(25, ['ingM']) && at(25, ['ingM']) < at(78, ['ingM']), `${mon} 食材確率アップM`);
+}
+ok('レシピボーナスで食材ときのみの比重が変わる');
 
 for (const env of [{ ...envs[0], mon: 'flygon', by: 'energy' }, { ...envs[2], mon: 'ditto', by: 'energy' }]) {
   const dist = createEngine().dist(env);

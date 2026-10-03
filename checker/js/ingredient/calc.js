@@ -5,13 +5,13 @@
 // heal・healAmt・healTimes はきのみタイプと共通の設定、tap は日中の受け取り（'always' / '3h'）、
 // team はおてつだいボーナスのチームへの効果（同じポケモン4匹の狙い食材の増加）を含めるか。
 // by: 'energy' のときは、狙い食材の個数の代わりに、すべての食材ときのみのエナジーの合計で評価する（ver1.12）。
-// このとき target は使わない（条件にも入れない）。
+// このとき target は使わない（条件にも入れない）。食材のエナジーには料理の倍率（recipeBonus・recipeLevel から recipeMul）を掛ける。
 import { fillCurve, NO_SUBS } from '../../../js/calc.js';
 import { mk as mkOf, mults as multsOf, mixed, timesMix, curveOf, energyAt, scheduleOf, pairSegs, basics, ingSlotsOf, buildDist, distStore } from '../engine.js';
 import { TEAM_OTHERS, HB_SPEED } from '../berry/constants.js';
 import { berryEnergy } from '../berry/calc.js';
 import { MONS, natCat, allArrs } from './constants.js';
-import { ING_ENERGY, BERRY_BASE, BERRY_OF } from './energy.js';
+import { ING_ENERGY, BERRY_BASE, BERRY_OF, recipeMul } from './energy.js';
 
 // エナジーで評価する条件か。
 export const byEnergy = (env) => env.by === 'energy';
@@ -108,12 +108,14 @@ export function daily(m, arr, env) {
   };
 }
 
-// 食材ごとの個数 { 食材名: 個数 } のエナジーの合計。
-export const ingEnergy = (counts) => Object.entries(counts).reduce((s, [name, n]) => s + n * ING_ENERGY[name], 0);
+// 食材ごとの個数 { 食材名: 個数 } のエナジーの合計（料理の倍率 mul を掛ける）。
+export const ingEnergy = (counts, mul = 1) => Object.entries(counts).reduce((s, [name, n]) => s + n * ING_ENERGY[name], 0) * mul;
+// 条件の料理の倍率。
+export const recipeMulOf = (env) => recipeMul(env.recipeBonus, env.recipeLevel);
 
 // エナジーで評価する条件は狙い食材を使わないので、キーにも入れない（狙い食材を変えても同じ分布を使う）。
 export const envKey = (env) => (byEnergy(env)
-  ? [env.lv, env.N, env.camp, env.mon, 'energy', env.heal, env.tap, env.team, env.healAmt, env.healTimes]
+  ? [env.lv, env.N, env.camp, env.mon, 'energy', env.heal, env.tap, env.team, env.healAmt, env.healTimes, env.recipeBonus, env.recipeLevel]
   : [env.lv, env.N, env.camp, env.mon, env.target, env.heal, env.tap, env.team, env.healAmt, env.healTimes]).join('|');
 
 export function createEngine() {
@@ -131,7 +133,7 @@ export function createEngine() {
       const d = runDay(r, env, m.berry, slots.map(([, a]) => a));
       const all = byIngredient(mon, slots, d.day.map((x, i) => x + d.night[i]));
       metricCache.set(key, byEnergy(env)
-        ? ingEnergy(all) + (d.berryDay + d.berryNight) * berryOf(env.mon, r.LV).energy
+        ? ingEnergy(all, recipeMulOf(env)) + (d.berryDay + d.berryNight) * berryOf(env.mon, r.LV).energy
         : all[mon.ings[env.target]] || 0);
     }
     return metricCache.get(key);

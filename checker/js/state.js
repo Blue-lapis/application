@@ -7,18 +7,19 @@ import { natByName } from './picker.js';
 import { UNLOCK, LEVEL, LEVELS, SLOTS_AT, ingOpen, byId, natsOf } from '../../js/constants.js';
 import { HEALS, TAPS, HEAL_AMT, HEAL_TIMES, PARAM_LIMITS, FIELD_BONUS } from './berry/constants.js';
 import { TAPS as ING_TAPS, BYS as ING_BYS, targetOpen } from './ingredient/constants.js';
+import { RECIPE_BONUSES, RECIPE_BONUS, RECIPE_LEVEL } from './ingredient/energy.js';
 
 const KEYS = {
   camp: 'ckcamp', g80: 'ckg80', mode: 'ckmode', lv: 'cklv', mon: 'ckmon', mons: 'ckmons', target: 'igtarget',
   heal: 'ckheal', tap: 'cktap', team: 'ckteam', healAmt: 'ckhealamt', healTimes: 'ckhealtimes', ingTap: 'ckingtap',
-  fieldBonus: 'ckfieldbonus', fav: 'ckfav', lvOpen: 'cklvopen', ingBy: 'ckingby',
+  fieldBonus: 'ckfieldbonus', fav: 'ckfav', lvOpen: 'cklvopen', ingBy: 'ckingby', recipeBonus: 'ckrecipebonus', recipeLevel: 'ckrecipelv',
 };
 // 入力中のサブスキル・性格・食材配列（ポケモンごと）。{ ポケモン: { subs, nat, up, down, arr? } }
 const DRAFT_KEY = 'ckdraft';
 const LOG_KEYS = { ingredient: 'iglog', berry: 'bflog', skill: 'sklog' };
 const OLD = {
   camp: ['igcamp', 'bfcamp'], g80: ['igg80', 'bfg80'], mode: ['igmode', 'bfmode'], lv: [], mon: ['igmon', 'bfmon'],
-  heal: [], tap: [], team: [], healAmt: [], healTimes: [], ingTap: [], fieldBonus: [], fav: [], lvOpen: [], ingBy: [],
+  heal: [], tap: [], team: [], healAmt: [], healTimes: [], ingTap: [], fieldBonus: [], fav: [], lvOpen: [], ingBy: [], recipeBonus: [], recipeLevel: [],
 };
 
 const load = (key, def) => {
@@ -67,6 +68,9 @@ export const state = {
   lvOpen: false,
   // 食材タイプの評価のしかた。'count' は狙い食材の個数、'energy' はすべての食材ときのみのエナジー（ver1.12）。
   ingBy: 'count',
+  // エナジーで評価するときの料理の倍率。レシピボーナス（%）と平均レシピレベル。
+  recipeBonus: RECIPE_BONUS,
+  recipeLevel: RECIPE_LEVEL,
 };
 
 export const hasMon = () => state.mon !== null;
@@ -150,6 +154,9 @@ export function loadSettings() {
   state.lvOpen = loadSetting('lvOpen', false) === true;
   const ingBy = loadSetting('ingBy', 'count');
   state.ingBy = ING_BYS.includes(ingBy) ? ingBy : 'count';
+  const rb = loadSetting('recipeBonus', RECIPE_BONUS);
+  state.recipeBonus = RECIPE_BONUSES.some(([v]) => v === rb) ? rb : RECIPE_BONUS;
+  state.recipeLevel = paramOr('recipeLevel', loadSetting('recipeLevel', RECIPE_LEVEL), RECIPE_LEVEL);
   // レベルの設定がまだなければ、以前の対象レベルの切り替え（枠の数）から引き継ぐ（Lv.50まで→60・Lv.70まで→70・Lv.80まで→80）。
   const n = loadSetting('mode', 3);
   const lv = loadSetting('lv', LEVEL[n] ?? 60);
@@ -189,12 +196,13 @@ export function setTap(v) { if (TAPS.includes(v)) { state.tap = v; save(KEYS.tap
 export function setIngTap(v) { if (ING_TAPS.includes(v)) { state.ingTap = v; save(KEYS.ingTap, v); } }
 export function setTeam(v) { state.team = v; save(KEYS.team, v); }
 export function setFav(v) { state.fav = v; save(KEYS.fav, v); }
+export function setRecipeBonus(v) { if (RECIPE_BONUSES.some(([b]) => b === v)) { state.recipeBonus = v; save(KEYS.recipeBonus, v); } }
 export function setIngBy(v) { if (ING_BYS.includes(v)) { state.ingBy = v; save(KEYS.ingBy, v); } }
 // 食材タイプをエナジーで評価しているか。
 export const ingByEnergy = () => state.type === 'ingredient' && state.ingBy === 'energy';
 
 // 詳細画面の数値。回復量とフィールドボーナスは整数、発動回数は小数第2位まで。範囲外や桁の多い値は受け付けない（false を返す）。
-const PARAM_DIGITS = { healAmt: 0, healTimes: 2, fieldBonus: 0 };
+const PARAM_DIGITS = { healAmt: 0, healTimes: 2, fieldBonus: 0, recipeLevel: 0 };
 const paramOk = (k, v) => {
   if (typeof v !== 'number' || !Number.isFinite(v) || v < PARAM_LIMITS[k][0] || v > PARAM_LIMITS[k][1]) return false;
   const s = 10 ** PARAM_DIGITS[k];
@@ -286,10 +294,10 @@ export const filledSubs = () => {
 // 食材タイプは狙い食材 target も条件に入る。エナジーで評価するときは target の代わりに by: 'energy' を入れる
 // （狙い食材の個数で評価する条件は以前と同じ形なので、保存した分布・事前計算の分布をそのまま使う）。
 export const envFor = (type, mon, lv, target) => {
-  const { camp, heal, tap, ingTap, team, healAmt, healTimes } = state;
+  const { camp, heal, tap, ingTap, team, healAmt, healTimes, recipeBonus, recipeLevel } = state;
   const N = slotCount(lv);
   if (type === 'berry') return { lv, N, camp, mon, heal, tap, team, healAmt, healTimes };
-  if (type === 'ingredient' && state.ingBy === 'energy') return { lv, N, camp, mon, by: 'energy', heal, tap: ingTap, team, healAmt, healTimes };
+  if (type === 'ingredient' && state.ingBy === 'energy') return { lv, N, camp, mon, by: 'energy', heal, tap: ingTap, team, healAmt, healTimes, recipeBonus, recipeLevel };
   if (type === 'ingredient') return { lv, N, camp, mon, target, heal, tap: ingTap, team, healAmt, healTimes };
   return { lv, N, camp, mon, heal, tap: ingTap, team, healAmt, healTimes };
 };

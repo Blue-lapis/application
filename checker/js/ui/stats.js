@@ -3,14 +3,14 @@ import { ingOpen, NAT, natsOf } from '../../../js/constants.js';
 import { trunc, mmss } from '../../../js/format.js';
 import { eff } from '../../../js/calc.js';
 import { arrName } from '../ingredient/constants.js';
-import { slotsOf, ingEnergy } from '../ingredient/calc.js';
+import { slotsOf, ingEnergy, recipeMulOf } from '../ingredient/calc.js';
 import { TEAM_OTHERS } from '../berry/constants.js';
 import { boostedEnergy } from '../berry/calc.js';
 import { ingIcon } from '../ingicons.js';
 import { icon } from '../dom.js';
 import { state, hasMon, monData, currentSubs, currentArr, isComplete, canRate, env, ingByEnergy } from '../state.js';
 import { $, def, withUnit } from './common.js';
-import { healText, tapText, genkiText, boostText } from './params.js';
+import { healText, tapText, genkiText, boostText, recipeText } from './params.js';
 
 // 性能の行。'grp' は見出し行。
 const ROWS = {
@@ -149,8 +149,8 @@ function renderIngStats(engine) {
 }
 // 食材タイプをエナジーで評価するとき（ver1.12）。すべての食材のエナジーと、きのみのエナジー（フィールドボーナスなし）の合計。
 function renderIngEnergy(r, m, e, mm, slots, ref, team, showTeam) {
-  const be = r.berryInfo.energy;
-  const ingDay = ingEnergy(r.day), ingNight = ingEnergy(r.night);
+  const be = r.berryInfo.energy, mul = recipeMulOf(e);
+  const ingDay = ingEnergy(r.day, mul), ingNight = ingEnergy(r.night, mul);
   const day = ingDay + r.berryDay * be, night = ingNight + r.berryNight * be, self = day + night;
   const berries = r.berryDay + r.berryNight;
   const fmt = (x) => Math.round(x).toLocaleString();
@@ -169,7 +169,7 @@ function renderIngEnergy(r, m, e, mm, slots, ref, team, showTeam) {
   }).join('<br>');
   $('rBerryN').innerHTML = `${berries.toFixed(1)}個<span>1回${r.berry}個${m.berry > 1 ? '（きのみの数S）' : ''}・満タン後もきのみを拾う</span>`;
   $('rFull').innerHTML = `${(r.full * 100).toFixed(1)}%<span>あふれた食材 平均${r.lost.toFixed(1)}個</span>`;
-  $('rIngE').innerHTML = `${fmt(ingDay + ingNight)}<span>食材1個のエナジーの合計（レシピボーナスなし）</span>`;
+  $('rIngE').innerHTML = `${fmt(ingDay + ingNight)}<span>${recipeText()}（料理の倍率${mul.toFixed(3)}倍）</span>`;
   $('rBerryE').innerHTML = `${fmt(berries * be)}<span>${r.berryInfo.name} Lv.${r.LV} 1個${be}</span>`;
   $('rSelf').innerHTML = `${fmt(self)}<span>日中${fmt(day)}・睡眠中${fmt(night)}</span>`;
   $('rTeam').innerHTML = !e.team ? '—<span>含めない設定</span>'

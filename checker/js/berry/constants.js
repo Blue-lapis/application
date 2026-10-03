@@ -12,7 +12,8 @@ export const TAPS = ['none', '3h'];
 // げんきオールS の1回の回復量と、ヒーラー1匹あたりの1日の発動回数の既定値。
 export const HEAL_AMT = 18;
 export const HEAL_TIMES = 5;
-export const PARAM_LIMITS = { healAmt: [1, 150], healTimes: [0, 20], fieldBonus: [0, 85] };
+// recipeLevel は食材タイプをエナジーで評価するときの平均レシピレベル（../ingredient/energy.js）。
+export const PARAM_LIMITS = { healAmt: [1, 150], healTimes: [0, 20], fieldBonus: [0, 85], recipeLevel: [1, 70] };
 // フィールドボーナス（%）の既定値と、好きなきのみのエナジーの倍率。どちらもきのみのエナジーにだけ掛かる。
 export const FIELD_BONUS = 0;
 export const FAV_MUL = 2;
