@@ -266,7 +266,8 @@ export function renderStats(engine) {
 // 同等以上の確率・平均何匹に1匹・性能値の順位の意味と、確率の前提（抽選条件）。
 export function renderRankNote() {
   const lv60 = ingOpen(state.lv) >= 3 ? '、Lv.60 は3候補を等確率' : '。Lv.60 の枠はまだ開いていないので使わない';
-  const arr = state.type === 'ingredient' ? `食材配列は捕獲時の出現率（Lv.30 は A 1/3・B 2/3${lv60}）、` : `食材配列は捕獲時の出現率で平均${ingOpen(state.lv) >= 3 ? '' : '（Lv.60 の枠は使わない）'}、`;
+  const arr = ingByEnergy() ? '食材配列はこの個体と同じものだけ（同じ食材配列の個体の中での確率）、'
+    : state.type === 'ingredient' ? `食材配列は捕獲時の出現率（Lv.30 は A 1/3・B 2/3${lv60}）、` : `食材配列は捕獲時の出現率で平均${ingOpen(state.lv) >= 3 ? '' : '（Lv.60 の枠は使わない）'}、`;
   // ストリンダーは姿に付く性格だけを数える。
   const k = hasMon() ? natsOf(monData()).length : NAT.length;
   const natText = k < NAT.length ? `は${monData().name}に付く${k}種` : `${NAT.length}種`;

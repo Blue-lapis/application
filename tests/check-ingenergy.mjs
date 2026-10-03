@@ -108,10 +108,19 @@ for (const mon of Object.keys(MONS)) {
 }
 ok('レシピボーナスで食材ときのみの比重が変わる');
 
-for (const env of [{ ...envs[0], mon: 'flygon', by: 'energy' }, { ...envs[2], mon: 'ditto', by: 'energy' }]) {
-  const dist = createEngine().dist(env);
+// 分布は同じ食材配列の個体だけを母集団にする（食材配列は条件の arr に固定。サブスキル・性格だけを数える）。
+for (const [env, arr] of [[{ ...envs[0], mon: 'flygon', by: 'energy' }, [0, 1, 2]], [{ ...envs[2], mon: 'ditto', by: 'energy' }, [0, 1]]]) {
+  const e = { ...env, arr: arr.join('') };
+  assert.notEqual(envKey(e), envKey({ ...e, arr: arr.map(() => 0).join('') }), '食材配列でキーが変わる');
+  const fresh = createEngine();
+  const dist = fresh.dist(e);
   close(dist.reduce((s, x) => s + x.p, 0), 1, `分布の合計/${env.mon}`);
   for (let i = 1; i < dist.length; i++) assert.ok(dist[i - 1].r > dist[i].r, '高い順');
+  // 同じ配列の無補正個体は1倍。分布の最小値（げんき回復量↓などで1倍を下回る）以上・最大値以下。
+  assert.ok(dist.at(-1).r <= 1 + 1e-9 && dist[0].r >= 1, `無補正が分布の中/${env.mon}`);
+  // 分布の値は、その配列の個体の無補正比そのもの（きのみSだけ・無補正性格の個体の比が分布に入っている）。
+  const r = fresh.score(['berry', 'xExp', 'xRes'].slice(0, env.N), null, null, arr, e);
+  assert.ok(dist.some((x) => Math.abs(x.r - r) <= 1e-8), `分布にある値/${env.mon}`);
 }
-ok('分布の確率の合計は1');
+ok('分布は同じ食材配列の個体だけで数え、確率の合計は1');
 console.log('OK');

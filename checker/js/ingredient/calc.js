@@ -5,7 +5,8 @@
 // heal・healAmt・healTimes はきのみタイプと共通の設定、tap は日中の受け取り（'always' / '3h'）、
 // team はおてつだいボーナスのチームへの効果（同じポケモン4匹の狙い食材の増加）を含めるか。
 // by: 'energy' のときは、狙い食材の個数の代わりに、すべての食材ときのみのエナジーの合計で評価する（ver1.12）。
-// このとき target は使わない（条件にも入れない）。食材のエナジーには料理の倍率（recipeBonus・recipeLevel から recipeMul）を掛ける。
+// このとき target は使わない（条件にも入れない）。代わりに食材配列 env.arr（例 '012'）を条件に入れ、
+// 無補正比は同じ食材配列の無補正個体で割り、上位%の分布は同じ食材配列の個体だけを母集団にして数える。食材のエナジーには料理の倍率（recipeBonus・recipeLevel から recipeMul）を掛ける。
 import { fillCurve, NO_SUBS } from '../../../js/calc.js';
 import { mk as mkOf, mults as multsOf, mixed, timesMix, curveOf, energyAt, scheduleOf, pairSegs, basics, ingSlotsOf, buildDist, distStore } from '../engine.js';
 import { TEAM_OTHERS, HB_SPEED } from '../berry/constants.js';
@@ -113,9 +114,9 @@ export const ingEnergy = (counts, mul = 1) => Object.entries(counts).reduce((s, 
 // 条件の料理の倍率。
 export const recipeMulOf = (env) => recipeMul(env.recipeBonus, env.recipeLevel);
 
-// エナジーで評価する条件は狙い食材を使わないので、キーにも入れない（狙い食材を変えても同じ分布を使う）。
+// エナジーで評価する条件は狙い食材を使わないので、キーにも入れない（狙い食材を変えても同じ分布を使う）。食材配列は入れる。
 export const envKey = (env) => (byEnergy(env)
-  ? [env.lv, env.N, env.camp, env.mon, 'energy', env.heal, env.tap, env.team, env.healAmt, env.healTimes, env.recipeBonus, env.recipeLevel]
+  ? [env.lv, env.N, env.camp, env.mon, 'energy', env.arr, env.heal, env.tap, env.team, env.healAmt, env.healTimes, env.recipeBonus, env.recipeLevel]
   : [env.lv, env.N, env.camp, env.mon, env.target, env.heal, env.tap, env.team, env.healAmt, env.healTimes]).join('|');
 
 export function createEngine() {
@@ -174,9 +175,12 @@ export function createEngine() {
   const score = (subs, up, down, arr, env) => value(mults(subs, up, down), arr, env) / baseMetric(env, arr);
 
   // 上位%の分布は、サブスキル・性格・食材配列（捕獲時の配列の確率 slotWeights）をすべて数え上げる。
+  // エナジーで評価するときは、食材配列を env.arr に固定し、同じ食材配列の個体（サブスキル・性格）だけを数える。
   // スキル確率アップは食材に影響しないので、それ以外の効果が同じ組み合わせをまとめる。
   const store = distStore(envKey, (env) => {
-    const arrs = allArrs(MONS[env.mon], ingSlotsOf(env));
+    const arrs = byEnergy(env)
+      ? [{ arr: [...env.arr].map(Number), p: 1 }]
+      : allArrs(MONS[env.mon], ingSlotsOf(env));
     return buildDist(env.N, natCat, true, (e, u, d) => {
       const m = mk(e, u, d);
       return arrs.map((a) => [value(m, a.arr, env) / baseMetric(env, a.arr), a.p]);

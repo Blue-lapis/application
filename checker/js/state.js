@@ -291,17 +291,25 @@ export const filledSubs = () => {
   return state.subs.slice(0, i < 0 ? state.subs.length : i);
 };
 // タイプ type・ポケモン mon・レベル lv の計算条件。共通の設定（チケット・ヒーラー・受け取りなど）は今のものを使う。
-// 食材タイプは狙い食材 target も条件に入る。エナジーで評価するときは target の代わりに by: 'energy' を入れる
+// 食材タイプは狙い食材 target も条件に入る。エナジーで評価するときは target の代わりに by: 'energy' と、
+// 食材配列 arr（開いている枠の候補の番号をつないだ文字列。例 '012'。そろっていなければ null）を入れる。
+// エナジーの確率・順位は、同じ食材配列の個体だけを母集団にして数えるため。
 // （狙い食材の個数で評価する条件は以前と同じ形なので、保存した分布・事前計算の分布をそのまま使う）。
-export const envFor = (type, mon, lv, target) => {
+const arrKey = (arr, lv) => {
+  const a = (arr || []).slice(0, ingOpen(lv));
+  return a.length === ingOpen(lv) && a.every(Number.isInteger) ? a.join('') : null;
+};
+export const envFor = (type, mon, lv, target, arr) => {
   const { camp, heal, tap, ingTap, team, healAmt, healTimes, recipeBonus, recipeLevel } = state;
   const N = slotCount(lv);
   if (type === 'berry') return { lv, N, camp, mon, heal, tap, team, healAmt, healTimes };
-  if (type === 'ingredient' && state.ingBy === 'energy') return { lv, N, camp, mon, by: 'energy', heal, tap: ingTap, team, healAmt, healTimes, recipeBonus, recipeLevel };
+  if (type === 'ingredient' && state.ingBy === 'energy') return { lv, N, camp, mon, by: 'energy', arr: arrKey(arr, lv), heal, tap: ingTap, team, healAmt, healTimes, recipeBonus, recipeLevel };
   if (type === 'ingredient') return { lv, N, camp, mon, target, heal, tap: ingTap, team, healAmt, healTimes };
   return { lv, N, camp, mon, heal, tap: ingTap, team, healAmt, healTimes };
 };
-export const env = (lv = state.lv) => envFor(state.type, state.mon, lv, state.target);
+export const env = (lv = state.lv) => envFor(state.type, state.mon, lv, state.target, state.arr);
+// 分布を求められる条件か（エナジーで評価するときは食材配列がそろっていること）。
+export const distReady = (e) => !(e.by === 'energy' && !e.arr);
 // 食材タイプのポケモンで前に選んだ狙い食材（なければ A）。
 export const targetOf = (mon) => {
   const t = load(KEYS.target, {});
