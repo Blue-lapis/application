@@ -17,6 +17,8 @@ export const NAT_CATS = ['ing', 'speed', 'energy', 'other'];
 // ヒーラー・回復量・発動回数はきのみタイプと共通（../berry/constants.js）。
 export const TAPS = ['always', '3h'];
 export const TAP_EVERY = { always: 0, '3h': 3 * 3600 };
+// 評価のしかた。'count' は狙い食材の個数、'energy' はすべての食材ときのみの1日のエナジー（ver1.12）。
+export const BYS = ['count', 'energy'];
 // おてつだいボーナスのチーム効果は、ほかの4匹を同じポケモン（基準の食材配列・サブスキルなし・無補正性格）として数える。
 
 // スキル補正は食材の個数に影響しないので「なし他」と同じ扱いにする。げんき回復量は睡眠中のおてつだいの速さに効く。

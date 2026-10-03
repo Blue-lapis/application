@@ -21,6 +21,7 @@ jobs:
       - run: node tests/check-dist.mjs
       - run: node tests/check-nature.mjs
       - run: node tests/check-boost.mjs
+      - run: node tests/check-ingenergy.mjs
       - run: node tests/check-exp.mjs
       - run: node tests/check-draft.mjs
       - run: node tests/check-version.mjs

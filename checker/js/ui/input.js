@@ -3,7 +3,7 @@ import { byId, UNLOCK, ingOpen, NAT, natsOf } from '../../../js/constants.js';
 import { SLOT_LV, targetLevel, targetOpen } from '../ingredient/constants.js';
 import { ingIcon } from '../ingicons.js';
 import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLabel } from '../picker.js';
-import { state, hasMon, monData, setTarget, setNature, natAllowed, slotCount, filledSubs } from '../state.js';
+import { state, hasMon, monData, setTarget, setNature, natAllowed, slotCount, filledSubs, ingByEnergy } from '../state.js';
 import { $, def } from './common.js';
 
 // 入力が変わったときの描き直し（ui.js の refresh）。initInput で受け取る。
@@ -13,10 +13,15 @@ const chipHtml = (v, label, pressed, dis, cls) =>
   `<button class="chip ${cls || ''}" data-v="${v}" aria-pressed="${pressed}" ${dis ? 'disabled' : ''}>${label}</button>`;
 // ダイアログの注記で使う、そのタイプの順位の基準。
 const METRIC = { berry: 'きのみエナジー', ingredient: '食材の個数', skill: 'スキルの発動回数' };
+const metricText = () => (ingByEnergy() ? '食材ときのみのエナジー' : METRIC[state.type]);
 
 function renderIngs() {
   if (state.type !== 'ingredient') return;
   const mm = monData();
+  // エナジーで評価するときは狙い食材を使わないので、狙いの行を隠し、食材配列の狙い食材の印も付けない。
+  const byE = ingByEnergy();
+  $('target').closest('.tgt-row').style.display = byE ? 'none' : '';
+  $('arrHint').textContent = byE ? 'エナジーで評価中' : '狙い食材を選ぶ';
   // 今のレベルでまだ出ない食材は押せなくして、出るレベルを添える。選んである食材はそのまま残す（レベルを戻せば評価できる）。
   $('target').innerHTML = Object.keys(mm.ings).map((k) => {
     const lock = state.target !== k && !targetOpen(mm, state.lv, k);
@@ -29,7 +34,7 @@ function renderIngs() {
   // 今のレベルでまだ開いていない枠（Lv.50 の Lv.60 の枠）は薄くする。入れておくと Lv.60 以上で使う。
   const open = ingOpen(state.lv);
   $('arr').innerHTML = mm.slots.map((opts, i) => `<div class="slot${i >= open ? ' off' : ''}"><span>${SLOT_LV[i]}${i >= open ? '<small>未解放</small>' : ''}</span><div class="chips" data-i="${i}">${
-    opts.map(([ing, a], k) => chipHtml(k, `${ingIcon(mm.ings[ing])}${mm.short[ing]}×${a}`, state.arr[i] === k, opts.length === 1, ing === state.target ? 'tgt' : '')).join('')
+    opts.map(([ing, a], k) => chipHtml(k, `${ingIcon(mm.ings[ing])}${mm.short[ing]}×${a}`, state.arr[i] === k, opts.length === 1, !byE && ing === state.target ? 'tgt' : '')).join('')
   }</div></div>`).join('');
   $('arr').querySelectorAll('.chips').forEach((g) => g.querySelectorAll('.chip').forEach((b) => {
     b.onclick = () => {
@@ -140,7 +145,7 @@ function renderSubDlg() {
   };
   $('subBody').innerHTML = `<h3>金色サブスキル</h3><div class="gold">${GOLD.map((id) => chip(id, SUB_FULL[id])).join('')}</div>`
     + `<div class="fams">${FAMILIES.map(([label, sizes]) => `<div class="fam"><span>${label}</span><div>${sizes.map(([id, sz]) => chip(id, sz, 'sz')).join('')}</div></div>`).join('')}</div>`;
-  $('subNote').textContent = `途中で閉じても期待値は出ます。同等以上の確率は、性能で選んだレベルの枠（Lv.50・60 は3枠、Lv.70 は4枠、Lv.80 は5枠）がそろうと出ます。${METRIC[state.type]}に影響しないサブスキル（睡眠EXPボーナスなど）は、「なし他」として計算します。`;
+  $('subNote').textContent = `途中で閉じても期待値は出ます。同等以上の確率は、性能で選んだレベルの枠（Lv.50・60 は3枠、Lv.70 は4枠、Lv.80 は5枠）がそろうと出ます。${metricText()}に影響しないサブスキル（睡眠EXPボーナスなど）は、「なし他」として計算します。`;
 }
 // 性格の表。計算上は無補正と同じになる性格（効く補正がないもの）は薄くする。
 function renderNatDlg() {
@@ -157,7 +162,7 @@ function renderNatDlg() {
   // ストリンダーは姿ごとに付く性格が決まっているので、付かない性格は押せなくする。
   const nats = hasMon() ? natsOf(monData()) : NAT;
   const only = nats.length < NAT.length ? `${monData().name}に付く性格は${nats.length}種で、ほかの性格は選べません。` : '';
-  $('natNote').textContent = `${only}${METRIC[state.type]}に効くのは ${labels.join(' と ')} の補正だけです。薄い色の性格は「無補正」と同じ結果になります。`;
+  $('natNote').textContent = `${only}${metricText()}に効くのは ${labels.join(' と ')} の補正だけです。薄い色の性格は「無補正」と同じ結果になります。`;
 }
 
 // 入力の欄と、開いているダイアログを描き直す。

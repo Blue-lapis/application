@@ -2,7 +2,7 @@
 import { HEAL_AMT, HEAL_TIMES, TEAM_OTHERS, FIELD_BONUS, PARAM_LIMITS } from '../berry/constants.js';
 import { energyAt } from '../engine.js';
 import {
-  state, monData, hasMon, env, setCamp, setLevel, setHeal, setTap, setIngTap, setTeam, setFav, setParam,
+  state, monData, hasMon, env, setCamp, setLevel, setHeal, setTap, setIngTap, setTeam, setFav, setParam, setIngBy,
 } from '../state.js';
 import { $ } from './common.js';
 
@@ -29,6 +29,7 @@ const SEGS = [
   ['healSeg', () => String(state.heal), (v) => setHeal(v === 'g80' ? v : +v)],
   ['tapSeg', () => state.tap, setTap],
   ['ingTapSeg', () => state.ingTap, setIngTap],
+  ['ingBySeg', () => state.ingBy, setIngBy],
   ['campSeg', () => (state.camp ? '1' : '0'), (v) => setCamp(v === '1')],
   ['teamSeg', () => (state.team ? '1' : '0'), (v) => setTeam(v === '1')],
   ['favSeg', () => (state.fav ? '1' : '0'), (v) => setFav(v === '1')],
@@ -108,7 +109,9 @@ function renderParamDlg() {
     $('bonusDown').disabled = state.fieldBonus <= bMin;
     $('bonusUp').disabled = state.fieldBonus >= bMax;
   }
-  const teamNote = state.type === 'ingredient'
+  const teamNote = state.type === 'ingredient' && state.ingBy === 'energy'
+    ? `。おてボのチーム効果は、ほかの${TEAM_OTHERS}匹を同じポケモン（エナジーが最も高い食材配列・サブスキルなし・無補正性格）として、おてつだいボーナスで増えるエナジーを足します。ヒーラーの設定は3タイプで共通です。`
+    : state.type === 'ingredient'
     ? `。おてボのチーム効果は、ほかの${TEAM_OTHERS}匹を同じポケモン（狙い食材が最も多い食材配列・サブスキルなし・無補正性格）として、おてつだいボーナスで増える狙い食材の個数を足します。ヒーラーの設定は3タイプで共通です。`
     : state.type === 'skill'
       ? `。おてボのチーム効果は、ほかの${TEAM_OTHERS}匹を同じポケモン（サブスキルなし・無補正性格・食材配列は出現率で平均）として、おてつだいボーナスで増える発動回数を足します。ヒーラーの設定は3タイプで共通です。`
