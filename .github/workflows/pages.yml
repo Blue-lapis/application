@@ -15,19 +15,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 計算の整合性テスト。通らなければ公開しない。
+  # 計算の整合性テスト（test.yml。PR でも同じものが動く）。通らなければ公開しない。
   test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: node tests/check-segs.mjs
-      - run: node tests/check-dist.mjs
-      - run: node tests/check-boost.mjs
-      - run: node tests/check-exp.mjs
-      - run: node tests/check-draft.mjs
+    uses: ./.github/workflows/test.yml
 
   deploy:
     needs: test

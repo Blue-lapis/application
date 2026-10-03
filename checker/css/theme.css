@@ -1,12 +1,12 @@
 /* 厳選チェッカー v1.0 の見た目。レイアウトの土台は ../css/style.css で、ここで上書きする。
    色は「夜のノート」：生成りの紙の地に夜空色の文字。タイプの色（きのみ=青・食材=緑・スキル=紫）はアクセントにだけ使う（<html data-type>）。
-   判定のカードと下の帯は夜空色の地で、その上の差し色はタイプの明るい色（--psy-hi）。
+   下の帯・お知らせは夜空色の地で、その上の差し色はタイプの明るい色（--psy-hi）。
    文字は M PLUS 2。数字を見せる部分（基礎値・結果・倍率・順位など）だけ Lexend にする（1・7・4 の形がはっきりしていて読み違えにくい）。 */
 
 /* 共通の色。 */
 :root{
   --bg:#F5F2EC;--card:#FFFFFF;--ink:#1D1B2C;--muted:#6A6679;--line:#E4DFD5;--line-soft:#EEEAE2;
-  --night:#1D1B2C;--night-2:#2B2A38;--night-line:#3A3850;--night-ink:#FFFFFF;--night-muted:#C9C6D8;--night-faint:#A6A2B5;
+  --night:#1D1B2C;--night-ink:#FFFFFF;--night-muted:#C9C6D8;--night-faint:#A6A2B5;
   --tail:#B4456E;--off:#8C8898;--off-soft:#EEEAE2;--up:#A3262F;--down:#1F4F83;
   --gold-bg:#FBF4E2;--gold-line:#E9D9A8;--gold-ink:#8A5E00;--gold-badge:#F2E2B3;
   --blue-bg:#EEF4FB;--blue-line:#C9DAEE;--blue-ink:#1F4F83;--blue-badge:#D8E6F5;
@@ -15,7 +15,7 @@
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#15141C;--card:#1F1E28;--ink:#ECEAF2;--muted:#A6A2B5;--line:#34323F;--line-soft:#2A2935;
-  --night:#2B2A38;--night-2:#353444;--night-line:#45435A;
+  --night:#2B2A38;
   --tail:#E07FA4;--off:#8A8698;--off-soft:#2A2935;--up:#F08A8F;--down:#9CC3EA;
   --gold-bg:#332B18;--gold-line:#6E5B2A;--gold-ink:#E3C77A;--gold-badge:#4A3E1F;
   --blue-bg:#1B2736;--blue-line:#34506E;--blue-ink:#9CC3EA;--blue-badge:#243A52;
@@ -23,7 +23,7 @@
   --scrim:rgba(0,0,0,.6);--shadow:0 10px 30px rgba(0,0,0,.45);--seg-on:0 1px 3px rgba(0,0,0,.5);}}
 :root[data-theme="dark"]{
   --bg:#15141C;--card:#1F1E28;--ink:#ECEAF2;--muted:#A6A2B5;--line:#34323F;--line-soft:#2A2935;
-  --night:#2B2A38;--night-2:#353444;--night-line:#45435A;
+  --night:#2B2A38;
   --tail:#E07FA4;--off:#8A8698;--off-soft:#2A2935;--up:#F08A8F;--down:#9CC3EA;
   --gold-bg:#332B18;--gold-line:#6E5B2A;--gold-ink:#E3C77A;--gold-badge:#4A3E1F;
   --blue-bg:#1B2736;--blue-line:#34506E;--blue-ink:#9CC3EA;--blue-badge:#243A52;
@@ -52,7 +52,7 @@
 :root{--font-jp:"M PLUS 2","Hiragino Sans","Noto Sans JP",sans-serif;--font-num:"Lexend",var(--font-jp)}
 body{font-family:var(--font-jp);background:var(--bg);color:var(--ink)}
 /* 数字を見せる部分。日本語が混ざっても Lexend にない字は M PLUS 2 で出る。 */
-.facts b,.out b,dl.rows dd,.log b,.bar b,.b-sub,.subslot small,.subcount,.dlg-tabs small,.pick i,.verdict b,.v-top,.lvseg button,.g-lbl,.badge{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.facts b,.out b,dl.rows dd,.log b,.bar b,.subslot small,.subcount,.dlg-tabs small,.pick i,.lvseg button,.badge{font-family:var(--font-num);font-variant-numeric:tabular-nums}
 dl.rows dd span{font-family:var(--font-jp)}
 /* 大きな数字に付ける単位（倍・%・匹・個・回）は小さくして数字を目立たせ、幅も詰める。 */
 .u{font-size:.5em;font-weight:700;margin-left:.08em}
@@ -180,37 +180,6 @@ img.ing{width:22px;height:22px;flex:none}
 .prow2 .seg button{font-size:.75rem}
 .psum{margin:0;font-size:.72rem;font-weight:500;line-height:1.6;color:var(--muted)}
 
-/* 判定。夜空色のカードに同等以上の確率を大きく、対数の目盛りのゲージ、平均何匹に1匹。 */
-section.verdict{background:var(--night);border-color:transparent;color:var(--night-ink);border-radius:22px;padding:20px 18px}
-.v-top{display:flex;justify-content:space-between;gap:8px;font-size:.75rem;font-weight:600;color:var(--night-muted)}
-.v-top span:first-child{font-family:var(--font-jp);font-weight:800;letter-spacing:.1em}
-.v-main{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:10px}
-.v-main small{display:block;font-size:.8rem;font-weight:700;color:var(--night-muted)}
-.v-ge{display:block;font-size:3.2rem;font-weight:700;line-height:1;margin-top:6px}
-.v-ge .u{font-size:.46em}
-.v-wait{font-size:1.4rem;font-weight:700;color:var(--night-muted)}
-.v-r{text-align:right}
-.v-r b{font-size:1.6rem;font-weight:600}
-.gauge{position:relative;height:46px;margin-top:14px}
-.g-track{position:absolute;left:0;right:0;top:8px;height:8px;border-radius:999px;background:var(--night-line)}
-.g-tick{position:absolute;top:4px;width:1px;height:16px;background:var(--off)}
-.g-lbl{position:absolute;top:28px;transform:translateX(-50%);font-size:.62rem;color:var(--night-faint)}
-/* ゲージの点はモンスターボール。画像は使わず、上の赤・下の白・黒い帯・中央のボタンを CSS で描く（小さくてもくっきり出る）。 */
-.g-dot{position:absolute;top:0;width:24px;height:24px;margin-left:-12px;border-radius:50%;box-sizing:border-box;border:2px solid #111;
-  background:radial-gradient(circle,#fff 0 2.6px,#111 2.6px 4.6px,transparent 4.6px),linear-gradient(#EE4B4B 0 calc(50% - 1px),#111 calc(50% - 1px) calc(50% + 1px),#fff calc(50% + 1px));
-  box-shadow:0 1px 4px rgba(0,0,0,.35)}
-.gauge.wait .g-track{animation:pulse 1.2s ease-in-out infinite alternate}
-@keyframes pulse{to{opacity:.45}}
-.g-ends{display:flex;justify-content:space-between;font-size:.68rem;font-weight:700;color:var(--night-faint)}
-.v-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--night-line);font-size:.92rem;font-weight:700}
-.v-foot b{font-size:1.35rem}
-.v-save,.v-act{font:inherit;flex:none;min-height:48px;padding:0 20px;border:0;border-radius:14px;background:var(--psy-hi);color:#1D1B2C;font-weight:800;font-size:.92rem;cursor:pointer}
-.v-msg{margin:14px 0 0;font-size:1.1rem;font-weight:800;line-height:1.5}
-.v-sub{margin:6px 0 0;font-size:.82rem;line-height:1.6;color:var(--night-muted)}
-.v-act{margin-top:16px}
-.v-need{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
-.v-need span{font-size:.75rem;font-weight:700;color:var(--night-muted);border:1px solid var(--night-line);border-radius:999px;padding:4px 10px}
-
 /* 期待値。タイプの淡い地に合計を大きく、横棒で日中と睡眠中の割合。 */
 section.out{background:var(--psy-soft);border-color:transparent}
 .o-label{display:block;font-size:.75rem;font-weight:800;color:var(--psy-ink)}
@@ -270,18 +239,15 @@ dl.rows dd span{display:block;font-size:.68rem;font-weight:400;color:var(--muted
 .ver{font-family:var(--font-num);font-size:.65rem;font-weight:500;color:var(--muted);letter-spacing:.04em}
 .logout{font:inherit;font-size:.75rem;font-weight:700;color:var(--muted);background:none;border:1px solid var(--line);border-radius:999px;min-height:40px;padding:0 16px;cursor:pointer}
 
-/* 下の帯。判定のカードが画面外にあるときだけ、確率・無補正比・何匹に1匹を1行で出す。 */
+/* 下の帯。チェッカーはいつも出し、確率・無補正比・何匹に1匹を1行で出す（育成日数シミュレーターは結果のカードが画面外のときだけ出す .away）。 */
 .bar{left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));border-radius:20px;padding:10px 10px 10px 18px;background:var(--night);color:var(--night-ink);box-shadow:var(--shadow);transition:transform .2s,opacity .2s;z-index:6}
 .bar.away{transform:translateY(calc(100% + 24px));opacity:0;pointer-events:none}
 .bar-in{max-width:520px;display:flex;align-items:center;gap:12px}
 .bar b{font-size:1.35rem;font-weight:700;white-space:nowrap}
-.bar b.dim,.b-sub .dim{color:var(--night-faint)}
-.b-sub{flex:1;min-width:0;font-size:.75rem;font-weight:700;color:var(--night-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.b-sub span{color:var(--night-ink);font-size:.95rem}
-.b-sub .u{font-size:.75em;color:var(--night-muted)}
+.bar b.dim{color:var(--night-faint)}
 .save{flex:none;font:inherit;background:var(--psy-hi);color:#1D1B2C;border:none;border-radius:14px;min-height:48px;min-width:76px;padding:0 16px;font-size:.92rem;font-weight:800;cursor:pointer}
 .save:disabled{opacity:.35;cursor:default}
-@media (prefers-reduced-motion:reduce){.bar,.lvx-head svg,#rows summary svg{transition:none}.gauge.wait .g-track{animation:none}}
+@media (prefers-reduced-motion:reduce){.bar,.lvx-head svg,#rows summary svg{transition:none}}
 
 /* お知らせ（元に戻す）。 */
 .toast{position:fixed;left:16px;right:16px;bottom:calc(88px + env(safe-area-inset-bottom,0px));z-index:20;max-width:488px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 6px 6px 16px;border-radius:14px;background:var(--night);color:var(--night-ink);box-shadow:var(--shadow);font-size:.88rem;font-weight:700}

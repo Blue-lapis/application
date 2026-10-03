@@ -4,28 +4,48 @@
 
 ## バージョン
 
+`checker/`（厳選チェッカー）と `exp/`（育成日数シミュレーター）は別々に版を付けます。今の版は **厳選チェッカー v1.2**・**育成日数シミュレーター v1.5** です。
+
+### 厳選チェッカー
+
 - v1.0 — 画面を刷新した最初のリリース（あとで判定のカードはやめ、旧版と同じく下の帯をいつも出す形に戻した）。判定（同等以上の確率・無補正比・平均何匹に1匹）を夜空色のカードにまとめ、条件をその直前に移動。記録は別のダイアログに、消した入力と削除した記録は「元に戻す」で戻せるようにした。表示テーマの切り替え（自動・ライト・ダーク）、3タイプからの名前検索、文字を M PLUS 2・数字を Lexend に変更。配色・計算・保存データ（記録・設定）は以前のまま。
 - v1.1 — 入力中のサブスキル・性格・食材配列をポケモンごとに端末に保存し、そのポケモンを選ぶと戻すようにした。初めて開いたときはポケモン未選択から始め、日中の受け取りの初期値を3タイプとも「3時間ごと」に変更（事前計算の分布もこの条件に合わせた）。保存済みの設定・記録はそのまま使う。設計は [`docs/design-v1.10.md`](docs/design-v1.10.md)。
-- v1.2 — 他アプリへのカード（チェッカーの「育成日数を見る」・育成の「厳選チェッカーで見る」）を、独立したカードにしてページの一番下（2列のときは右の列の一番下）に移した。チェッカーのフッターの文字のリンクは、カードと重なるので外した。育成日数シミュレーターは v1.5 で、ヘッダーの右を 天秤・日程・テーマ の順にした。設計は [`docs/exp/design-v1.5.md`](docs/exp/design-v1.5.md)。
+- v1.2 — 育成日数シミュレーターへのカード「育成日数を見る」を、独立したカードにしてページの一番下（2列のときは右の列の一番下）に移した。フッターの文字のリンクは、カードと重なるので外した。設計は [`docs/exp/design-v1.5.md`](docs/exp/design-v1.5.md)（育成日数シミュレーター v1.5 と同じ設計書）。
 
-バージョンは画面の一番下とログイン画面に出す（`checker/index.html` の「v1.2」）。`docs/` の ver1.1〜ver1.10 は計算と機能の設計の版で、このリリースの番号とは別。
+### 育成日数シミュレーター
+
+要件は [`docs/exp/requirements-v1.0.md`](docs/exp/requirements-v1.0.md)。v0.1〜v0.8 の試作を経て v1.0 で完成とした。
+
+- v1.0 — 要件をすべて満たした最初のリリース。アメ・睡眠EXP・ゴンベのおひるね島を組み合わせ、育て方（組み合わせ・島のみ・睡眠のみ）ごとに目標のレベルまでの日数を出す。
+- v1.1 — 厳選チェッカーの「育成日数を見る」から、ポケモン・性格の EXP 補正・評価のレベルを引き継いで開けるようにした。結果の下に「目標レベル別」（手持ちのアメで届くレベルより上の 50・60・70 の最短日数）を足した。
+- v1.2 — 今のレベル・次のレベルまで・手持ちのアメ・目標・性格の補正をポケモンごとに覚えるようにした。
+- v1.3 — 予定の一覧の先頭に、アメを使って何レベルまで上がるかを出すようにした。初めてのポケモンの今のレベルを Lv.30 から始めるようにした。
+- v1.4 — 「厳選チェッカーで見る」のカードから、選んでいるポケモンで厳選チェッカーを開けるようにし、両アプリのヘッダーを整理した。保存がない初回（ポケモン未選択）の今のレベルも Lv.30 にした。設計は [`docs/exp/design-v1.4.md`](docs/exp/design-v1.4.md)。
+- v1.5 — 「厳選チェッカーで見る」を独立したカードにしてページの一番下に移し、ヘッダーの右を 天秤・日程・テーマ の順にした。設計は [`docs/exp/design-v1.5.md`](docs/exp/design-v1.5.md)。
+
+### 版の表示と書き換える場所
+
+版は画面の一番下（フッター）とログイン画面の2か所に出します。上げるときは、そのアプリの `index.html` の2か所（厳選チェッカーは `checker/index.html`、育成日数シミュレーターは `exp/index.html`）と、この README の版を書き換えます。
+
+`docs/` の設計書・要件定義書の番号（チェッカーの ver1.1〜ver1.10）は計算と機能の設計の版で、リリースの番号とは別です。番号の対応は [`docs/README.md`](docs/README.md) にまとめています。
 
 ## 公開ページ
 
-https://blue-lapis.github.io/application/checker/
+- 厳選チェッカー: https://blue-lapis.github.io/application/checker/
+- 育成日数シミュレーター: https://blue-lapis.github.io/application/exp/
 
 ## 構成
 
 - `checker/` — アプリ本体（画面・状態管理・タイプごとの計算エンジンとポケモンのデータ）
 - `checker/img/mon/` — ポケモンの画像（ゲーム内のメニュー画像を切り詰めた WebP）。ファイル名は `mons.js` のキー
 - `checker/img/ing/` — 食材アイコン（ゲーム内のスクリーンショットから切り抜き、56×56 に縮めた WebP）。食材名との対応は `checker/js/ingicons.js`
-- `exp/` — 育成日数シミュレーター v1.0。アメ・睡眠EXP・ゴンベのおひるね島を組み合わせて、目標のレベルまでの日数を出す。ページの一番下の「厳選チェッカーで見る」から、選んでいるポケモンで厳選チェッカーを開ける。要件は [`docs/exp/requirements-v1.0.md`](docs/exp/requirements-v1.0.md)。計算は `exp/js/calc.js`（DOM非依存）、ゲームデータは `exp/js/data.js`
+- `exp/` — 育成日数シミュレーター（v1.5）。アメ・睡眠EXP・ゴンベのおひるね島を組み合わせて、目標のレベルまでの日数を出す。ページの一番下の「厳選チェッカーで見る」から、選んでいるポケモンで厳選チェッカーを開ける。要件は [`docs/exp/requirements-v1.0.md`](docs/exp/requirements-v1.0.md)。計算は `exp/js/calc.js`（DOM非依存）、ゲームデータは `exp/js/data.js`
 - `tests/check-exp.mjs` — 育成日数シミュレーターの計算のテスト（wiki の表との照合、`node tests/check-exp.mjs`）
 - `js/constants.js` — サブスキル・性格・げんきなどのゲームデータ（3タイプ共通）
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、おてつだい時間と確率の丸め、所持数の遷移、スキル抽選回数とストック、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数
 - `css/style.css` — 土台のスタイル（見た目は `checker/css/theme.css` で上書き。色・文字・部品の形は theme.css にまとめている）
-- `docs/` — ver1.1〜ver1.10 の要件定義書・設計書（最新: [要件定義](docs/requirements-v1.9.md)・[設計書](docs/design-v1.10.md)）。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない。ver1.9 は上位%の分布の事前計算（あわせて、レベル別の一覧と、Lv.50 でまだ出ない狙い食材を押せなくする変更。どちらも要件定義はない）。ver1.10 は入力のポケモンごとの保存と初期値の変更（要件定義はない）
+- `docs/` — 要件定義書・設計書。一覧と番号の数え方は [`docs/README.md`](docs/README.md)。直下はチェッカーの ver1.1〜ver1.10（最新: [要件定義](docs/requirements-v1.9.md)・[設計書](docs/design-v1.10.md)）、`docs/exp/` は育成日数シミュレーター。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない。ver1.9 は上位%の分布の事前計算（あわせて、レベル別の一覧と、Lv.50 でまだ出ない狙い食材を押せなくする変更。どちらも要件定義はない）。ver1.10 は入力のポケモンごとの保存と初期値の変更（要件定義はない）
 - `scripts/precompute-dist.mjs` — 既定の条件の上位%の分布を事前計算し、`checker/dist/` に書き出す（公開時に実行。[ローカルでの実行手順](#事前計算した分布)）
 - `tests/check-dist.mjs` — 上位%の分布の整合性テスト（`node tests/check-dist.mjs`）
 - `tests/check-draft.mjs` — 入力のポケモンごとの保存（`ckdraft`）・壊れたデータの扱い・初期値（ポケモン未選択・受け取り3時間ごと）のテスト（`node tests/check-draft.mjs`）
@@ -36,7 +56,8 @@ https://blue-lapis.github.io/application/checker/
 - `tests/compare-values.mjs`・`tests/bench-dist.mjs`・`tests/compare-dist.mjs` — 変更前後の値・分布・計算時間の比較（[実行手順](docs/design-v1.4.md#5-再確認する手順)）
 - `tests/compare-nitoyon.mjs`・`tests/nitoyon/runner.ts` — にとよんツールとの値の比較（[実行手順](docs/design-v1.5.md#5-再確認する手順)）
 - `index.html`・`ingredient/index.html`・`berry/index.html` — `checker/` へ移動するページ
-- `.github/workflows/pages.yml` — `main` への push で `check-segs.mjs`・`check-dist.mjs`・`check-boost.mjs`・`check-exp.mjs`・`check-draft.mjs` を実行し、通れば分布を事前計算して `check-precomputed.mjs` で確かめ、アプリのファイルと事前計算の分布だけを GitHub Pages に公開する
+- `.github/workflows/test.yml` — `check-segs.mjs`・`check-dist.mjs`・`check-boost.mjs`・`check-exp.mjs`・`check-draft.mjs` を実行する。PR を作ったとき・更新したときに動き、`pages.yml` からも呼ばれる
+- `.github/workflows/pages.yml` — `main` への push で `test.yml` のテストを実行し、通れば分布を事前計算して `check-precomputed.mjs` で確かめ、アプリのファイルと事前計算の分布だけを GitHub Pages に公開する
 
 ## 共通の計算モデル
 
