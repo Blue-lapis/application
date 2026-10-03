@@ -1,8 +1,8 @@
-// にとよんツールとの比較。手順は docs/design-v1.5.md。
+// にとよんツールとの比較。手順は docs/checker/design-v1.5.md。
 // node tests/compare-nitoyon.mjs gen <type> cases.json ours.json   条件と、このアプリの値を書き出す
 // node tests/compare-nitoyon.mjs cmp <type> ours.json nitoyon.json  tests/nitoyon/runner.ts の結果と比べる
 // type は berry / ingredient / skill。ポケモンの基礎値は両方のツールのデータをそのまま使う。
-// スキルは、このアプリだけが満タン後のキュー4回を抽選するので、所持数が満タンになる条件では値が多くなる（docs/design-v1.5.md の6章）。
+// スキルは、このアプリだけが満タン後のキュー4回を抽選するので、所持数が満タンになる条件では値が多くなる（docs/checker/design-v1.5.md の6章）。
 import { readFileSync, writeFileSync } from 'node:fs';
 import { TYPES } from '../checker/js/types.js';
 import { SLOTS_AT, slotWeights } from '../js/constants.js';

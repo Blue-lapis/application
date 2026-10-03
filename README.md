@@ -9,7 +9,7 @@
 ### 厳選チェッカー
 
 - v1.0 — 画面を刷新した最初のリリース（あとで判定のカードはやめ、旧版と同じく下の帯をいつも出す形に戻した）。判定（同等以上の確率・無補正比・平均何匹に1匹）を夜空色のカードにまとめ、条件をその直前に移動。記録は別のダイアログに、消した入力と削除した記録は「元に戻す」で戻せるようにした。表示テーマの切り替え（自動・ライト・ダーク）、3タイプからの名前検索、文字を M PLUS 2・数字を Lexend に変更。配色・計算・保存データ（記録・設定）は以前のまま。
-- v1.1 — 入力中のサブスキル・性格・食材配列をポケモンごとに端末に保存し、そのポケモンを選ぶと戻すようにした。初めて開いたときはポケモン未選択から始め、日中の受け取りの初期値を3タイプとも「3時間ごと」に変更（事前計算の分布もこの条件に合わせた）。保存済みの設定・記録はそのまま使う。設計は [`docs/design-v1.10.md`](docs/design-v1.10.md)。
+- v1.1 — 入力中のサブスキル・性格・食材配列をポケモンごとに端末に保存し、そのポケモンを選ぶと戻すようにした。初めて開いたときはポケモン未選択から始め、日中の受け取りの初期値を3タイプとも「3時間ごと」に変更（事前計算の分布もこの条件に合わせた）。保存済みの設定・記録はそのまま使う。設計は [`docs/checker/design-v1.10.md`](docs/checker/design-v1.10.md)。
 - v1.2 — 育成日数シミュレーターへのカード「育成日数を見る」を、独立したカードにしてページの一番下（2列のときは右の列の一番下）に移した。フッターの文字のリンクは、カードと重なるので外した。設計は [`docs/exp/design-v1.5.md`](docs/exp/design-v1.5.md)（育成日数シミュレーター v1.5 と同じ設計書）。
 
 ### 育成日数シミュレーター
@@ -27,7 +27,7 @@
 
 版は画面の一番下（フッター）とログイン画面の2か所に出します。上げるときは、そのアプリの `index.html` の2か所（厳選チェッカーは `checker/index.html`、育成日数シミュレーターは `exp/index.html`）と、この README の版を書き換えます。
 
-`docs/` の設計書・要件定義書の番号（チェッカーの ver1.1〜ver1.10）は計算と機能の設計の版で、リリースの番号とは別です。番号の対応は [`docs/README.md`](docs/README.md) にまとめています。
+`docs/checker/` の設計書・要件定義書の番号（チェッカーの ver1.1〜ver1.11）は計算と機能の設計の版で、リリースの番号とは別です。番号の対応は [`docs/README.md`](docs/README.md) にまとめています。
 
 ## 公開ページ
 
@@ -37,6 +37,7 @@
 ## 構成
 
 - `checker/` — アプリ本体（画面・状態管理・タイプごとの計算エンジンとポケモンのデータ）
+- `checker/js/ui.js`・`checker/js/ui/` — 厳選チェッカーの画面。`ui.js` は初期化・ヘッダー・判定（レベル別と下の帯）・描き直しで、役割ごとに `ui/` に分けてある（`common.js` 小さな部品とお知らせ・`input.js` 入力・`params.js` 条件・`stats.js` 結果・`log.js` 記録・`dist.js` 分布の依頼。[ver1.11](docs/checker/design-v1.11.md)）
 - `checker/js/dom.js` — 厳選チェッカーと育成日数シミュレーターの画面で共通の部品（HTML のエスケープ・線のアイコン・表示テーマの切り替え）。ポケモンを選ぶダイアログ（`checker/js/monpick.js`）とログイン（`checker/js/auth.js`）も両アプリで共通
 - `checker/img/mon/` — ポケモンの画像（ゲーム内のメニュー画像を切り詰めた WebP）。ファイル名は `mons.js` のキー
 - `checker/img/ing/` — 食材アイコン（ゲーム内のスクリーンショットから切り抜き、56×56 に縮めた WebP）。食材名との対応は `checker/js/ingicons.js`
@@ -46,16 +47,17 @@
 - `js/calc.js` — 3タイプ共通の計算（げんきとおてつだいのタイミング、おてつだい時間と確率の丸め、所持数の遷移、スキル抽選回数とストック、サブスキルの抽選分布）。DOM非依存
 - `js/format.js` — 表示用フォーマット関数
 - `css/style.css` — 土台のスタイル（見た目は `checker/css/theme.css` で上書き。色・文字・部品の形は theme.css にまとめている）
-- `docs/` — 要件定義書・設計書。一覧と番号の数え方は [`docs/README.md`](docs/README.md)。直下はチェッカーの ver1.1〜ver1.10（最新: [要件定義](docs/requirements-v1.9.md)・[設計書](docs/design-v1.10.md)）、`docs/exp/` は育成日数シミュレーター。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない。ver1.9 は上位%の分布の事前計算（あわせて、レベル別の一覧と、Lv.50 でまだ出ない狙い食材を押せなくする変更。どちらも要件定義はない）。ver1.10 は入力のポケモンごとの保存と初期値の変更（要件定義はない）
+- `docs/` — 要件定義書・設計書。一覧と番号の数え方は [`docs/README.md`](docs/README.md)。`docs/checker/` はチェッカーの ver1.1〜ver1.11（最新: [要件定義](docs/checker/requirements-v1.9.md)・[設計書](docs/checker/design-v1.11.md)）、`docs/exp/` は育成日数シミュレーター。ver1.6 は計算の高速化と整理、ver1.7 はレベルの選択（Lv.50 を追加）とサブスキルの5枠入力、ver1.8 はきのみタイプのフィールドボーナスと好きなきのみで、どれも要件定義はない。ver1.9 は上位%の分布の事前計算（あわせて、レベル別の一覧と、Lv.50 でまだ出ない狙い食材を押せなくする変更。どちらも要件定義はない）。ver1.10 は入力のポケモンごとの保存と初期値の変更、ver1.11 は画面のコード（`ui.js`）の分割と設計書の置き場所の整理（どちらも要件定義はない）
 - `scripts/precompute-dist.mjs` — 既定の条件の上位%の分布を事前計算し、`checker/dist/` に書き出す（公開時に実行。[ローカルでの実行手順](#事前計算した分布)）
 - `tests/check-dist.mjs` — 上位%の分布の整合性テスト（`node tests/check-dist.mjs`）
 - `tests/check-draft.mjs` — 入力のポケモンごとの保存（`ckdraft`）・壊れたデータの扱い・初期値（ポケモン未選択・受け取り3時間ごと）のテスト（`node tests/check-draft.mjs`）
 - `tests/check-precomputed.mjs` — 事前計算の分布がそろっていて、計算した分布とビットまで一致し、版の違う・壊れたファイルを使わないことのテスト
+- `tests/check-ui-browser.mjs` — 厳選チェッカーの画面の動きを、変更前のコードと比べる（ヘッドレス Chromium で同じ操作をして、HTML・入力欄・localStorage が一致すること。Playwright が要る。CI では実行しない。使い方はファイルの先頭）
 - `tests/check-precomputed-browser.mjs` — 同じことをヘッドレス Chromium（スマートフォンの幅）の画面で確かめる（Playwright が要る。CI では実行しない）
 - `tests/check-segs.mjs` — 所持数・ストック・天井込みの確率の境界テスト（`node tests/check-segs.mjs`）
 - `tests/check-boost.mjs` — きのみタイプのフィールドボーナス・好きなきのみの切り上げと、無補正比が変わらないことのテスト（`node tests/check-boost.mjs`）
-- `tests/compare-values.mjs`・`tests/bench-dist.mjs`・`tests/compare-dist.mjs` — 変更前後の値・分布・計算時間の比較（[実行手順](docs/design-v1.4.md#5-再確認する手順)）
-- `tests/compare-nitoyon.mjs`・`tests/nitoyon/runner.ts` — にとよんツールとの値の比較（[実行手順](docs/design-v1.5.md#5-再確認する手順)）
+- `tests/compare-values.mjs`・`tests/bench-dist.mjs`・`tests/compare-dist.mjs` — 変更前後の値・分布・計算時間の比較（[実行手順](docs/checker/design-v1.4.md#5-再確認する手順)）
+- `tests/compare-nitoyon.mjs`・`tests/nitoyon/runner.ts` — にとよんツールとの値の比較（[実行手順](docs/checker/design-v1.5.md#5-再確認する手順)）
 - `index.html`・`ingredient/index.html`・`berry/index.html` — `checker/` へ移動するページ
 - `.github/workflows/test.yml` — `check-segs.mjs`・`check-dist.mjs`・`check-boost.mjs`・`check-exp.mjs`・`check-draft.mjs` を実行する。PR を作ったとき・更新したときに動き、`pages.yml` からも呼ばれる
 - `.github/workflows/pages.yml` — `main` への push で `test.yml` のテストを実行し、通れば分布を事前計算して `check-precomputed.mjs` で確かめ、アプリのファイルと事前計算の分布だけを GitHub Pages に公開する
@@ -83,7 +85,7 @@
 - 所持数が満タンになると「いつのまに育成」になり、おてつだいキューに新しいおてつだいは入らない。ただしキューに残っている最大4回分は消費され、スキルが抽選される（ポケモンスリープ攻略・検証 Wiki「おてつだい」）。
 - ストックのある区間の発動回数は、抽選回数 k ごとに二項分布の発動回数を2回で打ち切った期待値を、k の確率で平均する。
 - おてつだい回数が小数の区間は、前後の整数回を小数部分の割合で混ぜる（その確率で1回多い日とみなす）。
-- ver1.5 で、おてつだい時間・確率の丸めとスキルの数え方をにとよんツールに合わせた（[設計書](docs/design-v1.5.md)）。満タン後のキュー4回の抽選だけは wiki の記述に従って残すので、スキルタイプはにとよんツールより少し多くなる（中央値2.4%）。きのみ・食材タイプは差が浮動小数の誤差のみ。おてつだいボーナスのチーム効果の数え方は変えない。
+- ver1.5 で、おてつだい時間・確率の丸めとスキルの数え方をにとよんツールに合わせた（[設計書](docs/checker/design-v1.5.md)）。満タン後のキュー4回の抽選だけは wiki の記述に従って残すので、スキルタイプはにとよんツールより少し多くなる（中央値2.4%）。きのみ・食材タイプは差が浮動小数の誤差のみ。おてつだいボーナスのチーム効果の数え方は変えない。
 
 ### 上位%の分布
 
