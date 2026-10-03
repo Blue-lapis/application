@@ -12,7 +12,7 @@ import { ingIcon } from './ingicons.js';
 import { initMonPicker, splitName } from './monpick.js';
 import { SUB_FULL, subShort, GOLD, FAMILIES, NAT_AXES, natAt, natByName, axisLabel } from './picker.js';
 import {
-  state, monData, loadSettings, setCamp, setLevel, setLvOpen, setMon, setType, setTarget, setNature, resetSelection,
+  state, monData, hasMon, saveDraft, loadSettings, setCamp, setLevel, setLvOpen, setMon, setType, setTarget, setNature, resetSelection,
   setHeal, setTap, setIngTap, setTeam, setFav, setParam,
   currentSubs, currentArr, filledSubs, slotCount, isComplete, canRate, targetClosed, env, envFor, targetOf, loadAllLogs, appendLog, removeLogEntry, restoreEntry, isCurrent,
   snapshotSelection, restoreSelection,
@@ -71,8 +71,9 @@ const fmtOdds = (n) => {
 };
 
 // 選んだポケモンを URL にも残して、ブックマークや共有で開けるようにする。
+// 未選択のときは ?mon= を外す。
 const syncUrl = () => {
-  try { history.replaceState(null, '', `?mon=${encodeURIComponent(state.mon)}`); } catch { /* history unavailable */ }
+  try { history.replaceState(null, '', hasMon() ? `?mon=${encodeURIComponent(state.mon)}` : location.pathname); } catch { /* history unavailable */ }
 };
 
 let worker = null;
@@ -113,7 +114,7 @@ export function initUI(engines) {
   $('searchBtn').onclick = () => openMon('all', true);
 
   initParams(engines);
-  $('lvxHead').onclick = () => { setLvOpen(!state.lvOpen); renderLvList(engines); };
+  $('lvxHead').onclick = () => { setLvOpen(!state.lvOpen); if (hasMon()) renderLvList(engines); };
 
   initDialogs(engines);
 
@@ -180,13 +181,9 @@ function renderHeader() {
   if (key === shownHeader) return;
   shownHeader = key;
   const mm = monData(), d = def();
-  document.documentElement.dataset.type = state.type;
   document.title = `${mm.name} ${d.label} 厳選チェッカー`;
-  $('tabs').querySelectorAll('[role="tab"]').forEach((b) => {
-    const on = b.dataset.type === state.type;
-    b.setAttribute('aria-selected', String(on));
-    b.tabIndex = on ? 0 : -1;
-  });
+  renderTabs();
+  showMonParts(true);
   // ポケモンのカード。カード全体が選ぶボタン。姿の名前は2行目に小さく出す。
   const [base, form] = splitName(mm.name);
   const note = state.type === 'berry' ? esc(mm.berry) : state.type === 'skill' ? `天井 ${d.ceilOf(mm)}回目` : '';
@@ -214,6 +211,39 @@ function renderHeader() {
   $('rows').innerHTML = groups.map((g, i) => `<details${i === 0 ? ' open' : ''}><summary>${g.label}`
     + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'
     + `</summary><dl class="rows">${g.rows.join('')}</dl></details>`).join('');
+}
+
+function renderTabs() {
+  document.documentElement.dataset.type = state.type;
+  $('tabs').querySelectorAll('[role="tab"]').forEach((b) => {
+    const on = b.dataset.type === state.type;
+    b.setAttribute('aria-selected', String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+}
+
+// ポケモンがないと意味のない部分（ポケモンの情報・育成日数へのリンク・入力・性能・レベル別の一覧・くわしい数値）。
+// 食材配列の欄はタイプでも出し分けるので、出すときは renderHeader が決める。
+const MON_PARTS = ['facts', 'monInfo', 'toExp', 'subSec', 'natSec', 'outSec', 'lvx', 'detailSec'];
+function showMonParts(on) {
+  MON_PARTS.forEach((id) => { $(id).hidden = !on; });
+  if (!on) $('arrSec').hidden = true;
+}
+
+// ポケモン未選択の画面（育成シミュレーターの未選択と同じ形）。条件と記録は使えるが、判定・記録する・分布の計算はしない。
+function renderEmpty(engines) {
+  shownHeader = null;
+  document.title = '厳選チェッカー';
+  renderTabs();
+  showMonParts(false);
+  $('facts').innerHTML = '';
+  $('monInfo').innerHTML = '';
+  $('monBtn').innerHTML = `<span class="ph" aria-hidden="true">?</span><span class="mb"><small class="mt">${def().label}</small><b>ポケモンを選ぶ</b><span class="go">選ぶと判定できます<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></span>`;
+  renderParams();
+  ['bRatio', 'bRank', 'bOdds'].forEach((id) => { $(id).classList.add('dim'); $(id).textContent = '—'; });
+  $('save').disabled = true;
+  $('bWait').textContent = 'ポケモンを選ぶと判定できます';
+  renderLog(engines);
 }
 
 function renderIngs(engines) {
@@ -456,8 +486,8 @@ function renderParamDlg() {
   });
   const e = env();
   if (state.type === 'berry') {
-    const mm = monData();
-    $('favLbl').textContent = `${mm.name}のきのみ（${mm.berry}）を好きなきのみとして扱う`;
+    const mm = hasMon() ? monData() : null;
+    $('favLbl').textContent = mm ? `${mm.name}のきのみ（${mm.berry}）を好きなきのみとして扱う` : '選んだポケモンのきのみを好きなきのみとして扱う';
     const [bMin, bMax] = PARAM_LIMITS.fieldBonus;
     $('bonusDown').disabled = state.fieldBonus <= bMin;
     $('bonusUp').disabled = state.fieldBonus >= bMax;
@@ -657,7 +687,9 @@ function startWorker(engines) {
 
 // 今の条件の分布を頼み、あればチケットのあり・なしを切り替えた条件を先に計算しておく（その場で切り替えられるため）。
 // 今の条件の分布がないのに別の条件を計算しているとき（ポケモンや条件を変えた直後）は、その計算をやめて今の条件から始める。
+// 未選択のときは分布を頼まない（Worker・IndexedDB・事前計算のファイルに触れない）。
 function requestDist(engines) {
+  if (!hasMon()) return;
   const type = state.type, engine = engines[type];
   const cur = env();
   if (inFlight) {
@@ -777,6 +809,8 @@ function initTheme() {
 
 
 function renderBar(engines) {
+  // 未選択の間に Worker から届いた分布では描き直さない（帯は renderEmpty が出す）。
+  if (!hasMon()) return;
   renderLvList(engines);
   const ok = canRate();
   ['bRatio', 'bRank', 'bOdds'].forEach((id) => $(id).classList.toggle('dim', !ok));
@@ -936,7 +970,13 @@ function renderRankNote() {
     + '「性能値の順位」は、無補正比が異なる組み合わせの中での順位で、組み合わせごとの出やすさを考えないため、確率とは一致しません（参考値）。';
 }
 
+// 入力の保存（saveDraft）はここで行う。入力を変える処理はすべて最後にここを通る。
 function refresh(engines) {
+  saveDraft();
+  if (!hasMon()) {
+    renderEmpty(engines);
+    return;
+  }
   renderHeader();
   renderToExp();
   renderRankNote();

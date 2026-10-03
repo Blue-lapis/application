@@ -102,7 +102,7 @@ console.log(`時間切れで計算に切り替えるまで ${((performance.now()
 const base = { ...job.env };
 const outside = [
   ['healTimes', { ...base, healTimes: 3 }], ['healAmt', { ...base, healAmt: 20 }], ['heal', { ...base, heal: 0 }],
-  ['tap', { ...base, tap: '3h' }], ['team', { ...base, team: false }], ['lv', { ...base, lv: 55 }],
+  ['tap', { ...base, tap: TYPES[job.type].TAPS[0] }], ['team', { ...base, team: false }], ['lv', { ...base, lv: 55 }],
   ['N', { ...base, N: 4 }], ['mon', { ...base, mon: 'nothing' }], ['項目の追加', { ...base, extra: 1 }],
 ];
 calls = 0;

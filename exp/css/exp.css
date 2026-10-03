@@ -28,7 +28,6 @@ section{padding:16px 14px}
 .step b{font-family:var(--font-num);font-size:1.1rem;width:1.6em;text-align:center}
 
 /* ポケモン。カードと選ぶダイアログはチェッカーと同じ。選んでいないときは画像の代わりに「?」。 */
-.monbtn .ph{width:92px;height:92px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--card);color:var(--muted);font-family:var(--font-num);font-size:2rem;font-weight:700}
 .mon-opt{display:flex;flex-direction:column;gap:12px;padding:14px 14px 16px;border-top:1px solid var(--line)}
 
 /* レベル。今 → 目標 を大きく、その下に目標の早見と「次のレベルまで」。 */

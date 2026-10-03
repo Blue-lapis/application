@@ -5,7 +5,7 @@
 import { SLOTS_AT } from '../../js/constants.js';
 import { HEAL_AMT, HEAL_TIMES } from './berry/constants.js';
 import { targetOpen } from './ingredient/constants.js';
-import { TYPES } from './types.js';
+import { TYPES, DEFAULT_TAP } from './types.js';
 import { MODEL_VERSION, dataKey } from './distcache.js';
 
 // 事前計算するレベル。チケットはあり・なしの両方、食材タイプは狙い食材をすべて。
@@ -13,7 +13,7 @@ export const PRE_LEVELS = [50, 60, 70, 80];
 // レベル・チケット・ポケモン・狙い食材以外は既定の値だけ（state.js の既定と同じ。tests/check-precomputed.mjs で確かめる）。
 const preEnv = (type, mon, lv, camp, target) => ({
   lv, N: SLOTS_AT[lv], camp, mon, ...(type === 'ingredient' ? { target } : {}),
-  heal: 1, tap: TYPES[type].TAPS[0], team: true, healAmt: HEAL_AMT, healTimes: HEAL_TIMES,
+  heal: 1, tap: DEFAULT_TAP, team: true, healAmt: HEAL_AMT, healTimes: HEAL_TIMES,
 });
 
 // 食材タイプで、狙い食材がそのレベルで開いている食材の枠に出ない条件（Lv.50 で Lv.60 の枠だけに出る食材）は
