@@ -106,8 +106,10 @@ section.mon{padding:0;overflow:hidden}
 .facts small{font-size:.68rem;font-weight:700;color:var(--muted)}
 .facts b{font-size:1.15rem;font-weight:600}
 #monInfo{padding:0 16px 16px}
-/* 育成日数シミュレーターへのリンク。ポケモンのカードの下の1行。 */
-.toexp{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 16px;border-top:1px solid var(--line);color:var(--ink);text-decoration:none}
+/* 他アプリへのカード（チェッカーの「育成日数を見る」・育成の「厳選チェッカーで見る」）。ページの一番下に置く1枚のカード。 */
+.xapp{margin:0 0 14px;border:1px solid var(--line);border-radius:20px;background:var(--card);overflow:hidden}
+.xapp .toexp[aria-disabled="true"]{opacity:.45;cursor:default}
+.toexp{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 16px;color:var(--ink);text-decoration:none}
 .toexp>svg:first-child{flex:none;color:var(--psy-ink)}
 .toexp span{flex:1;display:flex;flex-direction:column;min-width:0}
 .toexp b{font-size:.9rem;font-weight:800}
