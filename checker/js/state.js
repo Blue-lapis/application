@@ -5,9 +5,12 @@
 import { TYPES, DEFAULT_TYPE, DEFAULT_TAP, typeOf } from './types.js';
 import { natByName } from './picker.js';
 import { UNLOCK, LEVEL, LEVELS, SLOTS_AT, ingOpen, byId, natsOf } from '../../js/constants.js';
-import { HEALS, TAPS, HEAL_AMT, HEAL_TIMES, PARAM_LIMITS, FIELD_BONUS } from './berry/constants.js';
-import { TAPS as ING_TAPS, BYS as ING_BYS, targetOpen } from './ingredient/constants.js';
-import { RECIPE_BONUSES, RECIPE_BONUS, RECIPE_LEVEL } from './ingredient/energy.js';
+import { HEALS, TAPS, HEAL_AMT, HEAL_TIMES, PARAM_LIMITS as BERRY_LIMITS, FIELD_BONUS } from './berry/constants.js';
+import { TAPS as ING_TAPS, targetOpen } from './ingredient/constants.js';
+import { RECIPE_BONUSES, RECIPE_BONUS, RECIPE_LEVEL, RECIPE_LEVEL_LIMITS, BYS as ING_BYS } from './ingredient/energy.js';
+
+// 詳細画面の数値の範囲。平均レシピレベルは食材タイプをエナジーで評価するときだけ使う。
+export const PARAM_LIMITS = { ...BERRY_LIMITS, recipeLevel: RECIPE_LEVEL_LIMITS };
 
 const KEYS = {
   camp: 'ckcamp', g80: 'ckg80', mode: 'ckmode', lv: 'cklv', mon: 'ckmon', mons: 'ckmons', target: 'igtarget',

@@ -1,9 +1,9 @@
 // 条件（ver1.11 で ui.js から分けた）。条件の欄の切り替え、詳細のダイアログ、条件の文言。
-import { HEAL_AMT, HEAL_TIMES, TEAM_OTHERS, FIELD_BONUS, PARAM_LIMITS } from '../berry/constants.js';
+import { HEAL_AMT, HEAL_TIMES, TEAM_OTHERS, FIELD_BONUS } from '../berry/constants.js';
 import { energyAt } from '../engine.js';
 import { RECIPE_BONUSES, RECIPE_BONUS, RECIPE_LEVEL, RECIPE_LEVEL_BONUS, recipeMul } from '../ingredient/energy.js';
 import {
-  state, monData, hasMon, env, setCamp, setLevel, setHeal, setTap, setIngTap, setTeam, setFav, setParam, setIngBy, setRecipeBonus,
+  state, monData, hasMon, env, PARAM_LIMITS, setCamp, setLevel, setHeal, setTap, setIngTap, setTeam, setFav, setParam, setIngBy, setRecipeBonus,
 } from '../state.js';
 import { $ } from './common.js';
 

@@ -76,3 +76,7 @@ export const RECIPE_LEVEL_BONUS = [
   183, 190, 197, 203, 209, 215, 221, 227, 234, 239, 243, 248, 252, 258,
 ];
 export const recipeMul = (bonus, level) => (bonus === 0 ? 1 : (1 + bonus / 100) * (1 + RECIPE_LEVEL_BONUS[level] / 100)) * 0.8 + 0.2;
+// 平均レシピレベルの範囲。
+export const RECIPE_LEVEL_LIMITS = [1, 70];
+// 食材タイプの評価のしかた。'count' は狙い食材の個数（./calc.js）、'energy' はエナジー（./energycalc.js）。
+export const BYS = ['count', 'energy'];

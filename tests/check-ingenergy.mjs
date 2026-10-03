@@ -1,13 +1,16 @@
 // node tests/check-ingenergy.mjs
 // 食材タイプをエナジーで評価するモード（ver1.12）を確かめる。
 // - データ: すべてのポケモンにきのみがあり、きのみの Lv.1 のエナジーがきのみタイプと同じ、すべての食材にエナジーがある。
+// - エナジーのエンジン（energycalc.js）は狙い食材の個数のエンジン（calc.js）から独立していて、数える食材の個数・回数・所持数は
+//   calc.js の daily と完全に一致する（同じ規則にきのみを足しただけ）。
 // - 評価の値（metric）が、表示用の値（daily）の食材のエナジー＋きのみのエナジーと一致する。
 // - 「常にタップ」の日中のきのみは おてつだい回数 × 1回の個数 × (1 − 食材確率) と一致する。
 // - エナジーの評価は狙い食材によらない。個数の評価の条件のキーは以前と同じ形。
 // - エナジーの無補正比は同じ食材配列の無補正個体で割るので、どの食材配列でも無補正個体は1倍。
 // - きのみの数Sは、エナジーでは無補正比を上げ、個数では上げない。分布の確率の合計は1。
 import assert from 'node:assert/strict';
-import { createEngine, mults, envKey, ingEnergy, berryOf, recipeMulOf } from '../checker/js/ingredient/calc.js';
+import { createEngine, mults, envKey, ingEnergy, berryOf, recipeMulOf } from '../checker/js/ingredient/energycalc.js';
+import { createEngine as countEngine, envKey as countKey, daily as countDaily } from '../checker/js/ingredient/calc.js';
 import { MONS, allArrs } from '../checker/js/ingredient/constants.js';
 import { ING_ENERGY, BERRY_BASE, BERRY_OF, recipeMul } from '../checker/js/ingredient/energy.js';
 import { MONS as BERRY_MONS } from '../checker/js/berry/mons.js';
@@ -50,6 +53,12 @@ for (const mon of ['flygon', 'charizard', 'ditto', 'gourgeist-jumbo', 'toxicroak
     for (const subs of SUBS) for (const [up, down] of NATS) for (const { arr } of arrs) {
       const m = mults(subs, up, down);
       const d = eng.daily(m, arr, env);
+      // 食材・回数・所持数などは calc.js の daily と完全に同じ（エナジーのエンジンは足すだけ）。
+      const c = countDaily(m, arr, { ...env, target: 'A' });
+      for (const k of ['Ha', 'Hs', 'full', 'lost', 'Te', 'ingP', 'cap', 'LV']) assert.equal(d[k], c[k], `${k}/${mon}/${subs}/${arr}`);
+      assert.deepEqual(d.day, c.day, `日中の食材/${mon}/${subs}/${arr}`);
+      assert.deepEqual(d.night, c.night, `睡眠中の食材/${mon}/${subs}/${arr}`);
+      assert.deepEqual(d.genki, c.genki);
       const be = berryOf(mon, d.LV).energy;
       const mul = recipeMulOf(env);
       const fromDaily = ingEnergy(d.day, mul) + ingEnergy(d.night, mul) + (d.berryDay + d.berryNight) * be;
@@ -61,7 +70,7 @@ for (const mon of ['flygon', 'charizard', 'ditto', 'gourgeist-jumbo', 'toxicroak
     }
   }
 }
-ok(`評価の値と表示の値が一致する（${cases}ケース）`);
+ok(`食材の個数は calc.js と同じ・評価の値と表示の値が一致する（${cases}ケース）`);
 
 // 狙い食材によらない。
 for (const mon of ['flygon', 'farfetchd']) {
@@ -73,7 +82,7 @@ for (const mon of ['flygon', 'farfetchd']) {
       eng.score(['berry', 'spM', 'ingM'], 'speed', 'ing', [0, 1, 2], env), `${mon}/${target}`);
   }
 }
-assert.equal(envKey({ camp: true, heal: 1, team: true, healAmt: 18, healTimes: 5, lv: 60, N: 3, tap: '3h', mon: 'flygon', target: 'A' }),
+assert.equal(countKey({ camp: true, heal: 1, team: true, healAmt: 18, healTimes: 5, lv: 60, N: 3, tap: '3h', mon: 'flygon', target: 'A' }),
   '60|3|true|flygon|A|1|3h|true|18|5', '個数の評価のキー');
 assert.notEqual(envKey({ ...envs[0], mon: 'flygon', by: 'energy' }), envKey({ ...envs[0], mon: 'flygon', by: 'energy', recipeLevel: 31 }), 'レシピレベルでキーが変わる');
 ok('エナジーの評価は狙い食材によらない・個数の評価のキーは以前と同じ');
@@ -95,8 +104,9 @@ for (const mon of Object.keys(MONS)) {
   const env = { ...envs[0], mon };
   const arr = [0, 0, 0];
   const en = { ...env, by: 'energy' }, cnt = { ...env, target: 'A' };
+  const ce = countEngine();
   assert.ok(eng.score(['berry'], null, null, arr, en) > eng.score([], null, null, arr, en), `${mon} エナジーできのみの数Sが効く`);
-  assert.ok(eng.score(['berry'], null, null, arr, cnt) <= eng.score([], null, null, arr, cnt), `${mon} 個数ではきのみの数Sで増えない`);
+  assert.ok(ce.score(['berry'], null, null, arr, cnt) <= ce.score([], null, null, arr, cnt), `${mon} 個数ではきのみの数Sで増えない`);
 }
 ok('きのみの数Sはエナジーでだけ無補正比を上げる');
 

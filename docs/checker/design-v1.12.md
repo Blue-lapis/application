@@ -1,17 +1,17 @@
 # ver1.12 設計書
 
-食材タイプの評価を「狙い食材の個数」（今まで）と「エナジー」で切り替えられるようにする。狙い食材の個数だけで比べると、きのみS（きのみの数S）はきのみで所持数を早く埋めるぶんわずかにマイナスになり、エナジーで見たいときの評価と合わない。エナジーは、すべての食材ときのみの1日のエナジーの合計で比べる。画面のバージョンは v1.4 → v1.5。「狙い食材の個数」の計算・条件の形・`MODEL_VERSION`（10）・記録の形は変えない。
+食材タイプの評価を「狙い食材の個数」（今まで）と「エナジー」で切り替えられるようにする。狙い食材の個数だけで比べると、きのみS（きのみの数S）はきのみで所持数を早く埋めるぶんわずかにマイナスになり、エナジーで見たいときの評価と合わない。エナジーは、すべての食材ときのみの1日のエナジーの合計で比べる。画面のバージョンは v1.4 → v1.5。「狙い食材の個数」の計算エンジン（`checker/js/ingredient/calc.js`）は1文字も変えず、エナジーの計算は別のファイル（`energycalc.js`）に独立させる。条件の形・`MODEL_VERSION`（10）・記録の形も変えない。
 
 ## 1. 変更するファイル
 
 | ファイル | 変更 |
 |---|---|
 | `checker/js/ingredient/energy.js` | 新規。食材1個のエナジー（`ING_ENERGY`）、きのみの Lv.1 のエナジー（`BERRY_BASE`）、ポケモンごとのきのみ（`BERRY_OF`）。にとよんツールのデータから作成 |
-| `checker/js/ingredient/calc.js` | 1日のきのみの個数（日中・睡眠中）も数える。条件に `by: 'energy'` があれば、評価の値（`metric`）をエナジーにする。`envKey` はエナジーのとき狙い食材を入れない。`ingEnergy`・`berryOf`・`byEnergy` を追加 |
-| `checker/js/ingredient/constants.js` | 評価のしかた `BYS = ['count', 'energy']` |
+| `checker/js/ingredient/energycalc.js` | 新規。エナジーで評価する計算エンジン。`calc.js` の `prepare`・`slotsOf`・`mults` と共通の部品（`js/calc.js` の `fillCurve`、`engine.js`）を読み込んで使い、1日の食材ときのみの個数を数える。`calc.js` は変えない |
+| `checker/js/types.js` | 食材タイプのエンジンは、条件の `by` が `'energy'` なら `energycalc.js`、それ以外は `calc.js` のエンジンにそのまま渡す |
+| `checker/js/ingredient/energy.js` | 評価のしかた `BYS = ['count', 'energy']`、平均レシピレベルの範囲 |
 | `checker/js/state.js` | 設定 `ingBy`（キー `ckingby`、既定 `'count'`）。`envFor` はエナジーのとき `target` の代わりに `by: 'energy'` を入れる。`targetClosed` はエナジーのとき常に false |
 | `checker/css/theme.css` | 詳細のレシピボーナスの選択欄 |
-| `checker/js/berry/constants.js` | `PARAM_LIMITS.recipeLevel` |
 | `checker/index.html` | 詳細に「料理による食材のエナジー」（レシピボーナス・平均レシピレベル）。条件の欄に「評価」（狙い食材の個数 / エナジー、`data-for="ingredient"`）。食材配列の見出しの添え書きに `id` |
 | `checker/js/ui/params.js` | 「評価」の切り替え。詳細の注記（チーム効果の説明）をエナジー用に |
 | `checker/js/ui/input.js` | エナジーのときは狙いの行と、食材配列の狙い食材の印を隠す。サブスキル・性格のダイアログの注記 |

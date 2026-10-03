@@ -4,20 +4,10 @@
 // mon は MONS のキー、target は狙う食材（'A' など）。
 // heal・healAmt・healTimes はきのみタイプと共通の設定、tap は日中の受け取り（'always' / '3h'）、
 // team はおてつだいボーナスのチームへの効果（同じポケモン4匹の狙い食材の増加）を含めるか。
-// by: 'energy' のときは、狙い食材の個数の代わりに、すべての食材ときのみのエナジーの合計で評価する（ver1.12）。
-// このとき target は使わない（条件にも入れない）。代わりに食材配列 env.arr（例 '012'）を条件に入れ、
-// 無補正比は同じ食材配列の無補正個体で割り、上位%の分布は同じ食材配列の個体だけを母集団にして数える。食材のエナジーには料理の倍率（recipeBonus・recipeLevel から recipeMul）を掛ける。
 import { fillCurve, NO_SUBS } from '../../../js/calc.js';
 import { mk as mkOf, mults as multsOf, mixed, timesMix, curveOf, energyAt, scheduleOf, pairSegs, basics, ingSlotsOf, buildDist, distStore } from '../engine.js';
 import { TEAM_OTHERS, HB_SPEED } from '../berry/constants.js';
-import { berryEnergy } from '../berry/calc.js';
 import { MONS, natCat, allArrs } from './constants.js';
-import { ING_ENERGY, BERRY_BASE, BERRY_OF, recipeMul } from './energy.js';
-
-// エナジーで評価する条件か。
-export const byEnergy = (env) => env.by === 'energy';
-// ポケモン mon のきのみの名前と、レベル LV のきのみ1個のエナジー。
-export const berryOf = (mon, LV) => ({ name: BERRY_OF[mon], energy: berryEnergy(BERRY_BASE[BERRY_OF[mon]], LV) });
 
 // 食材タイプの berry は1回のきのみおてつだいで拾う個数（1＋きのみの数S）。
 const mk = (e, up, down) => mkOf(e, up, down, 1);
@@ -36,8 +26,7 @@ export function prepare(m, env) {
   return { ...b, segs, Ha: sum(0), Hs: sum(1) };
 }
 
-// 所持数0から n 回（小数）おてつだいしたときに拾う、スロットごとの食材の期待個数 got、きのみの期待個数 berries と、満タンになる確率 full。
-// 満タンになった後のおてつだいはきのみになる（きのみタイプと同じ）。
+// 所持数0から n 回（小数）おてつだいしたときに拾う、スロットごとの食材の期待個数 got と、満タンになる確率 full。
 // 食材おてつだいは開いている枠から均等に1つ選ぶ。それ以外はきのみ。狙い以外の食材も所持数を埋める。
 // 所持数を超える分は捨てられ、満タンになった後のおてつだいでは何も増えない。
 // c は所持数の遷移（共通の fillCurve）。回数が小数なら、前後の整数回の結果を小数部分の割合で混ぜる（きのみタイプと同じ）。
@@ -45,37 +34,34 @@ function segIngredients(c, n) {
   return c.cached('ing', n, () => {
     const lo = Math.floor(n), f = n - lo;
     c.upTo(lo + 1);
-    const at = (j) => ({ got: c.got.map((xs) => xs[j]), berries: c.berries[j], full: 1 - c.open[j] });
+    const at = (j) => ({ got: c.got.map((xs) => xs[j]), full: 1 - c.open[j] });
     const a = at(lo);
     if (f < 1e-12) return a;
     const b = at(lo + 1);
-    const mix = (x, y) => x + (y - x) * f;
-    return { got: a.got.map((x, i) => mix(x, b.got[i])), berries: mix(a.berries, b.berries), full: mix(a.full, b.full) };
+    return { got: a.got.map((x, i) => x + (b.got[i] - x) * f), full: a.full + (b.full - a.full) * f };
   });
 }
 
 // 1日の、スロットごとの食材の期待個数（日中 day・睡眠中 night）と、睡眠中に満タンになる確率 full、
-// 所持数からあふれて捨てた食材の個数 lost、きのみの期待個数（日中 berryDay・睡眠中 berryNight）。
+// 所持数からあふれて捨てた食材の個数 lost。
 function runDay(r, env, berry, amts) {
   const day = amts.map(() => 0), night = amts.map(() => 0);
-  let full = 0, lost = 0, berryDay = 0, berryNight = 0;
+  let full = 0, lost = 0;
   const each = amts.map((a) => (r.ingP * a) / amts.length);
   const c = fillCurve(r.cap, r.ingP, berry, amts);
   r.segs.forEach(([ha, hs]) => {
     if (hs === 0 && env.tap === 'always') {
       each.forEach((x, i) => { day[i] += ha * x; });
-      berryDay += ha * berry * (1 - r.ingP);
       return;
     }
     const n = hs > 0 ? hs : ha;
     const v = segIngredients(c, n);
     const to = hs > 0 ? night : day;
     v.got.forEach((x, i) => { to[i] += x; });
-    if (hs > 0) berryNight += v.berries; else berryDay += v.berries;
     lost += each.reduce((s, x) => s + n * x, 0) - v.got.reduce((s, x) => s + x, 0);
     if (hs > 0) full = v.full;
   });
-  return { day, night, full, lost, berryDay, berryNight };
+  return { day, night, full, lost };
 }
 
 // スロットごとの個数を食材ごとにまとめる { 食材名: 個数 }。
@@ -102,28 +88,17 @@ export function daily(m, arr, env) {
   return {
     ...parts[0][0],
     Ha: avgOf((d) => d.Ha), Hs: avgOf((d) => d.Hs), full: avgOf((d) => d.full), lost: avgOf((d) => d.lost),
-    berryDay: avgOf((d) => d.berryDay), berryNight: avgOf((d) => d.berryNight), berry: m.berry,
-    berryInfo: berryOf(env.mon, parts[0][0].LV),
     day, night,
     genki: energyAt(env, m.wake, m.rec), wakeE: Math.round(mixed(env, (e) => curveOf(e, m.wake, m.rec)(0))),
   };
 }
 
-// 食材ごとの個数 { 食材名: 個数 } のエナジーの合計（料理の倍率 mul を掛ける）。
-export const ingEnergy = (counts, mul = 1) => Object.entries(counts).reduce((s, [name, n]) => s + n * ING_ENERGY[name], 0) * mul;
-// 条件の料理の倍率。
-export const recipeMulOf = (env) => recipeMul(env.recipeBonus, env.recipeLevel);
-
-// エナジーで評価する条件は狙い食材を使わないので、キーにも入れない（狙い食材を変えても同じ分布を使う）。食材配列は入れる。
-export const envKey = (env) => (byEnergy(env)
-  ? [env.lv, env.N, env.camp, env.mon, 'energy', env.arr, env.heal, env.tap, env.team, env.healAmt, env.healTimes, env.recipeBonus, env.recipeLevel]
-  : [env.lv, env.N, env.camp, env.mon, env.target, env.heal, env.tap, env.team, env.healAmt, env.healTimes]).join('|');
+export const envKey = (env) => [env.lv, env.N, env.camp, env.mon, env.target, env.heal, env.tap, env.team, env.healAmt, env.healTimes].join('|');
 
 export function createEngine() {
   const metricCache = new Map();
 
-  // 自分の狙い食材の1日の個数（エナジーで評価するときは、すべての食材ときのみの1日のエナジー）。
-  // 発動回数が小数のときは前後の整数回の日の割合で平均する。
+  // 自分の狙い食材の1日の個数。発動回数が小数のときは前後の整数回の日の割合で平均する。
   const metric = (m, arr, env) => mixed(env, (e) => metricOne(m, arr, e));
   function metricOne(m, arr, env) {
     const r = prepare(m, env);
@@ -133,57 +108,46 @@ export function createEngine() {
       const slots = slotsOf(mon, arr, r.ingSlots);
       const d = runDay(r, env, m.berry, slots.map(([, a]) => a));
       const all = byIngredient(mon, slots, d.day.map((x, i) => x + d.night[i]));
-      metricCache.set(key, byEnergy(env)
-        ? ingEnergy(all, recipeMulOf(env)) + (d.berryDay + d.berryNight) * berryOf(env.mon, r.LV).energy
-        : all[mon.ings[env.target]] || 0);
+      metricCache.set(key, all[mon.ings[env.target]] || 0);
     }
     return metricCache.get(key);
   }
 
   // 比較の基準は、無補正個体（サブスキルなし・無補正性格）のうち狙い食材が最も多く取れる食材配列（狙いが A なら AAA）。
-  // エナジーで評価するときは、同じ食材配列 arr の無補正個体（食材配列の良し悪しを無補正比に入れず、サブスキル・性格だけで比べる）。
-  // arr を渡さないとき（食材配列が決まっていないとき）は、無補正個体のうちエナジーが最も高い食材配列。
   // 配列は開いている枠の分だけ（Lv.50 なら AA）。
-  function reference(env, arr) {
+  function reference(env) {
     const m = mk(NO_SUBS, null, null);
-    if (byEnergy(env) && arr) {
-      const a = arr.slice(0, ingSlotsOf(env));
-      return { arr: a, v: metric(m, a, env) };
-    }
     return allArrs(MONS[env.mon], ingSlotsOf(env))
       .map(({ arr }) => ({ arr, v: metric(m, arr, env) }))
       .reduce((a, b) => (b.v > a.v ? b : a));
   }
-  const baseMetric = (env, arr) => reference(env, arr).v;
+  const baseMetric = (env) => reference(env).v;
 
   // ほかのメンバー TEAM_OTHERS 匹（同じポケモン・基準の食材配列・サブスキルなし・無補正性格）が、
-  // おてつだいボーナスでおてつだいスピードが HB_SPEED 上がって増やす狙い食材の個数（エナジーで評価するときはエナジー）の合計。
-  // エナジーで評価するときのほかのメンバーは、自分と同じ食材配列 arr。
+  // おてつだいボーナスでおてつだいスピードが HB_SPEED 上がって増やす狙い食材の個数の合計。
   const gainCache = new Map();
-  function teamGain(env, arr) {
-    const ref = reference(env, arr);
-    const k = `${envKey(env)}|${ref.arr.join('')}`;
+  function teamGain(env) {
+    const k = envKey(env);
     if (!gainCache.has(k)) {
-      gainCache.set(k, TEAM_OTHERS * (metric(mk({ ...NO_SUBS, sp: HB_SPEED }, null, null), ref.arr, env) - ref.v));
+      const arr = reference(env).arr;
+      gainCache.set(k, TEAM_OTHERS * (metric(mk({ ...NO_SUBS, sp: HB_SPEED }, null, null), arr, env) - baseMetric(env)));
     }
     return gainCache.get(k);
   }
   // チームへの効果。おてつだいボーナスを持たないか、含めない設定なら0。
-  const team = (m, env, arr) => (env.team && m.hb ? teamGain(env, arr) : 0);
+  const team = (m, env) => (env.team && m.hb ? teamGain(env) : 0);
   // 順位の基準の値 = 自分の狙い食材の個数 + チームへの効果。
-  const value = (m, arr, env) => metric(m, arr, env) + team(m, env, arr);
-  const score = (subs, up, down, arr, env) => value(mults(subs, up, down), arr, env) / baseMetric(env, arr);
+  const value = (m, arr, env) => metric(m, arr, env) + team(m, env);
+  const score = (subs, up, down, arr, env) => value(mults(subs, up, down), arr, env) / baseMetric(env);
 
   // 上位%の分布は、サブスキル・性格・食材配列（捕獲時の配列の確率 slotWeights）をすべて数え上げる。
-  // エナジーで評価するときは、食材配列を env.arr に固定し、同じ食材配列の個体（サブスキル・性格）だけを数える。
   // スキル確率アップは食材に影響しないので、それ以外の効果が同じ組み合わせをまとめる。
   const store = distStore(envKey, (env) => {
-    const arrs = byEnergy(env)
-      ? [{ arr: [...env.arr].map(Number), p: 1 }]
-      : allArrs(MONS[env.mon], ingSlotsOf(env));
+    const arrs = allArrs(MONS[env.mon], ingSlotsOf(env));
+    const b = baseMetric(env);
     return buildDist(env.N, natCat, true, (e, u, d) => {
       const m = mk(e, u, d);
-      return arrs.map((a) => [value(m, a.arr, env) / baseMetric(env, a.arr), a.p]);
+      return arrs.map((a) => [value(m, a.arr, env) / b, a.p]);
     }, MONS[env.mon]);
   });
 
